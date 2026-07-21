@@ -109,6 +109,14 @@ struct SkylineLyricsSettingsView: View {
                 )
 
                 valueSlider(
+                    title: "最大倾斜角度",
+                    value: $preferences.ambientMaximumTilt,
+                    range: 0...20,
+                    step: 1,
+                    valueText: "\(Int(preferences.ambientMaximumTilt))°"
+                )
+
+                valueSlider(
                     title: "漂移幅度",
                     value: $preferences.ambientDrift,
                     range: 0...2,
@@ -118,7 +126,7 @@ struct SkylineLyricsSettingsView: View {
             } header: {
                 Text("背景动态")
             } footer: {
-                Text("系统开启“减弱动态效果”时，背景漂移会自动停用。")
+                Text("每组背景字会在最大角度内随机倾斜；系统开启“减弱动态效果”时，背景漂移会自动停用。")
             }
 
             Section {

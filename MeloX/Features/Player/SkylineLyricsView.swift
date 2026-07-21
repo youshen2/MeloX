@@ -170,6 +170,12 @@ struct SkylineLyricsView: View {
                         accentColor.opacity(slot.opacity * preferences.ambientOpacity)
                     )
                     .blur(radius: slot.blur * blurScale)
+                    .rotationEffect(
+                        randomizedRotation(
+                            for: slot,
+                            activeIndex: activeIndex
+                        )
+                    )
                     .position(
                         x: size.width * position.x
                             + driftOffset(slot.driftX, scale: driftScale),
@@ -286,9 +292,7 @@ struct SkylineLyricsView: View {
         for slot: SkylineLyricSlot,
         activeIndex: Int
     ) -> CGPoint {
-        let lineSeed = UInt64(activeIndex + 1) &* 0x9E3779B97F4A7C15
-        let slotSeed = UInt64(slot.id + 1) &* 0xBF58476D1CE4E5B9
-        let seed = lineSeed &+ slotSeed
+        let seed = ambientSeed(for: slot, activeIndex: activeIndex)
         let randomness = CGFloat(settings.skylineLyrics.ambientPositionRandomness)
         let xJitter = (randomUnit(seed: seed) - 0.5) * 0.16 * randomness
         let yJitter = (randomUnit(seed: seed ^ 0x94D049BB133111EB) - 0.5)
@@ -299,6 +303,27 @@ struct SkylineLyricsView: View {
             x: min(max(slot.x + xJitter, -0.02), 1.02),
             y: min(max(slot.y + yJitter, 0.08), 0.92)
         )
+    }
+
+    private func randomizedRotation(
+        for slot: SkylineLyricSlot,
+        activeIndex: Int
+    ) -> Angle {
+        let seed = ambientSeed(for: slot, activeIndex: activeIndex)
+            ^ 0xD6E8FEB86659FD93
+        let signedUnit = Double(randomUnit(seed: seed)) * 2 - 1
+        return .degrees(
+            signedUnit * settings.skylineLyrics.ambientMaximumTilt
+        )
+    }
+
+    private func ambientSeed(
+        for slot: SkylineLyricSlot,
+        activeIndex: Int
+    ) -> UInt64 {
+        let lineSeed = UInt64(activeIndex + 1) &* 0x9E3779B97F4A7C15
+        let slotSeed = UInt64(slot.id + 1) &* 0xBF58476D1CE4E5B9
+        return lineSeed &+ slotSeed
     }
 
     private func randomUnit(seed: UInt64) -> CGFloat {

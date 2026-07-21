@@ -15,6 +15,7 @@ final class SkylineLyricsPreferences {
         static let ambientOpacity = "skylineAmbientOpacity"
         static let ambientBlur = "skylineAmbientBlur"
         static let ambientPositionRandomness = "skylineAmbientPositionRandomness"
+        static let ambientMaximumTilt = "skylineAmbientMaximumTilt"
         static let ambientDrift = "skylineAmbientDrift"
     }
 
@@ -29,6 +30,7 @@ final class SkylineLyricsPreferences {
         static let ambientOpacity = 1.0
         static let ambientBlur = 1.0
         static let ambientPositionRandomness = 1.0
+        static let ambientMaximumTilt = 8.0
         static let ambientDrift = 1.0
     }
 
@@ -82,6 +84,10 @@ final class SkylineLyricsPreferences {
         }
     }
 
+    var ambientMaximumTilt: Double {
+        didSet { defaults.set(ambientMaximumTilt, forKey: Key.ambientMaximumTilt) }
+    }
+
     var ambientDrift: Double {
         didSet { defaults.set(ambientDrift, forKey: Key.ambientDrift) }
     }
@@ -118,6 +124,8 @@ final class SkylineLyricsPreferences {
         ambientPositionRandomness = defaults.object(
             forKey: Key.ambientPositionRandomness
         ) as? Double ?? Default.ambientPositionRandomness
+        ambientMaximumTilt = defaults.object(forKey: Key.ambientMaximumTilt) as? Double
+            ?? Default.ambientMaximumTilt
         ambientDrift = defaults.object(forKey: Key.ambientDrift) as? Double
             ?? Default.ambientDrift
     }
@@ -133,6 +141,7 @@ final class SkylineLyricsPreferences {
         ambientOpacity = Default.ambientOpacity
         ambientBlur = Default.ambientBlur
         ambientPositionRandomness = Default.ambientPositionRandomness
+        ambientMaximumTilt = Default.ambientMaximumTilt
         ambientDrift = Default.ambientDrift
     }
 }
