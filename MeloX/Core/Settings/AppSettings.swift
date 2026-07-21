@@ -51,6 +51,7 @@ final class AppSettings {
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
+        static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
     }
 
     var cookie: String {
@@ -162,6 +163,10 @@ final class AppSettings {
         didSet { defaults.set(previousRestartsCurrentSong, forKey: Key.previousRestartsCurrentSong) }
     }
 
+    var checksUpdatesOnLaunch: Bool {
+        didSet { defaults.set(checksUpdatesOnLaunch, forKey: Key.checksUpdatesOnLaunch) }
+    }
+
     let skylineLyrics: SkylineLyricsPreferences
 
     @ObservationIgnored
@@ -196,6 +201,7 @@ final class AppSettings {
         rememberNowPlayingPage = defaults.object(forKey: Key.rememberNowPlayingPage) as? Bool ?? false
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
+        checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
     }
 
     func clearAccount() {

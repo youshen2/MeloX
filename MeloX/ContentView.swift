@@ -88,6 +88,7 @@ struct ContentView: View {
         .task(id: settings.cookie) {
             await library.refresh()
         }
+        .appLaunchExperience()
     }
 
     private var initialNowPlayingPage: NowPlayingPage {
