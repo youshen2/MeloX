@@ -15,6 +15,7 @@ struct NowPlayingView: View {
     @State private var page: NowPlayingPage
     @State private var lyrics: [LyricLine] = []
     @State private var lyricError: String?
+    @State private var highlightedLyricID: LyricLine.ID?
     @State private var showsAudioOutputHelp = false
 
     init(initialPage: NowPlayingPage = .artwork) {
@@ -56,6 +57,9 @@ struct NowPlayingView: View {
         }
         .task(id: player.currentSong?.id) {
             await loadLyrics()
+        }
+        .task(id: lyricSynchronizationTrigger) {
+            await synchronizeHighlightedLyric()
         }
         .onChange(of: page) { _, newPage in
             guard settings.rememberNowPlayingPage else { return }
@@ -124,9 +128,50 @@ struct NowPlayingView: View {
         }
     }
 
-    private var highlightedLyricID: LyricLine.ID? {
-        let adjustedProgress = player.progress + settings.lyricsAdvanceTime
-        return lyrics.last(where: { $0.time <= adjustedProgress })?.id
+    private var lyricSynchronizationTrigger: LyricSynchronizationTrigger {
+        LyricSynchronizationTrigger(
+            songID: player.currentSong?.id,
+            progress: player.progress,
+            isPlaying: player.isPlaying,
+            advanceTime: settings.lyricsAdvanceTime,
+            lyricCount: lyrics.count,
+            firstLyricID: lyrics.first?.id,
+            lastLyricID: lyrics.last?.id
+        )
+    }
+
+    private func synchronizeHighlightedLyric() async {
+        let synchronizedLyrics = lyrics
+        let advanceTime = settings.lyricsAdvanceTime
+
+        while !Task.isCancelled {
+            let adjustedProgress = player.estimatedProgress() + advanceTime
+            let position = LyricPlaybackTimeline.position(
+                at: adjustedProgress,
+                in: synchronizedLyrics
+            )
+            if highlightedLyricID != position.highlightedLyricID {
+                highlightedLyricID = position.highlightedLyricID
+            }
+
+            guard player.isPlaying,
+                  let nextTransitionTime = position.nextTransitionTime else {
+                return
+            }
+
+            let remainingTime = nextTransitionTime
+                - (player.estimatedProgress() + advanceTime)
+            guard remainingTime > 0 else {
+                await Task.yield()
+                continue
+            }
+
+            do {
+                try await Task.sleep(for: .seconds(remainingTime))
+            } catch {
+                return
+            }
+        }
     }
 
     private func loadLyrics() async {
@@ -148,4 +193,14 @@ struct NowPlayingView: View {
             lyricError = error.localizedDescription
         }
     }
+}
+
+private struct LyricSynchronizationTrigger: Hashable {
+    let songID: Int?
+    let progress: TimeInterval
+    let isPlaying: Bool
+    let advanceTime: TimeInterval
+    let lyricCount: Int
+    let firstLyricID: LyricLine.ID?
+    let lastLyricID: LyricLine.ID?
 }

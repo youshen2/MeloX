@@ -101,6 +101,7 @@ struct NowPlayingLyricsPage: View {
             let focusPosition = lyricsFocusPosition
             let focusedLyricID = scrollPositionID ?? highlightedLyricID
             let focusNeighborIDs = lyricNeighborIDs(around: focusedLyricID)
+            let focusAnimation = lyricFocusAnimation(for: highlightedLyricID)
             let hasSyllableSyncedLyrics = lyrics.contains { $0.isSyllableSynced }
             let usesPseudoTiming = settings.lyricsPseudoWordByWord
                 && !hasSyllableSyncedLyrics
@@ -149,9 +150,7 @@ struct NowPlayingLyricsPage: View {
                                     )
                                 )
                                 .animation(
-                                    accessibilityReduceMotion
-                                        ? nil
-                                        : .easeInOut(duration: 0.34),
+                                    focusAnimation,
                                     value: isPlaybackLine
                                 )
                                 .contentShape(.rect)
@@ -177,15 +176,11 @@ struct NowPlayingLyricsPage: View {
                                         )
                                 }
                                 .animation(
-                                    accessibilityReduceMotion
-                                        ? nil
-                                        : .easeInOut(duration: 0.34),
+                                    focusAnimation,
                                     value: isPrecedingFocusLine
                                 )
                                 .animation(
-                                    accessibilityReduceMotion
-                                        ? nil
-                                        : .easeInOut(duration: 0.34),
+                                    focusAnimation,
                                     value: isFollowingFocusLine
                                 )
                                 .gesture(lyricTapGesture(for: line))
@@ -267,6 +262,18 @@ struct NowPlayingLyricsPage: View {
 
     private var lyricsFocusPosition: CGFloat {
         CGFloat(min(max(settings.lyricsFocusPosition, 0.2), 0.5))
+    }
+
+    private func lyricFocusAnimation(
+        for highlightedLyricID: LyricLine.ID?
+    ) -> Animation? {
+        guard !accessibilityReduceMotion else { return nil }
+        return .easeInOut(
+            duration: LyricPlaybackTimeline.focusAnimationDuration(
+                for: highlightedLyricID,
+                in: lyrics
+            )
+        )
     }
 
     private func lyricNeighborIDs(
@@ -408,8 +415,16 @@ struct NowPlayingLyricsPage: View {
             scrollPositionID = id
         }
 
-        if animated {
-            withAnimation(.smooth(duration: 0.45), update)
+        if animated, !accessibilityReduceMotion {
+            withAnimation(
+                .smooth(
+                    duration: LyricPlaybackTimeline.focusAnimationDuration(
+                        for: id,
+                        in: lyrics
+                    )
+                ),
+                update
+            )
         } else {
             update()
         }

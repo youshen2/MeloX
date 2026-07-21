@@ -60,7 +60,7 @@ struct SkylineLyricsView: View {
             .contentShape(.rect)
             .clipped()
             .animation(
-                accessibilityReduceMotion ? nil : .smooth(duration: 0.65),
+                lyricFocusAnimation,
                 value: highlightedLyricID
             )
             .onTapGesture {
@@ -350,6 +350,16 @@ struct SkylineLyricsView: View {
             red: accentRGB.x,
             green: accentRGB.y,
             blue: accentRGB.z
+        )
+    }
+
+    private var lyricFocusAnimation: Animation? {
+        guard !accessibilityReduceMotion else { return nil }
+        return .smooth(
+            duration: LyricPlaybackTimeline.focusAnimationDuration(
+                for: highlightedLyricID,
+                in: lyrics
+            )
         )
     }
 
