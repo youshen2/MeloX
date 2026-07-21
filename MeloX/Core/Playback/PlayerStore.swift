@@ -64,7 +64,7 @@ final class PlayerStore {
         self.settings = settings
         self.persistence = persistence ?? PlaybackPersistence()
         engine = AudioPlaybackEngine()
-        nowPlayingSession = NowPlayingSession()
+        nowPlayingSession = NowPlayingSession(player: engine.nowPlayingPlayer)
         bindEngine()
         bindRemoteCommands()
         engine.setVolume(volume)

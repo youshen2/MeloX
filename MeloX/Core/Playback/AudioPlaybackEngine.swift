@@ -54,6 +54,10 @@ final class AudioPlaybackEngine {
         player.currentItem != nil
     }
 
+    var nowPlayingPlayer: AVPlayer {
+        player
+    }
+
     init() {
         player.automaticallyWaitsToMinimizeStalling = true
         player.preventsDisplaySleepDuringVideoPlayback = false

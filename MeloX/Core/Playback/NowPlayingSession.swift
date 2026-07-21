@@ -1,3 +1,4 @@
+import AVFoundation
 import MediaPlayer
 import UIKit
 
@@ -9,14 +10,23 @@ final class NowPlayingSession {
     var onPrevious: (() -> Void)?
     var onSeek: ((TimeInterval) -> Void)?
 
-    private let nowPlayingCenter = MPNowPlayingInfoCenter.default()
-    private let commandCenter = MPRemoteCommandCenter.shared()
+    private let playbackSession: MPNowPlayingSession
     private var commandTargets: [(MPRemoteCommand, Any)] = []
     private var nowPlayingInfo: [String: Any] = [:]
     private var artworkTask: Task<Void, Never>?
     private var representedSongID: Int?
 
-    init() {
+    private var nowPlayingCenter: MPNowPlayingInfoCenter {
+        playbackSession.nowPlayingInfoCenter
+    }
+
+    private var commandCenter: MPRemoteCommandCenter {
+        playbackSession.remoteCommandCenter
+    }
+
+    init(player: AVPlayer) {
+        playbackSession = MPNowPlayingSession(players: [player])
+        playbackSession.automaticallyPublishesNowPlayingInfo = false
         installRemoteCommands()
     }
 
@@ -33,18 +43,25 @@ final class NowPlayingSession {
         queueIndex: Int,
         queueCount: Int
     ) {
+        playbackSession.becomeActiveIfPossible(completion: nil)
         representedSongID = song.id
         artworkTask?.cancel()
         nowPlayingInfo = [
             MPMediaItemPropertyTitle: song.name,
             MPMediaItemPropertyArtist: song.artistText,
             MPMediaItemPropertyAlbumTitle: song.album?.name ?? "",
+            MPMediaItemPropertyPersistentID: NSNumber(value: UInt64(max(song.id, 0))),
             MPMediaItemPropertyPlaybackDuration: max(duration, 0),
             MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue,
             MPNowPlayingInfoPropertyIsLiveStream: false,
+            MPNowPlayingInfoPropertyExternalContentIdentifier: "netease:song:\(song.id)",
+            MPNowPlayingInfoPropertyServiceIdentifier: "netease-cloud-music",
             MPNowPlayingInfoPropertyPlaybackQueueIndex: max(queueIndex, 0),
             MPNowPlayingInfoPropertyPlaybackQueueCount: max(queueCount, 1),
         ]
+        if let albumID = song.album?.id {
+            nowPlayingInfo[MPNowPlayingInfoCollectionIdentifier] = "netease:album:\(albumID)"
+        }
         nowPlayingCenter.nowPlayingInfo = nowPlayingInfo
         loadArtwork(from: song.album?.artworkURL, songID: song.id)
     }
