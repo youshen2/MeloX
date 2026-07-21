@@ -139,7 +139,7 @@ final class PlayerStore {
     func reloadCurrentSongForQualityChange() async {
         guard currentSong != nil else { return }
         let shouldAutoplay = isPlaying
-        let resumePosition = progress
+        let resumePosition = estimatedProgress()
         await loadCurrentSong(
             autoplay: shouldAutoplay,
             startAt: resumePosition

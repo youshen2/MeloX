@@ -133,15 +133,18 @@ struct NowPlayingView: View {
         lyrics = []
         lyricError = nil
         guard let song = player.currentSong else { return }
+        let songID = song.id
 
         do {
-            lyrics = try await api.lyrics(id: song.id)
-            if lyrics.isEmpty {
-                lyricError = "当前歌曲暂无滚动歌词。"
-            }
+            let loadedLyrics = try await api.lyrics(id: songID)
+            try Task.checkCancellation()
+            guard player.currentSong?.id == songID else { return }
+            lyrics = loadedLyrics
+            lyricError = loadedLyrics.isEmpty ? "当前歌曲暂无滚动歌词。" : nil
         } catch is CancellationError {
             return
         } catch {
+            guard player.currentSong?.id == songID else { return }
             lyricError = error.localizedDescription
         }
     }

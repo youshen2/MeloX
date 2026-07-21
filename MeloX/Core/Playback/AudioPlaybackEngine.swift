@@ -46,6 +46,8 @@ final class AudioPlaybackEngine {
     private var notificationObservers: [NSObjectProtocol] = []
     private var wantsPlayback = false
     private var pendingSeekTime: TimeInterval = 0
+    private var seekGeneration = 0
+    private var suppressesProgressUpdates = false
     private var didReportCurrentItemFailure = false
 
     var hasCurrentItem: Bool {
@@ -71,6 +73,8 @@ final class AudioPlaybackEngine {
     func load(_ source: PlaybackSource, startAt: TimeInterval = 0, autoplay: Bool) {
         wantsPlayback = autoplay
         pendingSeekTime = max(0, startAt)
+        seekGeneration += 1
+        suppressesProgressUpdates = pendingSeekTime > 0
         didReportCurrentItemFailure = false
         itemStatusObserver?.invalidate()
 
@@ -88,6 +92,8 @@ final class AudioPlaybackEngine {
     func unload() {
         wantsPlayback = false
         pendingSeekTime = 0
+        seekGeneration += 1
+        suppressesProgressUpdates = false
         didReportCurrentItemFailure = false
         itemStatusObserver?.invalidate()
         itemStatusObserver = nil
@@ -97,8 +103,12 @@ final class AudioPlaybackEngine {
     }
 
     func play() {
-        guard player.currentItem != nil else { return }
+        guard let item = player.currentItem else { return }
         wantsPlayback = true
+        guard item.status == .readyToPlay, !suppressesProgressUpdates else {
+            transition(to: .loading)
+            return
+        }
         do {
             try activateAudioSession()
             player.play()
@@ -117,10 +127,21 @@ final class AudioPlaybackEngine {
     }
 
     func seek(to seconds: TimeInterval) {
-        guard player.currentItem != nil else { return }
-        let target = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
+        guard let item = player.currentItem else { return }
+        let position = max(0, seconds)
+        seekGeneration += 1
+        if item.status != .readyToPlay {
+            pendingSeekTime = position
+            suppressesProgressUpdates = position > 0
+            onProgressChanged?(position)
+            return
+        }
+
+        pendingSeekTime = 0
+        suppressesProgressUpdates = false
+        let target = CMTime(seconds: position, preferredTimescale: 600)
         player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
-        onProgressChanged?(max(0, seconds))
+        onProgressChanged?(position)
     }
 
     func setVolume(_ volume: Double) {
@@ -134,7 +155,7 @@ final class AudioPlaybackEngine {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 let seconds = time.seconds
-                if seconds.isFinite {
+                if seconds.isFinite, !self.suppressesProgressUpdates {
                     self.onProgressChanged?(max(0, seconds))
                 }
                 self.publishDurationIfAvailable()
@@ -182,30 +203,29 @@ final class AudioPlaybackEngine {
 
     private func observeStatus(of item: AVPlayerItem) {
         itemStatusObserver = item.observe(\.status, options: [.initial, .new]) {
-            [weak self] _, _ in
-            guard let engine = self else { return }
-            Task { @MainActor [engine] in
-                engine.handleCurrentItemStatusChange()
+            [weak self, weak item] _, _ in
+            guard let engine = self, let item else { return }
+            Task { @MainActor [engine, item] in
+                engine.handleCurrentItemStatusChange(for: item)
             }
         }
     }
 
-    private func handleCurrentItemStatusChange() {
-        guard let item = player.currentItem else { return }
+    private func handleCurrentItemStatusChange(for item: AVPlayerItem) {
+        guard player.currentItem === item else { return }
         switch item.status {
         case .unknown:
             transition(to: .loading)
         case .readyToPlay:
             publishDurationIfAvailable()
             if pendingSeekTime > 0 {
-                let time = pendingSeekTime
+                let position = pendingSeekTime
                 pendingSeekTime = 0
-                seek(to: time)
+                applyInitialSeek(to: position, for: item)
+                return
             }
-            if wantsPlayback {
-                player.play()
-            }
-            updateStateFromPlayer()
+            suppressesProgressUpdates = false
+            resumePlaybackIfNeeded()
         case .failed:
             fail(with: item.error)
         @unknown default:
@@ -220,6 +240,10 @@ final class AudioPlaybackEngine {
         }
         if item.status == .failed {
             fail(with: item.error)
+            return
+        }
+        if suppressesProgressUpdates {
+            transition(to: .loading)
             return
         }
         switch player.timeControlStatus {
@@ -242,9 +266,42 @@ final class AudioPlaybackEngine {
     }
 
     private func publishProgressIfAvailable() {
+        guard !suppressesProgressUpdates else { return }
         let seconds = player.currentTime().seconds
         guard seconds.isFinite else { return }
         onProgressChanged?(max(0, seconds))
+    }
+
+    private func applyInitialSeek(to position: TimeInterval, for item: AVPlayerItem) {
+        seekGeneration += 1
+        let generation = seekGeneration
+        let target = CMTime(seconds: position, preferredTimescale: 600)
+        player.seek(
+            to: target,
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) { [weak self] finished in
+            guard let self else { return }
+            Task { @MainActor [self] in
+                guard generation == self.seekGeneration,
+                      self.player.currentItem === item else { return }
+                self.suppressesProgressUpdates = false
+                if finished {
+                    self.onProgressChanged?(position)
+                } else {
+                    self.publishProgressIfAvailable()
+                }
+                self.resumePlaybackIfNeeded()
+            }
+        }
+    }
+
+    private func resumePlaybackIfNeeded() {
+        if wantsPlayback {
+            play()
+        } else {
+            updateStateFromPlayer()
+        }
     }
 
     private func fail(with error: Error?) {
