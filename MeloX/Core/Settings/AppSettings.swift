@@ -1,0 +1,178 @@
+import Foundation
+import Observation
+
+enum MusicQuality: String, CaseIterable, Identifiable {
+    case standard = "128000"
+    case high = "320000"
+    case lossless = "flac"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard: "标准"
+        case .high: "高品质"
+        case .lossless: "无损"
+        }
+    }
+
+    var bitrate: String {
+        self == .lossless ? "350000" : rawValue
+    }
+}
+
+@MainActor
+@Observable
+final class AppSettings {
+    private enum Key {
+        static let cookie = "musicCookie"
+        static let quality = "musicQuality"
+        static let area = "musicArea"
+        static let showPlayCount = "showPlayCount"
+        static let playerBackgroundBlur = "playerBackgroundBlur"
+        static let playerBackgroundSaturation = "playerBackgroundSaturation"
+        static let shrinksPausedArtwork = "shrinksPausedArtwork"
+        static let lyricsFontSize = "lyricsFontSize"
+        static let lyricsLineSpacing = "lyricsLineSpacing"
+        static let lyricsBlurIntensity = "lyricsBlurIntensity"
+        static let lyricsDimAmount = "lyricsDimAmount"
+        static let lyricsTapToSeek = "lyricsTapToSeek"
+        static let lyricsAutoFollow = "lyricsAutoFollow"
+        static let lyricsFollowDelay = "lyricsFollowDelay"
+        static let lyricsFocusPosition = "lyricsFocusPosition"
+        static let lyricsAdvanceTime = "lyricsAdvanceTime"
+        static let rememberNowPlayingPage = "rememberNowPlayingPage"
+        static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
+        static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
+    }
+
+    var cookie: String {
+        didSet { defaults.set(cookie, forKey: Key.cookie) }
+    }
+
+    var quality: MusicQuality {
+        didSet { defaults.set(quality.rawValue, forKey: Key.quality) }
+    }
+
+    var musicArea: String {
+        didSet { defaults.set(musicArea, forKey: Key.area) }
+    }
+
+    var showPlayCount: Bool {
+        didSet { defaults.set(showPlayCount, forKey: Key.showPlayCount) }
+    }
+
+    var playerBackgroundBlur: Double {
+        didSet { defaults.set(playerBackgroundBlur, forKey: Key.playerBackgroundBlur) }
+    }
+
+    var playerBackgroundSaturation: Double {
+        didSet { defaults.set(playerBackgroundSaturation, forKey: Key.playerBackgroundSaturation) }
+    }
+
+    var shrinksPausedArtwork: Bool {
+        didSet { defaults.set(shrinksPausedArtwork, forKey: Key.shrinksPausedArtwork) }
+    }
+
+    var lyricsFontSize: Double {
+        didSet { defaults.set(lyricsFontSize, forKey: Key.lyricsFontSize) }
+    }
+
+    var lyricsLineSpacing: Double {
+        didSet { defaults.set(lyricsLineSpacing, forKey: Key.lyricsLineSpacing) }
+    }
+
+    var lyricsBlurIntensity: Double {
+        didSet { defaults.set(lyricsBlurIntensity, forKey: Key.lyricsBlurIntensity) }
+    }
+
+    var lyricsDimAmount: Double {
+        didSet { defaults.set(lyricsDimAmount, forKey: Key.lyricsDimAmount) }
+    }
+
+    var lyricsTapToSeek: Bool {
+        didSet { defaults.set(lyricsTapToSeek, forKey: Key.lyricsTapToSeek) }
+    }
+
+    var lyricsAutoFollow: Bool {
+        didSet { defaults.set(lyricsAutoFollow, forKey: Key.lyricsAutoFollow) }
+    }
+
+    var lyricsFollowDelay: Double {
+        didSet { defaults.set(lyricsFollowDelay, forKey: Key.lyricsFollowDelay) }
+    }
+
+    var lyricsFocusPosition: Double {
+        didSet { defaults.set(lyricsFocusPosition, forKey: Key.lyricsFocusPosition) }
+    }
+
+    var lyricsAdvanceTime: Double {
+        didSet { defaults.set(lyricsAdvanceTime, forKey: Key.lyricsAdvanceTime) }
+    }
+
+    var rememberNowPlayingPage: Bool {
+        didSet {
+            defaults.set(rememberNowPlayingPage, forKey: Key.rememberNowPlayingPage)
+            if !rememberNowPlayingPage {
+                rememberedNowPlayingPage = "artwork"
+            }
+        }
+    }
+
+    var rememberedNowPlayingPage: String {
+        didSet { defaults.set(rememberedNowPlayingPage, forKey: Key.rememberedNowPlayingPage) }
+    }
+
+    var previousRestartsCurrentSong: Bool {
+        didSet { defaults.set(previousRestartsCurrentSong, forKey: Key.previousRestartsCurrentSong) }
+    }
+
+    @ObservationIgnored
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        cookie = defaults.string(forKey: Key.cookie) ?? ""
+        quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high
+        musicArea = defaults.string(forKey: Key.area) ?? "ALL"
+        showPlayCount = defaults.object(forKey: Key.showPlayCount) as? Bool ?? true
+        playerBackgroundBlur = defaults.object(forKey: Key.playerBackgroundBlur) as? Double ?? 90
+        playerBackgroundSaturation = defaults.object(forKey: Key.playerBackgroundSaturation) as? Double ?? 0.82
+        shrinksPausedArtwork = defaults.object(forKey: Key.shrinksPausedArtwork) as? Bool ?? true
+        lyricsFontSize = defaults.object(forKey: Key.lyricsFontSize) as? Double ?? 29
+        lyricsLineSpacing = defaults.object(forKey: Key.lyricsLineSpacing) as? Double ?? 24
+        lyricsBlurIntensity = defaults.object(forKey: Key.lyricsBlurIntensity) as? Double ?? 1
+        lyricsDimAmount = defaults.object(forKey: Key.lyricsDimAmount) as? Double ?? 1
+        lyricsTapToSeek = defaults.object(forKey: Key.lyricsTapToSeek) as? Bool ?? true
+        lyricsAutoFollow = defaults.object(forKey: Key.lyricsAutoFollow) as? Bool ?? true
+        lyricsFollowDelay = defaults.object(forKey: Key.lyricsFollowDelay) as? Double ?? 3
+        lyricsFocusPosition = defaults.object(forKey: Key.lyricsFocusPosition) as? Double ?? 0.34
+        lyricsAdvanceTime = defaults.object(forKey: Key.lyricsAdvanceTime) as? Double ?? 0.2
+        rememberNowPlayingPage = defaults.object(forKey: Key.rememberNowPlayingPage) as? Bool ?? false
+        rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
+        previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
+    }
+
+    func clearAccount() {
+        cookie = ""
+    }
+
+    func resetPlayerSettings() {
+        quality = .high
+        playerBackgroundBlur = 90
+        playerBackgroundSaturation = 0.82
+        shrinksPausedArtwork = true
+        lyricsFontSize = 29
+        lyricsLineSpacing = 24
+        lyricsBlurIntensity = 1
+        lyricsDimAmount = 1
+        lyricsTapToSeek = true
+        lyricsAutoFollow = true
+        lyricsFollowDelay = 3
+        lyricsFocusPosition = 0.34
+        lyricsAdvanceTime = 0.2
+        rememberNowPlayingPage = false
+        rememberedNowPlayingPage = "artwork"
+        previousRestartsCurrentSong = true
+    }
+}

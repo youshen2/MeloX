@@ -1,32 +1,30 @@
-//
-//  MeloXApp.swift
-//  MeloX
-//
-//  Created by 洛汐聚合体 on 2026/7/21.
-//
-
 import SwiftUI
-import SwiftData
 
 @main
 struct MeloXApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    @State private var settings: AppSettings
+    @State private var api: NeteaseAPI
+    @State private var library: LibraryStore
+    @State private var player: PlayerStore
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    init() {
+        let settings = AppSettings()
+        let api = NeteaseAPI(settings: settings)
+        let library = LibraryStore(api: api, settings: settings)
+        _settings = State(initialValue: settings)
+        _api = State(initialValue: api)
+        _library = State(initialValue: library)
+        _player = State(initialValue: PlayerStore(api: api, settings: settings))
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(settings)
+                .environment(api)
+                .environment(library)
+                .environment(player)
+                .tint(.red)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
