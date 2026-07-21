@@ -48,6 +48,7 @@ final class AppSettings {
         static let lyricsFollowDelay = "lyricsFollowDelay"
         static let lyricsFocusPosition = "lyricsFocusPosition"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
+        static let lyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
@@ -146,6 +147,10 @@ final class AppSettings {
         didSet { defaults.set(lyricsAdvanceTime, forKey: Key.lyricsAdvanceTime) }
     }
 
+    var lyricsKeepsScreenAwake: Bool {
+        didSet { defaults.set(lyricsKeepsScreenAwake, forKey: Key.lyricsKeepsScreenAwake) }
+    }
+
     var rememberNowPlayingPage: Bool {
         didSet {
             defaults.set(rememberNowPlayingPage, forKey: Key.rememberNowPlayingPage)
@@ -198,6 +203,8 @@ final class AppSettings {
         lyricsFollowDelay = defaults.object(forKey: Key.lyricsFollowDelay) as? Double ?? 3
         lyricsFocusPosition = defaults.object(forKey: Key.lyricsFocusPosition) as? Double ?? 0.34
         lyricsAdvanceTime = defaults.object(forKey: Key.lyricsAdvanceTime) as? Double ?? 0.2
+        lyricsKeepsScreenAwake = defaults.object(forKey: Key.lyricsKeepsScreenAwake) as? Bool
+            ?? true
         rememberNowPlayingPage = defaults.object(forKey: Key.rememberNowPlayingPage) as? Bool ?? false
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
@@ -229,6 +236,7 @@ final class AppSettings {
         lyricsFollowDelay = 3
         lyricsFocusPosition = 0.34
         lyricsAdvanceTime = 0.2
+        lyricsKeepsScreenAwake = true
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"
         previousRestartsCurrentSong = true

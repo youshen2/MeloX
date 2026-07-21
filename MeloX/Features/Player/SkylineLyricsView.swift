@@ -71,6 +71,7 @@ struct SkylineLyricsView: View {
             }
         }
         .ignoresSafeArea()
+        .keepsScreenAwake(settings.skylineLyrics.keepsScreenAwake)
         .onAppear {
             startAmbientMotion()
             scheduleControlsToHide()

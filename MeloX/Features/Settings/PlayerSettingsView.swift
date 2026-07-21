@@ -162,6 +162,8 @@ struct PlayerSettingsView: View {
             }
 
             Section {
+                Toggle("歌词页屏幕常亮", isOn: $settings.lyricsKeepsScreenAwake)
+
                 Toggle("双击歌词跳转", isOn: $settings.lyricsTapToSeek)
 
                 valueSlider(
@@ -186,7 +188,7 @@ struct PlayerSettingsView: View {
             } header: {
                 Text("歌词交互")
             } footer: {
-                Text("提前量会让歌词比歌曲时间更早进入播放焦点。手动浏览时模糊始终以浏览焦点计算；仅在启用恢复跟随后才会返回播放位置。")
+                Text("屏幕常亮仅在普通歌词页可见时生效。提前量会让歌词比歌曲时间更早进入播放焦点；仅在启用恢复跟随后才会在手动浏览后返回播放位置。")
             }
 
             Section {

@@ -48,6 +48,7 @@ struct NowPlayingLyricsPage: View {
             lyricsContent
         }
         .padding(.bottom, presentation == .portrait ? 12 : 0)
+        .keepsScreenAwake(settings.lyricsKeepsScreenAwake)
     }
 
     private var songHeader: some View {

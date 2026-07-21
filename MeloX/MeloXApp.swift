@@ -6,6 +6,7 @@ struct MeloXApp: App {
     @State private var api: NeteaseAPI
     @State private var library: LibraryStore
     @State private var player: PlayerStore
+    @State private var screenAwakeCoordinator: ScreenAwakeCoordinator
 
     init() {
         let settings = AppSettings()
@@ -15,6 +16,7 @@ struct MeloXApp: App {
         _api = State(initialValue: api)
         _library = State(initialValue: library)
         _player = State(initialValue: PlayerStore(api: api, settings: settings))
+        _screenAwakeCoordinator = State(initialValue: ScreenAwakeCoordinator())
     }
 
     var body: some Scene {
@@ -24,6 +26,7 @@ struct MeloXApp: App {
                 .environment(api)
                 .environment(library)
                 .environment(player)
+                .environment(screenAwakeCoordinator)
                 .tint(.red)
         }
     }

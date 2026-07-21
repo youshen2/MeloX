@@ -5,6 +5,7 @@ import Observation
 @Observable
 final class SkylineLyricsPreferences {
     private enum Key {
+        static let keepsScreenAwake = "skylineKeepsScreenAwake"
         static let currentLyricFontSize = "skylineCurrentLyricFontSize"
         static let nextLyricFontSize = "skylineNextLyricFontSize"
         static let currentLyricsSpacing = "skylineCurrentLyricsSpacing"
@@ -20,6 +21,7 @@ final class SkylineLyricsPreferences {
     }
 
     private enum Default {
+        static let keepsScreenAwake = true
         static let currentLyricFontSize = 54.0
         static let nextLyricFontSize = 24.0
         static let currentLyricsSpacing = 14.0
@@ -32,6 +34,10 @@ final class SkylineLyricsPreferences {
         static let ambientPositionRandomness = 1.0
         static let ambientMaximumTilt = 8.0
         static let ambientDrift = 1.0
+    }
+
+    var keepsScreenAwake: Bool {
+        didSet { defaults.set(keepsScreenAwake, forKey: Key.keepsScreenAwake) }
     }
 
     var currentLyricFontSize: Double {
@@ -97,6 +103,8 @@ final class SkylineLyricsPreferences {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        keepsScreenAwake = defaults.object(forKey: Key.keepsScreenAwake) as? Bool
+            ?? Default.keepsScreenAwake
         currentLyricFontSize = defaults.object(forKey: Key.currentLyricFontSize) as? Double
             ?? Default.currentLyricFontSize
         nextLyricFontSize = defaults.object(forKey: Key.nextLyricFontSize) as? Double
@@ -131,6 +139,7 @@ final class SkylineLyricsPreferences {
     }
 
     func reset() {
+        keepsScreenAwake = Default.keepsScreenAwake
         currentLyricFontSize = Default.currentLyricFontSize
         nextLyricFontSize = Default.nextLyricFontSize
         currentLyricsSpacing = Default.currentLyricsSpacing

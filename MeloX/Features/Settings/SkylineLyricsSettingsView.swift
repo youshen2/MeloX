@@ -10,6 +10,12 @@ struct SkylineLyricsSettingsView: View {
 
         Form {
             Section {
+                Toggle("屏幕常亮", isOn: $preferences.keepsScreenAwake)
+            } footer: {
+                Text("仅在全屏天际歌词可见时阻止屏幕自动锁定。")
+            }
+
+            Section {
                 valueSlider(
                     title: "当前歌词字号",
                     value: $preferences.currentLyricFontSize,
