@@ -110,6 +110,20 @@ struct PlayerSettingsView: View {
             }
 
             Section {
+                valueSlider(
+                    title: "每行切换延迟",
+                    value: $settings.lyricsFocusCascadeDelay,
+                    range: AppSettings.lyricsFocusCascadeDelayRange,
+                    step: 0.005,
+                    valueText: "\(Int((settings.lyricsFocusCascadeDelay * 1_000).rounded())) 毫秒"
+                )
+            } header: {
+                Text("歌词动画")
+            } footer: {
+                Text("焦点切换时，可视顶部第一行会先移动，随后各行按设置的间隔依次向上。短句会自动压缩总延迟；实际剩余播放时间不足时会直接跳过错峰以保持同步，设为 0 可恢复整体滚动。")
+            }
+
+            Section {
                 Toggle("显示歌词翻译", isOn: $settings.lyricsTranslationEnabled)
 
                 if settings.lyricsTranslationEnabled {
