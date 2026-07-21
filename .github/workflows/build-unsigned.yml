@@ -1,0 +1,380 @@
+name: Build unsigned iOS artifact
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  select_run:
+    name: Avoid duplicate branch and tag builds
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.decision.outputs.should_build }}
+
+    steps:
+      - name: Checkout branch push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Select build run
+        id: decision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SHOULD_BUILD=true
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            MATCHING_TAG="$(git tag --points-at "${GITHUB_SHA}" --list 'v*')"
+            if [[ -n "${MATCHING_TAG}" ]]; then
+              SHOULD_BUILD=false
+              echo "跳过已由标签构建覆盖的 main 分支提交：${MATCHING_TAG}"
+            fi
+          fi
+
+          echo "should_build=${SHOULD_BUILD}" >> "${GITHUB_OUTPUT}"
+
+  build:
+    name: Build unsigned iOS IPA
+    needs: select_run
+    if: needs.select_run.outputs.should_build == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          XCODE_APP=""
+          for candidate in /Applications/Xcode_26.5.app /Applications/Xcode_26.5.0.app /Applications/Xcode.app; do
+            if [[ -d "${candidate}" ]]; then
+              XCODE_APP="${candidate}"
+              break
+            fi
+          done
+
+          if [[ -z "${XCODE_APP}" ]]; then
+            echo "找不到可用的 Xcode"
+            exit 1
+          fi
+
+          sudo xcode-select -s "${XCODE_APP}/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Build unsigned IPA
+        run: bash build_ios_unsigned.sh
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: MeloX-iOS-unsigned-${{ github.run_number }}
+          path: build/MeloX-iOS-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+  telegram:
+    name: Send IPA to Telegram channel
+    needs:
+      - select_run
+      - build
+    if: >-
+      needs.select_run.outputs.should_build == 'true' &&
+      needs.build.result == 'success' &&
+      !startsWith(github.ref, 'refs/tags/v') &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout commit history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download unsigned IPA
+        uses: actions/download-artifact@v8
+        with:
+          name: MeloX-iOS-unsigned-${{ github.run_number }}
+          path: telegram-assets
+
+      - name: Generate Telegram CI caption
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          FALLBACK_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          python3 .github/scripts/ci_commit_summary.py \
+            --current-sha "${TARGET_SHA}" \
+            --current-run-id "${GITHUB_RUN_ID}" \
+            --current-run-number "${GITHUB_RUN_NUMBER}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --workflow "build-unsigned.yml" \
+            --fallback-sha "${FALLBACK_SHA}" \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --output "${RUNNER_TEMP}/telegram-caption.txt"
+
+      - name: Send IPA to Telegram
+        shell: bash
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${TELEGRAM_BOT_TOKEN}" || -z "${TELEGRAM_CHAT_ID}" ]]; then
+            echo "::error::缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID"
+            exit 1
+          fi
+
+          IPA_PATH="telegram-assets/MeloX-iOS-unsigned.ipa"
+          CAPTION_PATH="${RUNNER_TEMP}/telegram-caption.txt"
+          if [[ ! -f "${IPA_PATH}" || ! -f "${CAPTION_PATH}" ]]; then
+            echo "::error::找不到 IPA 或 Telegram Caption"
+            exit 1
+          fi
+
+          CAPTION="$(< "${CAPTION_PATH}")"
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --connect-timeout 15 \
+            --max-time 600 \
+            --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+            --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+            --form "document=@${IPA_PATH};type=application/octet-stream" \
+            --form-string "caption=${CAPTION}" \
+            > /dev/null
+
+          echo "CI Caption 和 IPA 已作为一条消息发送到 Telegram 频道。"
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - select_run
+      - build
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download unsigned IPA
+        uses: actions/download-artifact@v8
+        with:
+          name: MeloX-iOS-unsigned-${{ github.run_number }}
+          path: release-assets
+
+      - name: Generate release metadata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG_NAME="${GITHUB_REF_NAME}"
+          RELEASE_TAGS="$(
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+              --jq '.[] | select(.draft == false) | .tag_name'
+          )"
+          PREVIOUS_TAG="$(
+            awk -v current="${TAG_NAME}" '$0 != current { print; exit }' <<< "${RELEASE_TAGS}"
+          )"
+
+          append_release_commits() {
+            awk '
+              !/^[[:space:]]*\[X\]/ {
+                print "- " $0
+                found = 1
+              }
+              END {
+                if (!found) {
+                  print "- 本次没有需要公开展示的提交记录。"
+                }
+              }
+            '
+          }
+
+          if [[ -n "${PREVIOUS_TAG}" ]]; then
+            git log "${PREVIOUS_TAG}..${TAG_NAME}" --pretty=format:"%s" \
+              | append_release_commits > release_commits.txt
+          else
+            : > release_commits.txt
+          fi
+
+          cat > release_body.md <<EOF
+          这是由 GitHub Actions 自动构建的 MeloX iOS 发行版本。
+
+          ## 下载说明
+
+          - \`MeloX-iOS-unsigned.ipa\`：iOS 未签名安装包
+
+          ## 安装说明
+
+          该 IPA 未签名，需要自行签名后安装。
+
+          ## 版本信息
+
+          - 版本：\`${TAG_NAME}\`
+          - Commit：\`${GITHUB_SHA}\`
+          - 构建编号：\`${GITHUB_RUN_NUMBER}\`
+          EOF
+
+          if [[ -n "${PREVIOUS_TAG}" ]]; then
+            echo "" >> release_body.md
+            echo "## 更新内容" >> release_body.md
+            echo "" >> release_body.md
+            echo "从 \`${PREVIOUS_TAG}\` 到 \`${TAG_NAME}\` 的提交：" >> release_body.md
+            echo "" >> release_body.md
+            cat release_commits.txt >> release_body.md
+          fi
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: MeloX ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body_path: release_body.md
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: release-assets/MeloX-iOS-unsigned.ipa
+
+      - name: Upload release metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: MeloX-release-metadata-${{ github.run_number }}
+          path: release_commits.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  telegram_release:
+    name: Send and pin Telegram release
+    needs:
+      - select_run
+      - build
+      - release
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.build.result == 'success' &&
+      needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download unsigned IPA
+        uses: actions/download-artifact@v8
+        with:
+          name: MeloX-iOS-unsigned-${{ github.run_number }}
+          path: telegram-assets
+
+      - name: Download release metadata
+        uses: actions/download-artifact@v8
+        with:
+          name: MeloX-release-metadata-${{ github.run_number }}
+          path: release-metadata
+
+      - name: Generate Telegram release caption
+        shell: bash
+        env:
+          RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          python3 .github/scripts/release_telegram_caption.py \
+            --project "MeloX" \
+            --version "${GITHUB_REF_NAME}" \
+            --details-file "release-metadata/release_commits.txt" \
+            --release-url "${RELEASE_URL}" \
+            --output "${RUNNER_TEMP}/telegram-release-caption.txt"
+
+      - name: Send and pin Telegram release
+        shell: bash
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${TELEGRAM_BOT_TOKEN}" || -z "${TELEGRAM_CHAT_ID}" ]]; then
+            echo "::error::缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID"
+            exit 1
+          fi
+
+          IPA_PATH="telegram-assets/MeloX-iOS-unsigned.ipa"
+          CAPTION="$(< "${RUNNER_TEMP}/telegram-release-caption.txt")"
+          RESPONSE_FILE="${RUNNER_TEMP}/telegram-release-response.json"
+          if ! curl \
+              --fail-with-body \
+              --silent \
+              --show-error \
+              --connect-timeout 15 \
+              --max-time 600 \
+              --request POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+              --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+              --form-string "disable_notification=false" \
+              --form "document=@${IPA_PATH};type=application/octet-stream" \
+              --form-string "caption=${CAPTION}" \
+              --output "${RESPONSE_FILE}"; then
+            echo "::error::发送 Telegram Release 失败"
+            exit 1
+          fi
+
+          MESSAGE_ID="$(
+            python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["result"]["message_id"])' \
+              "${RESPONSE_FILE}"
+          )"
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --connect-timeout 15 \
+            --max-time 60 \
+            --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/pinChatMessage" \
+            --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+            --form-string "message_id=${MESSAGE_ID}" \
+            --form-string "disable_notification=false" \
+            > /dev/null
+
+          echo "Telegram Release 已发送、置顶并通知频道成员。"

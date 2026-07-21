@@ -1,12 +1,14 @@
-<p align="center">
-  <img src="MeloX/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" width="144" alt="MeloX 应用图标">
-</p>
+# MaloX
 
-<h1 align="center">MeloX</h1>
+[![License](https://img.shields.io/github/license/youshen2/MaloX)](https://github.com/youshen2/MaloX/blob/master/LICENSE)
+[![Download](https://img.shields.io/github/v/release/youshen2/MaloX)](https://github.com/youshen2/MaloX/releases)
+[![stars](https://img.shields.io/github/stars/youshen2/MaloX)](https://github.com/youshen2/MaloX/stargazers)
 
 <p align="center">
   使用原生 SwiftUI 构建的第三方网易云音乐播放器
 </p>
+
+[![Telegram Group](https://img.shields.io/badge/Telegram-加入群组-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](@malo_x_official)
 
 > MeloX 是非官方开源项目，与网易云音乐及其关联公司不存在隶属、合作或授权关系。项目仍在开发中，接口和功能可能随网易云音乐服务变化而失效。
 
