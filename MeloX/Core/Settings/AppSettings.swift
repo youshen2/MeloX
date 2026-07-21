@@ -162,11 +162,14 @@ final class AppSettings {
         didSet { defaults.set(previousRestartsCurrentSong, forKey: Key.previousRestartsCurrentSong) }
     }
 
+    let skylineLyrics: SkylineLyricsPreferences
+
     @ObservationIgnored
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        skylineLyrics = SkylineLyricsPreferences(defaults: defaults)
         cookie = defaults.string(forKey: Key.cookie) ?? ""
         quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high
         musicArea = defaults.string(forKey: Key.area) ?? "ALL"
@@ -223,5 +226,6 @@ final class AppSettings {
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"
         previousRestartsCurrentSong = true
+        skylineLyrics.reset()
     }
 }

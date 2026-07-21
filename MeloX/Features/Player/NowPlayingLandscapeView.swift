@@ -15,8 +15,37 @@ struct NowPlayingLandscapeView: View {
     let onShowAudioOutputHelp: () -> Void
 
     @State private var showsLyricsControls = true
+    @State private var showsSkylineLyrics = false
 
     var body: some View {
+        ZStack {
+            if showsSkylineLyrics, page == .lyrics {
+                SkylineLyricsView(
+                    artworkURL: song.album?.artworkURL,
+                    lyrics: lyrics,
+                    errorMessage: lyricError,
+                    highlightedLyricID: highlightedLyricID,
+                    onExit: exitSkylineLyrics
+                )
+                .transition(.opacity)
+            } else {
+                standardPlayer
+                    .transition(.opacity)
+            }
+        }
+        .onChange(of: page) { _, newPage in
+            if newPage != .lyrics {
+                showsLyricsControls = true
+                showsSkylineLyrics = false
+            }
+        }
+        .animation(
+            accessibilityReduceMotion ? nil : .smooth(duration: 0.4),
+            value: showsSkylineLyrics
+        )
+    }
+
+    private var standardPlayer: some View {
         VStack(spacing: 0) {
             dismissalHandle
 
@@ -79,11 +108,6 @@ struct NowPlayingLandscapeView: View {
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
-        .onChange(of: page) { _, newPage in
-            if newPage != .lyrics {
-                showsLyricsControls = true
-            }
-        }
     }
 
     private var songHeader: some View {
@@ -99,6 +123,18 @@ struct NowPlayingLandscapeView: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if page == .lyrics, !lyrics.isEmpty {
+                Button(action: enterSkylineLyrics) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.title3.weight(.medium))
+                        .frame(width: 40, height: 40)
+                        .background(.white.opacity(0.13), in: .circle)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("打开全屏天际歌词")
+            }
 
             NowPlayingSongActions(song: song)
         }
@@ -146,5 +182,13 @@ struct NowPlayingLandscapeView: View {
         withAnimation(accessibilityReduceMotion ? nil : .smooth(duration: 0.3)) {
             showsLyricsControls.toggle()
         }
+    }
+
+    private func enterSkylineLyrics() {
+        showsSkylineLyrics = true
+    }
+
+    private func exitSkylineLyrics() {
+        showsSkylineLyrics = false
     }
 }

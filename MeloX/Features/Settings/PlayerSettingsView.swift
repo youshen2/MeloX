@@ -52,6 +52,18 @@ struct PlayerSettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    SkylineLyricsSettingsView()
+                } label: {
+                    Label("全屏天际歌词", systemImage: "textformat.size")
+                }
+            } header: {
+                Text("全屏歌词")
+            } footer: {
+                Text("调整播放器横屏状态下全屏天际歌词的文字和背景动态效果。")
+            }
+
+            Section {
                 valueSlider(
                     title: "字体大小",
                     value: $settings.lyricsFontSize,
