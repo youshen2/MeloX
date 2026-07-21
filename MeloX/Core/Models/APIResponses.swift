@@ -92,6 +92,9 @@ struct DailySongsData: Decodable {
 
 struct LyricResponse: Decodable {
     let lrc: LyricContent?
+    let yrc: LyricContent?
+    let tlyric: LyricContent?
+    let ytlrc: LyricContent?
 }
 
 struct LyricContent: Decodable {

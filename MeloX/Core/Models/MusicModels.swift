@@ -341,13 +341,6 @@ struct Playlist: Codable, Hashable, Identifiable {
     }
 }
 
-struct LyricLine: Identifiable, Hashable {
-    let time: TimeInterval
-    let text: String
-
-    var id: String { "\(time)-\(text)" }
-}
-
 enum LoadingPhase: Equatable {
     case loading
     case loaded

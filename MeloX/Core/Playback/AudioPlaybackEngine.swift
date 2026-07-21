@@ -112,6 +112,7 @@ final class AudioPlaybackEngine {
     func pause() {
         wantsPlayback = false
         player.pause()
+        publishProgressIfAvailable()
         updateStateFromPlayer()
     }
 
@@ -238,6 +239,12 @@ final class AudioPlaybackEngine {
               seconds.isFinite,
               seconds > 0 else { return }
         onDurationChanged?(seconds)
+    }
+
+    private func publishProgressIfAvailable() {
+        let seconds = player.currentTime().seconds
+        guard seconds.isFinite else { return }
+        onProgressChanged?(max(0, seconds))
     }
 
     private func fail(with error: Error?) {

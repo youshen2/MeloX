@@ -205,11 +205,42 @@ final class NeteaseAPI {
     }
 
     func lyrics(id: Int) async throws -> [LyricLine] {
-        let response: LyricResponse = try await client.eapi(
-            "/api/song/lyric",
-            data: ["id": id, "tv": -1, "lv": -1, "rv": -1, "kv": -1, "_nmclfl": 1]
-        )
-        return LyricParser.parse(response.lrc?.lyric ?? "")
+        do {
+            let response: LyricResponse = try await client.eapi(
+                "/api/song/lyric/v1",
+                data: [
+                    "id": id,
+                    "cp": false,
+                    "tv": 0,
+                    "lv": 0,
+                    "rv": 0,
+                    "kv": 0,
+                    "yv": 0,
+                    "ytv": 0,
+                    "yrv": 0,
+                ]
+            )
+            return LyricParser.parse(
+                yrc: response.yrc?.lyric ?? "",
+                lrc: response.lrc?.lyric ?? "",
+                translatedYRC: response.ytlrc?.lyric ?? "",
+                translatedLRC: response.tlyric?.lyric ?? ""
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Keep line-synced lyrics available when the newer YRC route is
+            // temporarily unavailable for a region or catalog item.
+            let response: LyricResponse = try await client.eapi(
+                "/api/song/lyric",
+                data: ["id": id, "tv": -1, "lv": -1, "rv": -1, "kv": -1, "_nmclfl": 1]
+            )
+            return LyricParser.parse(
+                yrc: "",
+                lrc: response.lrc?.lyric ?? "",
+                translatedLRC: response.tlyric?.lyric ?? ""
+            )
+        }
     }
 
     func accountProfile() async throws -> AccountProfile {
@@ -350,26 +381,6 @@ final class NeteaseAPI {
             components.scheme = "https"
         }
         return components.url
-    }
-}
-
-private enum LyricParser {
-    static func parse(_ source: String) -> [LyricLine] {
-        source
-            .split(separator: "\n")
-            .compactMap { rawLine -> LyricLine? in
-                let line = String(rawLine)
-                guard let closingBracket = line.firstIndex(of: "]"), line.first == "[" else { return nil }
-                let timestamp = line[line.index(after: line.startIndex)..<closingBracket]
-                let text = line[line.index(after: closingBracket)...].trimmingCharacters(in: .whitespaces)
-                let pieces = timestamp.split(separator: ":")
-                guard pieces.count == 2,
-                      let minutes = Double(pieces[0]),
-                      let seconds = Double(pieces[1]),
-                      !text.isEmpty else { return nil }
-                return LyricLine(time: minutes * 60 + seconds, text: text)
-            }
-            .sorted { $0.time < $1.time }
     }
 }
 

@@ -22,6 +22,14 @@ struct SettingsView: View {
                     Label("内容", systemImage: "rectangle.stack")
                 }
             }
+
+            Section {
+                NavigationLink {
+                    AboutView()
+                } label: {
+                    Label("关于", systemImage: "info.circle")
+                }
+            }
         }
         .navigationTitle("设置")
     }

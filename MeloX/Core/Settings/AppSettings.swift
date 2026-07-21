@@ -37,6 +37,13 @@ final class AppSettings {
         static let lyricsBlurIntensity = "lyricsBlurIntensity"
         static let lyricsDimAmount = "lyricsDimAmount"
         static let lyricsTapToSeek = "lyricsTapToSeek"
+        static let lyricsWordByWord = "lyricsWordByWord"
+        static let lyricsPseudoWordByWord = "lyricsPseudoWordByWord"
+        static let lyricsGlowEnabled = "lyricsGlowEnabled"
+        static let lyricsGlowIntensity = "lyricsGlowIntensity"
+        static let lyricsTranslationEnabled = "lyricsTranslationEnabled"
+        static let lyricsTranslationFontScale = "lyricsTranslationFontScale"
+        static let lyricsTranslationOpacity = "lyricsTranslationOpacity"
         static let lyricsAutoFollow = "lyricsAutoFollow"
         static let lyricsFollowDelay = "lyricsFollowDelay"
         static let lyricsFocusPosition = "lyricsFocusPosition"
@@ -94,6 +101,34 @@ final class AppSettings {
         didSet { defaults.set(lyricsTapToSeek, forKey: Key.lyricsTapToSeek) }
     }
 
+    var lyricsWordByWord: Bool {
+        didSet { defaults.set(lyricsWordByWord, forKey: Key.lyricsWordByWord) }
+    }
+
+    var lyricsPseudoWordByWord: Bool {
+        didSet { defaults.set(lyricsPseudoWordByWord, forKey: Key.lyricsPseudoWordByWord) }
+    }
+
+    var lyricsGlowEnabled: Bool {
+        didSet { defaults.set(lyricsGlowEnabled, forKey: Key.lyricsGlowEnabled) }
+    }
+
+    var lyricsGlowIntensity: Double {
+        didSet { defaults.set(lyricsGlowIntensity, forKey: Key.lyricsGlowIntensity) }
+    }
+
+    var lyricsTranslationEnabled: Bool {
+        didSet { defaults.set(lyricsTranslationEnabled, forKey: Key.lyricsTranslationEnabled) }
+    }
+
+    var lyricsTranslationFontScale: Double {
+        didSet { defaults.set(lyricsTranslationFontScale, forKey: Key.lyricsTranslationFontScale) }
+    }
+
+    var lyricsTranslationOpacity: Double {
+        didSet { defaults.set(lyricsTranslationOpacity, forKey: Key.lyricsTranslationOpacity) }
+    }
+
     var lyricsAutoFollow: Bool {
         didSet { defaults.set(lyricsAutoFollow, forKey: Key.lyricsAutoFollow) }
     }
@@ -144,6 +179,13 @@ final class AppSettings {
         lyricsBlurIntensity = defaults.object(forKey: Key.lyricsBlurIntensity) as? Double ?? 1
         lyricsDimAmount = defaults.object(forKey: Key.lyricsDimAmount) as? Double ?? 1
         lyricsTapToSeek = defaults.object(forKey: Key.lyricsTapToSeek) as? Bool ?? true
+        lyricsWordByWord = defaults.object(forKey: Key.lyricsWordByWord) as? Bool ?? true
+        lyricsPseudoWordByWord = defaults.object(forKey: Key.lyricsPseudoWordByWord) as? Bool ?? false
+        lyricsGlowEnabled = defaults.object(forKey: Key.lyricsGlowEnabled) as? Bool ?? true
+        lyricsGlowIntensity = defaults.object(forKey: Key.lyricsGlowIntensity) as? Double ?? 1
+        lyricsTranslationEnabled = defaults.object(forKey: Key.lyricsTranslationEnabled) as? Bool ?? true
+        lyricsTranslationFontScale = defaults.object(forKey: Key.lyricsTranslationFontScale) as? Double ?? 0.62
+        lyricsTranslationOpacity = defaults.object(forKey: Key.lyricsTranslationOpacity) as? Double ?? 0.66
         lyricsAutoFollow = defaults.object(forKey: Key.lyricsAutoFollow) as? Bool ?? true
         lyricsFollowDelay = defaults.object(forKey: Key.lyricsFollowDelay) as? Double ?? 3
         lyricsFocusPosition = defaults.object(forKey: Key.lyricsFocusPosition) as? Double ?? 0.34
@@ -167,6 +209,13 @@ final class AppSettings {
         lyricsBlurIntensity = 1
         lyricsDimAmount = 1
         lyricsTapToSeek = true
+        lyricsWordByWord = true
+        lyricsPseudoWordByWord = false
+        lyricsGlowEnabled = true
+        lyricsGlowIntensity = 1
+        lyricsTranslationEnabled = true
+        lyricsTranslationFontScale = 0.62
+        lyricsTranslationOpacity = 0.66
         lyricsAutoFollow = true
         lyricsFollowDelay = 3
         lyricsFocusPosition = 0.34

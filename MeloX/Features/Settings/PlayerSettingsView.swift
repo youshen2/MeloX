@@ -94,7 +94,59 @@ struct PlayerSettingsView: View {
             } header: {
                 Text("歌词外观")
             } footer: {
-                Text("模糊仍从距离焦点的第三行歌词开始，强度为 0 时关闭模糊效果。焦点位置可以在屏幕上方与中间之间调整。")
+                Text("焦点的上一句会轻微模糊，下一句只保留极轻微模糊；逐字歌词中尚未播放的文字也会随距离渐进模糊。强度为 0 时关闭全部模糊效果。")
+            }
+
+            Section {
+                Toggle("显示歌词翻译", isOn: $settings.lyricsTranslationEnabled)
+
+                if settings.lyricsTranslationEnabled {
+                    valueSlider(
+                        title: "翻译歌词大小",
+                        value: $settings.lyricsTranslationFontScale,
+                        range: 0.5...0.8,
+                        step: 0.05,
+                        valueText: "\(Int(settings.lyricsTranslationFontScale * 100))%"
+                    )
+
+                    valueSlider(
+                        title: "翻译歌词亮度",
+                        value: $settings.lyricsTranslationOpacity,
+                        range: 0.4...0.9,
+                        step: 0.05,
+                        valueText: "\(Int(settings.lyricsTranslationOpacity * 100))%"
+                    )
+                }
+
+                Toggle("逐字歌词", isOn: $settings.lyricsWordByWord)
+
+                if settings.lyricsWordByWord || settings.lyricsPseudoWordByWord {
+                    Toggle("逐字歌词光效", isOn: $settings.lyricsGlowEnabled)
+
+                    if settings.lyricsGlowEnabled {
+                        valueSlider(
+                            title: "逐字光效强度",
+                            value: $settings.lyricsGlowIntensity,
+                            range: 0.4...1.6,
+                            step: 0.1,
+                            valueText: settings.lyricsGlowIntensity.formatted(
+                                .number.precision(.fractionLength(1))
+                            )
+                        )
+                    }
+                }
+            } header: {
+                Text("歌词内容与光效")
+            } footer: {
+                Text("中英翻译直接使用网易云提供的 ytlrc 或 tlyric。逐字歌词开关仅控制歌曲自带的 YRC 时间轴。")
+            }
+
+            Section {
+                Toggle("启用伪逐字歌词", isOn: $settings.lyricsPseudoWordByWord)
+            } header: {
+                Text("伪逐字歌词")
+            } footer: {
+                Text("默认关闭，仅在整首歌没有 YRC 时间轴时，按照每行字数和持续时间生成逐字进度；该开关可独立于歌曲自带的逐字歌词使用。")
             }
 
             Section {

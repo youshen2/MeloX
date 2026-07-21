@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct NowPlayingLyricsPage: View {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
 
@@ -76,29 +77,61 @@ struct NowPlayingLyricsPage: View {
             }
         } else {
             let focusPosition = lyricsFocusPosition
+            let focusedLyricID = scrollPositionID ?? highlightedLyricID
+            let focusNeighborIDs = lyricNeighborIDs(around: focusedLyricID)
+            let hasSyllableSyncedLyrics = lyrics.contains { $0.isSyllableSynced }
+            let usesPseudoTiming = settings.lyricsPseudoWordByWord
+                && !hasSyllableSyncedLyrics
+            let showsTranslations = settings.lyricsTranslationEnabled
+                && lyrics.contains { $0.translation != nil }
+            let translationHeight = showsTranslations
+                ? CGFloat(settings.lyricsFontSize * settings.lyricsTranslationFontScale * 1.2) + 5
+                : 0
             let lyricStride = max(
-                CGFloat(settings.lyricsFontSize) * 1.2 + CGFloat(settings.lyricsLineSpacing),
+                CGFloat(settings.lyricsFontSize) * 1.2
+                    + translationHeight
+                    + CGFloat(settings.lyricsLineSpacing),
                 1
             )
             let blurIntensity = CGFloat(settings.lyricsBlurIntensity)
             let dimAmount = settings.lyricsDimAmount
+            let glowOverflow = Self.lyricGlowOverflow(
+                isEnabled: settings.lyricsGlowEnabled
+                    && (
+                        (settings.lyricsWordByWord && hasSyllableSyncedLyrics)
+                            || usesPseudoTiming
+                    ),
+                fontSize: settings.lyricsFontSize,
+                intensity: settings.lyricsGlowIntensity
+            )
 
             GeometryReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: CGFloat(settings.lyricsLineSpacing)) {
                         ForEach(lyrics) { line in
                             let isPlaybackLine = line.id == highlightedLyricID
+                            let isPrecedingFocusLine = line.id == focusNeighborIDs.preceding
+                            let isFollowingFocusLine = line.id == focusNeighborIDs.following
                             let isBrowsingFocus = isBrowsingLyrics && line.id == scrollPositionID
 
-                            Text(line.text)
-                                .font(.system(size: CGFloat(settings.lyricsFontSize), weight: .bold))
-                                .foregroundStyle(
-                                    .white.opacity(
-                                        isBrowsingLyrics && !isPlaybackLine ? 0.58 : 1
+                            SynchronizedLyricText(
+                                line: line,
+                                isPlaybackLine: isPlaybackLine,
+                                usesPseudoTiming: usesPseudoTiming
+                            )
+                                .opacity(
+                                    Self.lyricEmphasis(
+                                        isPlaybackLine: isPlaybackLine,
+                                        isBrowsingFocus: isBrowsingFocus,
+                                        dimAmount: dimAmount
                                     )
                                 )
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .animation(
+                                    accessibilityReduceMotion
+                                        ? nil
+                                        : .easeInOut(duration: 0.34),
+                                    value: isPlaybackLine
+                                )
                                 .contentShape(.rect)
                                 .visualEffect { content, geometry in
                                     let frame = geometry.frame(in: .scrollView(axis: .vertical))
@@ -108,7 +141,9 @@ struct NowPlayingLyricsPage: View {
                                             radius: Self.lyricBlurRadius(
                                                 forPixelDistance: distance,
                                                 lyricStride: lyricStride,
-                                                intensity: blurIntensity
+                                                intensity: blurIntensity,
+                                                isPrecedingFocusLine: isPrecedingFocusLine,
+                                                isFollowingFocusLine: isFollowingFocusLine
                                             )
                                         )
                                         .opacity(
@@ -119,11 +154,27 @@ struct NowPlayingLyricsPage: View {
                                             )
                                         )
                                 }
+                                .animation(
+                                    accessibilityReduceMotion
+                                        ? nil
+                                        : .easeInOut(duration: 0.34),
+                                    value: isPrecedingFocusLine
+                                )
+                                .animation(
+                                    accessibilityReduceMotion
+                                        ? nil
+                                        : .easeInOut(duration: 0.34),
+                                    value: isFollowingFocusLine
+                                )
                                 .onTapGesture(count: 2) {
                                     seek(to: line)
                                 }
                                 .id(line.id)
-                                .accessibilityLabel(line.text)
+                                .accessibilityLabel(
+                                    line.accessibilityText(
+                                        includingTranslation: settings.lyricsTranslationEnabled
+                                    )
+                                )
                                 .accessibilityValue(
                                     lyricAccessibilityValue(
                                         isPlaybackLine: isPlaybackLine,
@@ -142,6 +193,7 @@ struct NowPlayingLyricsPage: View {
                     .padding(.bottom, max(proxy.size.height * (1 - focusPosition), 40))
                 }
                 .scrollIndicators(.hidden)
+                .scrollClipDisabled()
                 .scrollPosition(
                     id: $scrollPositionID,
                     anchor: UnitPoint(x: 0.5, y: focusPosition)
@@ -157,6 +209,7 @@ struct NowPlayingLyricsPage: View {
                         startPoint: .top,
                         endPoint: .bottom
                     )
+                    .frame(width: proxy.size.width + glowOverflow * 2)
                 }
                 .onScrollPhaseChange { _, newPhase in
                     switch newPhase {
@@ -187,6 +240,27 @@ struct NowPlayingLyricsPage: View {
         CGFloat(min(max(settings.lyricsFocusPosition, 0.2), 0.5))
     }
 
+    private func lyricNeighborIDs(
+        around focusedLyricID: LyricLine.ID?
+    ) -> (
+        preceding: LyricLine.ID?,
+        following: LyricLine.ID?
+    ) {
+        guard let focusedLyricID,
+              let focusIndex = lyrics.firstIndex(where: { $0.id == focusedLyricID }) else {
+            return (nil, nil)
+        }
+
+        let precedingID = focusIndex > lyrics.startIndex
+            ? lyrics[lyrics.index(before: focusIndex)].id
+            : nil
+        let followingIndex = lyrics.index(after: focusIndex)
+        let followingID = followingIndex < lyrics.endIndex
+            ? lyrics[followingIndex].id
+            : nil
+        return (precedingID, followingID)
+    }
+
     private func lyricAccessibilityValue(
         isPlaybackLine: Bool,
         isBrowsingFocus: Bool
@@ -202,12 +276,16 @@ struct NowPlayingLyricsPage: View {
     nonisolated private static func lyricBlurRadius(
         forPixelDistance distance: CGFloat,
         lyricStride: CGFloat,
-        intensity: CGFloat
+        intensity: CGFloat,
+        isPrecedingFocusLine: Bool,
+        isFollowingFocusLine: Bool
     ) -> CGFloat {
         let lineDistance = distance / lyricStride
         let blurProgress = max(lineDistance - 1.35, 0)
         let baseRadius = min(blurProgress * 3.1, 10)
-        return baseRadius * intensity
+        let precedingLineRadius: CGFloat = isPrecedingFocusLine ? 0.9 : 0
+        let followingLineRadius: CGFloat = isFollowingFocusLine ? 0.55 : 0
+        return (baseRadius + precedingLineRadius + followingLineRadius) * intensity
     }
 
     nonisolated private static func lyricOpacity(
@@ -219,13 +297,32 @@ struct NowPlayingLyricsPage: View {
         let baseOpacity: Double
         switch lineDistance {
         case ...1:
-            baseOpacity = 1 - lineDistance * 0.32
+            baseOpacity = 1 - lineDistance * 0.44
         case ...2:
-            baseOpacity = 0.68 - (lineDistance - 1) * 0.26
+            baseOpacity = 0.56 - (lineDistance - 1) * 0.22
         default:
-            baseOpacity = max(0.16, 0.42 - (lineDistance - 2) * 0.08)
+            baseOpacity = max(0.12, 0.34 - (lineDistance - 2) * 0.07)
         }
         return 1 - (1 - baseOpacity) * dimAmount
+    }
+
+    nonisolated private static func lyricEmphasis(
+        isPlaybackLine: Bool,
+        isBrowsingFocus: Bool,
+        dimAmount: Double
+    ) -> Double {
+        guard !isPlaybackLine else { return 1 }
+        let baseOpacity = isBrowsingFocus ? 0.7 : 0.52
+        return 1 - (1 - baseOpacity) * dimAmount
+    }
+
+    nonisolated private static func lyricGlowOverflow(
+        isEnabled: Bool,
+        fontSize: Double,
+        intensity: Double
+    ) -> CGFloat {
+        guard isEnabled else { return 0 }
+        return CGFloat(min(max(fontSize * intensity * 0.75, 16), 32))
     }
 
     private func schedulePlaybackFollowing() {

@@ -52,6 +52,9 @@ final class PlayerStore {
     @ObservationIgnored
     private var lastPersistedSecond = -1
 
+    @ObservationIgnored
+    private var lastProgressUpdateDate = Date()
+
     init(
         api: NeteaseAPI,
         settings: AppSettings,
@@ -80,6 +83,7 @@ final class PlayerStore {
         )
         currentSong = playbackQueue.currentSong
         progress = max(snapshot.progress, 0)
+        lastProgressUpdateDate = Date()
         duration = TimeInterval(currentSong?.durationMS ?? 0) / 1_000
         repeatMode = RepeatMode(rawValue: snapshot.repeatMode) ?? .off
         volume = min(max(snapshot.volume, 0), 1)
@@ -174,8 +178,17 @@ final class PlayerStore {
         let clamped = max(0, min(seconds, maximum))
         engine.seek(to: clamped)
         progress = clamped
+        lastProgressUpdateDate = Date()
         updateNowPlayingState()
         persistSnapshot()
+    }
+
+    func estimatedProgress(at date: Date = Date()) -> TimeInterval {
+        guard isPlaying else { return progress }
+        let elapsed = max(date.timeIntervalSince(lastProgressUpdateDate), 0)
+        let maximum = duration > 0 ? duration : TimeInterval(currentSong?.durationMS ?? 0) / 1_000
+        let estimated = progress + elapsed
+        return maximum > 0 ? min(estimated, maximum) : estimated
     }
 
     func setVolume(_ value: Double) {
@@ -209,6 +222,7 @@ final class PlayerStore {
         currentFailureAttempt = failureAttempt
         currentSong = song
         progress = max(0, startAt)
+        lastProgressUpdateDate = Date()
         duration = TimeInterval(song.durationMS) / 1_000
         isResolvingSource = true
         isLoading = true
@@ -283,6 +297,7 @@ final class PlayerStore {
         engine.pause()
         engine.seek(to: 0)
         progress = 0
+        lastProgressUpdateDate = Date()
         isPlaying = false
         isLoading = false
         updateNowPlayingState()
@@ -310,11 +325,13 @@ final class PlayerStore {
                 self.errorMessage = nil
                 self.currentFailureAttempt = 0
             }
+            self.lastProgressUpdateDate = Date()
             self.updateNowPlayingState()
         }
         engine.onProgressChanged = { [weak self] value in
             guard let self else { return }
             self.progress = value
+            self.lastProgressUpdateDate = Date()
             let second = Int(value)
             if second != self.lastPersistedSecond {
                 self.lastPersistedSecond = second
