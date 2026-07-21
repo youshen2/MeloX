@@ -14,6 +14,7 @@ struct NowPlayingLyricsPage: View {
     @State private var scrollPositionID: LyricLine.ID?
     @State private var isBrowsingLyrics = false
     @State private var browsingGeneration = 0
+    @State private var isPreparingInitialFocus = true
 
     init(
         song: Song,
@@ -198,6 +199,11 @@ struct NowPlayingLyricsPage: View {
                     id: $scrollPositionID,
                     anchor: UnitPoint(x: 0.5, y: focusPosition)
                 )
+                .transaction { transaction in
+                    if isPreparingInitialFocus {
+                        transaction.animation = nil
+                    }
+                }
                 .mask {
                     LinearGradient(
                         stops: [
@@ -228,6 +234,10 @@ struct NowPlayingLyricsPage: View {
                 }
                 .onAppear {
                     synchronizeFocusIfNeeded()
+                }
+                .task {
+                    await Task.yield()
+                    isPreparingInitialFocus = false
                 }
                 .onDisappear {
                     browsingGeneration += 1
