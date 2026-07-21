@@ -17,6 +17,48 @@ struct ContentView: View {
     private let playerTransitionID = "now-playing"
 
     var body: some View {
+        playerAwareTabView
+            .fullScreenCover(item: $playerPresentation) { destination in
+                switch destination {
+                case .nowPlaying:
+                    NowPlayingView(initialPage: initialNowPlayingPage)
+                        .presentationBackground(.clear)
+                        .navigationTransition(
+                            .zoom(
+                                sourceID: playerTransitionID,
+                                in: playerTransitionNamespace
+                            )
+                        )
+                }
+            }
+            .task {
+                await player.restore()
+            }
+            .task(id: settings.cookie) {
+                await library.refresh()
+            }
+            .appLaunchExperience()
+    }
+
+    @ViewBuilder
+    private var playerAwareTabView: some View {
+        if player.currentSong != nil {
+            tabs
+                .tabViewBottomAccessory {
+                    MiniPlayerView {
+                        playerPresentation = .nowPlaying
+                    }
+                    .matchedTransitionSource(
+                        id: playerTransitionID,
+                        in: playerTransitionNamespace
+                    )
+                }
+        } else {
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $selectedTab) {
             Tab("首页", systemImage: "house", value: AppTab.home) {
                 NavigationStack(path: $homePath) {
@@ -58,37 +100,6 @@ struct ContentView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory {
-            if player.currentSong != nil {
-                MiniPlayerView {
-                    playerPresentation = .nowPlaying
-                }
-                .matchedTransitionSource(
-                    id: playerTransitionID,
-                    in: playerTransitionNamespace
-                )
-            }
-        }
-        .fullScreenCover(item: $playerPresentation) { destination in
-            switch destination {
-            case .nowPlaying:
-                NowPlayingView(initialPage: initialNowPlayingPage)
-                    .presentationBackground(.clear)
-                    .navigationTransition(
-                        .zoom(
-                            sourceID: playerTransitionID,
-                            in: playerTransitionNamespace
-                        )
-                    )
-            }
-        }
-        .task {
-            await player.restore()
-        }
-        .task(id: settings.cookie) {
-            await library.refresh()
-        }
-        .appLaunchExperience()
     }
 
     private var initialNowPlayingPage: NowPlayingPage {
