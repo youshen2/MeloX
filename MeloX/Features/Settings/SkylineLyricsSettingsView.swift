@@ -25,6 +25,14 @@ struct SkylineLyricsSettingsView: View {
                 )
 
                 valueSlider(
+                    title: "逐字歌词最大缩放",
+                    value: $preferences.currentLyricMaximumScale,
+                    range: 1...1.2,
+                    step: 0.01,
+                    valueText: scaleValue(preferences.currentLyricMaximumScale)
+                )
+
+                valueSlider(
                     title: "中央显示宽度",
                     value: $preferences.currentLyricsWidth,
                     range: 0.4...0.82,
@@ -34,7 +42,7 @@ struct SkylineLyricsSettingsView: View {
             } header: {
                 Text("当前歌词")
             } footer: {
-                Text("当前歌词继续使用封面取色和播放器中的逐字光效设置。")
+                Text("逐字歌词会随演唱进度持续放大，并在整句唱完时达到最大缩放。")
             }
 
             Section {
@@ -82,6 +90,18 @@ struct SkylineLyricsSettingsView: View {
                 ) {
                     Text("1 个字").tag(1)
                     Text("2 个字").tag(2)
+                    Text("3 个字").tag(3)
+                    Text("4 个字").tag(4)
+                }
+
+                Stepper(
+                    value: $preferences.ambientMaximumVisibleTexts,
+                    in: 4...24
+                ) {
+                    LabeledContent(
+                        "同屏文字上限",
+                        value: "\(preferences.ambientMaximumVisibleTexts) 组"
+                    )
                 }
 
                 valueSlider(
@@ -102,18 +122,10 @@ struct SkylineLyricsSettingsView: View {
             } header: {
                 Text("背景歌词")
             } footer: {
-                Text("长歌词片段会按最大字数自动分组；背景字号是基础大小，画面中的文字仍会保留远近层次。")
+                Text("长歌词片段会按最大字数自动分组；已有文字会持续放大、变模糊，足够大后消失；超过同屏上限时优先移除最早出现的文字。")
             }
 
             Section {
-                valueSlider(
-                    title: "位置随机程度",
-                    value: $preferences.ambientPositionRandomness,
-                    range: 0...1.6,
-                    step: 0.1,
-                    valueText: scaleValue(preferences.ambientPositionRandomness)
-                )
-
                 valueSlider(
                     title: "最大倾斜角度",
                     value: $preferences.ambientMaximumTilt,
@@ -132,7 +144,7 @@ struct SkylineLyricsSettingsView: View {
             } header: {
                 Text("背景动态")
             } footer: {
-                Text("每组背景字会在最大角度内随机倾斜；系统开启“减弱动态效果”时，背景漂移会自动停用。")
+                Text("每组背景字会出现在完全随机的位置，并在最大角度内随机倾斜；系统开启“减弱动态效果”时，背景漂移会自动停用。")
             }
 
             Section {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum SynchronizedLyricTextAlignment {
+enum SynchronizedLyricTextAlignment: Equatable {
     case leading
     case center
 
@@ -34,48 +34,70 @@ struct SynchronizedLyricText: View {
     let line: LyricLine
     let isPlaybackLine: Bool
     let usesPseudoTiming: Bool
+    let fontSize: CGFloat
     let alignment: SynchronizedLyricTextAlignment
     let fontScale: CGFloat
     let primaryColor: Color
     let showsTranslation: Bool
+    let layoutWidth: CGFloat?
+    let playbackScaleRange: ClosedRange<CGFloat>?
+    let playbackScaleStartDelay: TimeInterval
     private let synchronizedText: Text
     private let pseudoSynchronizedText: Text
     private let hasPseudoSyllables: Bool
+    private let timedPlaybackRange: ClosedRange<TimeInterval>?
 
     init(
         line: LyricLine,
         isPlaybackLine: Bool,
         usesPseudoTiming: Bool,
+        fontSize: CGFloat,
         alignment: SynchronizedLyricTextAlignment = .leading,
         fontScale: CGFloat = 1,
         primaryColor: Color = .white,
-        showsTranslation: Bool = true
+        showsTranslation: Bool = true,
+        layoutWidth: CGFloat? = nil,
+        playbackScaleRange: ClosedRange<CGFloat>? = nil,
+        playbackScaleStartDelay: TimeInterval = 0
     ) {
         self.line = line
         self.isPlaybackLine = isPlaybackLine
         self.usesPseudoTiming = usesPseudoTiming
+        self.fontSize = fontSize
         self.alignment = alignment
         self.fontScale = fontScale
         self.primaryColor = primaryColor
         self.showsTranslation = showsTranslation
+        self.layoutWidth = layoutWidth
+        self.playbackScaleRange = playbackScaleRange
+        self.playbackScaleStartDelay = playbackScaleStartDelay
 
         let pseudoSyllables = usesPseudoTiming
             ? line.makePseudoSyllables()
             : []
-        synchronizedText = Self.makeTimedText(from: line.syllables)
-        pseudoSynchronizedText = Self.makeTimedText(from: pseudoSyllables)
+        let activeSyllables = usesPseudoTiming
+            ? pseudoSyllables
+            : line.syllables
+        let timedLayoutWidth = layoutWidth.map {
+            $0 / max(playbackScaleRange?.upperBound ?? 1, 1)
+        }
+        synchronizedText = TimedLyricTextBuilder.text(
+            from: line.syllables,
+            constrainedWidth: timedLayoutWidth,
+            fontSize: fontSize
+        )
+        pseudoSynchronizedText = TimedLyricTextBuilder.text(
+            from: pseudoSyllables,
+            constrainedWidth: timedLayoutWidth,
+            fontSize: fontSize
+        )
         hasPseudoSyllables = !pseudoSyllables.isEmpty
-    }
-
-    private static func makeTimedText(from syllables: [LyricSyllable]) -> Text {
-        syllables.reduce(Text(verbatim: "")) { text, syllable in
-            let fragment = Text(verbatim: syllable.text).customAttribute(
-                LyricTimingTextAttribute(
-                    startTime: syllable.startTime,
-                    endTime: syllable.endTime
-                )
-            )
-            return Text("\(text)\(fragment)")
+        if let firstSyllable = activeSyllables.first,
+           let lastSyllable = activeSyllables.last,
+           lastSyllable.endTime > firstSyllable.startTime {
+            timedPlaybackRange = firstSyllable.startTime...lastSyllable.endTime
+        } else {
+            timedPlaybackRange = nil
         }
     }
 
@@ -113,24 +135,41 @@ struct SynchronizedLyricText: View {
                     paused: !player.isPlaying
                 )
             ) { context in
+                let playbackTime = player.estimatedProgress(at: context.date)
+                    + settings.lyricsAdvanceTime
+
                 activeSynchronizedText
                     .font(primaryFont)
                     .foregroundStyle(primaryColor)
+                    .multilineTextAlignment(alignment.textAlignment)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
+                    .textRenderer(
+                        LyricGlowTextRenderer(
+                            playbackTime: playbackTime,
+                            style: .init(
+                                glowRadius: glowRadius,
+                                glowOpacity: glowOpacity,
+                                unplayedOpacity: 0.3,
+                                maximumUnplayedBlurRadius: maximumUnplayedBlurRadius
+                            ),
+                            layoutConfiguration: .init(
+                                width: timedLayoutWidth,
+                                centersLines: alignment == .center
+                            )
+                        )
+                    )
+                    .frame(
+                        width: timedLayoutWidth,
+                        alignment: alignment.frameAlignment
+                    )
                     .frame(
                         maxWidth: .infinity,
                         alignment: alignment.frameAlignment
                     )
-                    .textRenderer(
-                        LyricGlowTextRenderer(
-                            playbackTime: player.estimatedProgress(at: context.date)
-                                + settings.lyricsAdvanceTime,
-                            glowRadius: glowRadius,
-                            glowOpacity: glowOpacity,
-                            unplayedOpacity: 0.3,
-                            maximumUnplayedBlurRadius: maximumUnplayedBlurRadius
-                        )
+                    .scaleEffect(
+                        playbackScale(at: playbackTime),
+                        anchor: .center
                     )
             }
             .transition(.opacity)
@@ -138,6 +177,17 @@ struct SynchronizedLyricText: View {
             Text(verbatim: line.text)
                 .font(primaryFont)
                 .foregroundStyle(primaryColor)
+                .multilineTextAlignment(alignment.textAlignment)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(
+                    width: layoutWidth,
+                    alignment: alignment.frameAlignment
+                )
+                .frame(
+                    maxWidth: .infinity,
+                    alignment: alignment.frameAlignment
+                )
                 .transition(.opacity)
         }
     }
@@ -153,10 +203,7 @@ struct SynchronizedLyricText: View {
     }
 
     private var primaryFont: Font {
-        .system(
-            size: CGFloat(settings.lyricsFontSize) * fontScale,
-            weight: .bold
-        )
+        .system(size: fontSize, weight: .bold)
     }
 
     private var translationFontSize: CGFloat {
@@ -177,8 +224,7 @@ struct SynchronizedLyricText: View {
     private var glowRadius: CGFloat {
         guard settings.lyricsGlowEnabled else { return 0 }
         return CGFloat(
-            settings.lyricsFontSize
-                * Double(fontScale)
+            Double(fontSize)
                 * 0.34
                 * settings.lyricsGlowIntensity
         )
@@ -191,5 +237,51 @@ struct SynchronizedLyricText: View {
 
     private var maximumUnplayedBlurRadius: CGFloat {
         CGFloat(settings.lyricsBlurIntensity) * 0.55 * fontScale
+    }
+
+    private var timedLayoutWidth: CGFloat? {
+        guard let layoutWidth,
+              let maximumScale = playbackScaleRange?.upperBound else {
+            return layoutWidth
+        }
+        return layoutWidth / max(maximumScale, 1)
+    }
+
+    private func playbackScale(at playbackTime: TimeInterval) -> CGFloat {
+        guard !accessibilityReduceMotion,
+              let playbackScaleRange,
+              let timedPlaybackRange else {
+            return 1
+        }
+
+        let glowTailDuration = settings.lyricsGlowEnabled
+            ? LyricGlowTextRenderer.glowTailDuration
+            : 0
+        let playbackScaleEndTime = timedPlaybackRange.upperBound
+            + glowTailDuration
+        let fullDuration = playbackScaleEndTime
+            - timedPlaybackRange.lowerBound
+        guard fullDuration > 0 else { return playbackScaleRange.upperBound }
+
+        let minimumContinuationDuration = min(fullDuration * 0.35, 0.25)
+        let maximumStartDelay = max(
+            fullDuration - minimumContinuationDuration,
+            0
+        )
+        let effectiveStartTime = timedPlaybackRange.lowerBound
+            + min(max(playbackScaleStartDelay, 0), maximumStartDelay)
+        let continuationDuration = playbackScaleEndTime
+            - effectiveStartTime
+        guard continuationDuration > 0 else {
+            return playbackScaleRange.upperBound
+        }
+
+        let rawProgress = (playbackTime - effectiveStartTime)
+            / continuationDuration
+        let progress = min(max(rawProgress, 0), 1)
+        let easedProgress = progress * progress * (3 - 2 * progress)
+        return playbackScaleRange.lowerBound
+            + (playbackScaleRange.upperBound - playbackScaleRange.lowerBound)
+                * CGFloat(easedProgress)
     }
 }

@@ -155,7 +155,9 @@ struct NowPlayingLyricsPage: View {
                             SynchronizedLyricText(
                                 line: line,
                                 isPlaybackLine: isPlaybackLine,
-                                usesPseudoTiming: usesPseudoTiming
+                                usesPseudoTiming: usesPseudoTiming,
+                                fontSize: CGFloat(settings.lyricsFontSize),
+                                layoutWidth: proxy.size.width
                             )
                                 .opacity(
                                     Self.lyricEmphasis(
