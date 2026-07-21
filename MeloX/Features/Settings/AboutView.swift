@@ -77,7 +77,7 @@ struct AboutView: View {
 
                         Spacer(minLength: 8)
 
-                        Text("@malo_x_official")
+                        Text("@melox_official")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -148,7 +148,7 @@ struct AboutView: View {
         Bundle.main.appBuildNumber
     }
 
-    private let telegramURL = URL(string: "https://t.me/malo_x_official")!
+    private let telegramURL = URL(string: "https://t.me/melox_official")!
 
     @MainActor
     private func checkForUpdates() async {
