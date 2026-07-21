@@ -1,8 +1,8 @@
-# MaloX
+# MeloX
 
-[![License](https://img.shields.io/github/license/youshen2/MaloX)](https://github.com/youshen2/MaloX/blob/master/LICENSE)
-[![Download](https://img.shields.io/github/v/release/youshen2/MaloX)](https://github.com/youshen2/MaloX/releases)
-[![stars](https://img.shields.io/github/stars/youshen2/MaloX)](https://github.com/youshen2/MaloX/stargazers)
+[![License](https://img.shields.io/github/license/youshen2/MeloX)](https://github.com/youshen2/MeloX/blob/master/LICENSE)
+[![Download](https://img.shields.io/github/v/release/youshen2/MeloX)](https://github.com/youshen2/MeloX/releases)
+[![stars](https://img.shields.io/github/stars/youshen2/MeloX)](https://github.com/youshen2/MeloX/stargazers)
 
 <p align="center">
   使用原生 SwiftUI 构建的第三方网易云音乐播放器
@@ -44,7 +44,7 @@
 来自小米yu7天际屏的灵感。
 
 <p align="center">
-  <img src="docs/screenshots/9.png" alt="全屏天际歌词" width="20%">
+  <img src="docs/screenshots/9.png" alt="全屏天际歌词" width="60%">
 </p>
 
 ## 功能
@@ -74,7 +74,7 @@
 1. 克隆仓库：
 
    ```bash
-   git clone https://github.com/youshen2/MaloX.git MeloX
+   git clone https://github.com/youshen2/MeloX.git MeloX
    cd MeloX
    ```
 
