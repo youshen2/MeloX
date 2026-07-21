@@ -116,6 +116,12 @@ struct SynchronizedLyricText: View {
                 activeSynchronizedText
                     .font(primaryFont)
                     .foregroundStyle(primaryColor)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: alignment.frameAlignment
+                    )
                     .textRenderer(
                         LyricGlowTextRenderer(
                             playbackTime: player.estimatedProgress(at: context.date)
