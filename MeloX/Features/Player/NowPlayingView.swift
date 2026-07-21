@@ -22,32 +22,30 @@ struct NowPlayingView: View {
     }
 
     var body: some View {
-        ZStack {
-            NowPlayingBackground(artworkURL: player.currentSong?.album?.artworkURL)
+        GeometryReader { proxy in
+            ZStack {
+                NowPlayingBackground(artworkURL: player.currentSong?.album?.artworkURL)
 
-            if let song = player.currentSong {
-                VStack(spacing: 0) {
-                    dismissalHandle
-
-                    pageContent(for: song)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    NowPlayingProgressControl(song: song)
-                    NowPlayingTransportControls()
-                    NowPlayingVolumeControl()
-                    NowPlayingPageSelector(
-                        page: $page,
-                        onShowAudioOutputHelp: {
-                            showsAudioOutputHelp = true
-                        }
-                    )
+                if let song = player.currentSong {
+                    if proxy.size.width > proxy.size.height {
+                        NowPlayingLandscapeView(
+                            page: $page,
+                            song: song,
+                            lyrics: lyrics,
+                            lyricError: lyricError,
+                            highlightedLyricID: highlightedLyricID,
+                            onDismiss: { dismiss() },
+                            onShowAudioOutputHelp: {
+                                showsAudioOutputHelp = true
+                            }
+                        )
+                    } else {
+                        portraitContent(for: song)
+                    }
+                } else {
+                    ContentUnavailableView("没有正在播放的歌曲", systemImage: "music.note")
+                        .foregroundStyle(.white)
                 }
-                .padding(.horizontal, 28)
-                .safeAreaPadding(.top, 4)
-                .safeAreaPadding(.bottom, 8)
-            } else {
-                ContentUnavailableView("没有正在播放的歌曲", systemImage: "music.note")
-                    .foregroundStyle(.white)
             }
         }
         .preferredColorScheme(.dark)
@@ -64,6 +62,28 @@ struct NowPlayingView: View {
             settings.rememberedNowPlayingPage = newPage.rawValue
         }
         .animation(.smooth(duration: 0.4), value: page)
+    }
+
+    private func portraitContent(for song: Song) -> some View {
+        VStack(spacing: 0) {
+            dismissalHandle
+
+            pageContent(for: song)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            NowPlayingProgressControl(song: song)
+            NowPlayingTransportControls()
+            NowPlayingVolumeControl()
+            NowPlayingPageSelector(
+                page: $page,
+                onShowAudioOutputHelp: {
+                    showsAudioOutputHelp = true
+                }
+            )
+        }
+        .padding(.horizontal, 28)
+        .safeAreaPadding(.top, 4)
+        .safeAreaPadding(.bottom, 8)
     }
 
     private var dismissalHandle: some View {

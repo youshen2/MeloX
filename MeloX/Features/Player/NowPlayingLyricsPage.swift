@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum NowPlayingLyricsPresentation: Equatable {
+    case portrait
+    case landscape
+}
+
 struct NowPlayingLyricsPage: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
@@ -10,6 +15,8 @@ struct NowPlayingLyricsPage: View {
     let errorMessage: String?
     let highlightedLyricID: LyricLine.ID?
     let onShowQueue: () -> Void
+    let presentation: NowPlayingLyricsPresentation
+    let onToggleInterface: (() -> Void)?
 
     @State private var scrollPositionID: LyricLine.ID?
     @State private var isBrowsingLyrics = false
@@ -21,22 +28,29 @@ struct NowPlayingLyricsPage: View {
         lyrics: [LyricLine],
         errorMessage: String?,
         highlightedLyricID: LyricLine.ID?,
-        onShowQueue: @escaping () -> Void
+        onShowQueue: @escaping () -> Void,
+        presentation: NowPlayingLyricsPresentation = .portrait,
+        onToggleInterface: (() -> Void)? = nil
     ) {
         self.song = song
         self.lyrics = lyrics
         self.errorMessage = errorMessage
         self.highlightedLyricID = highlightedLyricID
         self.onShowQueue = onShowQueue
+        self.presentation = presentation
+        self.onToggleInterface = onToggleInterface
         _scrollPositionID = State(initialValue: highlightedLyricID)
     }
 
     var body: some View {
-        VStack(spacing: 18) {
-            songHeader
+        VStack(spacing: presentation == .portrait ? 18 : 0) {
+            if presentation == .portrait {
+                songHeader
+            }
+
             lyricsContent
         }
-        .padding(.bottom, 12)
+        .padding(.bottom, presentation == .portrait ? 12 : 0)
     }
 
     private var songHeader: some View {
@@ -70,11 +84,20 @@ struct NowPlayingLyricsPage: View {
                     description: Text(errorMessage)
                 )
                 .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(.rect)
+                .onTapGesture {
+                    onToggleInterface?()
+                }
             } else {
                 ProgressView("正在载入歌词")
                     .tint(.white)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        onToggleInterface?()
+                    }
             }
         } else {
             let focusPosition = lyricsFocusPosition
@@ -167,9 +190,7 @@ struct NowPlayingLyricsPage: View {
                                         : .easeInOut(duration: 0.34),
                                     value: isFollowingFocusLine
                                 )
-                                .onTapGesture(count: 2) {
-                                    seek(to: line)
-                                }
+                                .gesture(lyricTapGesture(for: line))
                                 .id(line.id)
                                 .accessibilityLabel(
                                     line.accessibilityText(
@@ -369,6 +390,19 @@ struct NowPlayingLyricsPage: View {
         isBrowsingLyrics = false
         moveFocus(to: line.id, animated: true)
         player.seek(to: line.time)
+    }
+
+    private func lyricTapGesture(for line: LyricLine) -> some Gesture {
+        TapGesture(count: 2)
+            .exclusively(before: TapGesture(count: 1))
+            .onEnded { gesture in
+                switch gesture {
+                case .first:
+                    seek(to: line)
+                case .second:
+                    onToggleInterface?()
+                }
+            }
     }
 
     private func moveFocus(to id: LyricLine.ID, animated: Bool) {
