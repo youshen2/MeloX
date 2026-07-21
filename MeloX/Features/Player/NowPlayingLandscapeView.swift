@@ -100,10 +100,7 @@ struct NowPlayingLandscapeView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            NowPlayingSongActions(
-                song: song,
-                onShowQueue: { page = .queue }
-            )
+            NowPlayingSongActions(song: song)
         }
         .frame(height: 52)
     }
@@ -126,7 +123,6 @@ struct NowPlayingLandscapeView: View {
                 lyrics: lyrics,
                 errorMessage: lyricError,
                 highlightedLyricID: highlightedLyricID,
-                onShowQueue: { page = .queue },
                 presentation: .landscape,
                 onToggleInterface: toggleLyricsControls
             )

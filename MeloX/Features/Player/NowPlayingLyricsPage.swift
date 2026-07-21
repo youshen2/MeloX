@@ -14,7 +14,6 @@ struct NowPlayingLyricsPage: View {
     let lyrics: [LyricLine]
     let errorMessage: String?
     let highlightedLyricID: LyricLine.ID?
-    let onShowQueue: () -> Void
     let presentation: NowPlayingLyricsPresentation
     let onToggleInterface: (() -> Void)?
 
@@ -28,7 +27,6 @@ struct NowPlayingLyricsPage: View {
         lyrics: [LyricLine],
         errorMessage: String?,
         highlightedLyricID: LyricLine.ID?,
-        onShowQueue: @escaping () -> Void,
         presentation: NowPlayingLyricsPresentation = .portrait,
         onToggleInterface: (() -> Void)? = nil
     ) {
@@ -36,7 +34,6 @@ struct NowPlayingLyricsPage: View {
         self.lyrics = lyrics
         self.errorMessage = errorMessage
         self.highlightedLyricID = highlightedLyricID
-        self.onShowQueue = onShowQueue
         self.presentation = presentation
         self.onToggleInterface = onToggleInterface
         _scrollPositionID = State(initialValue: highlightedLyricID)
@@ -70,7 +67,7 @@ struct NowPlayingLyricsPage: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            NowPlayingSongActions(song: song, onShowQueue: onShowQueue)
+            NowPlayingSongActions(song: song)
         }
     }
 

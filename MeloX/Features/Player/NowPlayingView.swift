@@ -108,18 +108,14 @@ struct NowPlayingView: View {
     private func pageContent(for song: Song) -> some View {
         switch page {
         case .artwork:
-            NowPlayingArtworkPage(
-                song: song,
-                onShowQueue: { page = .queue }
-            )
+            NowPlayingArtworkPage(song: song)
             .transition(.opacity.combined(with: .scale(scale: 0.97)))
         case .lyrics:
             NowPlayingLyricsPage(
                 song: song,
                 lyrics: lyrics,
                 errorMessage: lyricError,
-                highlightedLyricID: highlightedLyricID,
-                onShowQueue: { page = .queue }
+                highlightedLyricID: highlightedLyricID
             )
             .transition(.opacity)
         case .queue:

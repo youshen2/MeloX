@@ -5,7 +5,6 @@ struct NowPlayingArtworkPage: View {
     @Environment(AppSettings.self) private var settings
 
     let song: Song
-    let onShowQueue: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
@@ -38,7 +37,7 @@ struct NowPlayingArtworkPage: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    NowPlayingSongActions(song: song, onShowQueue: onShowQueue)
+                    NowPlayingSongActions(song: song)
                 }
             }
             .padding(.horizontal, 14)
@@ -52,7 +51,8 @@ struct NowPlayingSongActions: View {
     @Environment(LibraryStore.self) private var library
 
     let song: Song
-    let onShowQueue: () -> Void
+
+    @State private var songForPlaylistSelection: Song?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -70,16 +70,9 @@ struct NowPlayingSongActions: View {
 
             Menu {
                 Button {
-                    library.toggle(song: song)
+                    songForPlaylistSelection = song
                 } label: {
-                    Label(
-                        library.contains(song: song) ? "取消收藏" : "收藏",
-                        systemImage: library.contains(song: song) ? "star.slash" : "star"
-                    )
-                }
-
-                Button(action: onShowQueue) {
-                    Label("查看播放队列", systemImage: "list.bullet")
+                    Label("添加到歌单", systemImage: "text.badge.plus")
                 }
 
                 ShareLink(item: "\(song.name) — \(song.artistText)") {
@@ -93,6 +86,11 @@ struct NowPlayingSongActions: View {
                     .contentShape(.circle)
             }
             .accessibilityLabel("更多")
+        }
+        .sheet(item: $songForPlaylistSelection) { selectedSong in
+            AddToPlaylistSheet(song: selectedSong)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 }

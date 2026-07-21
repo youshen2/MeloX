@@ -366,6 +366,36 @@ final class NeteaseAPI {
         try validate(responseCode: response.code, message: response.message)
     }
 
+    func addSong(id: Int, toPlaylistID playlistID: Int) async throws {
+        let trackID = String(id)
+        var response: APIStatusResponse = try await client.eapi(
+            "/api/playlist/manipulate/tracks",
+            data: [
+                "op": "add",
+                "pid": playlistID,
+                "trackIds": "[\"\(trackID)\"]",
+                "imme": "true",
+            ],
+            authenticated: true
+        )
+
+        // Mirrors @neteaseapireborn/api's compatibility retry for code 512.
+        if response.code == 512 {
+            response = try await client.eapi(
+                "/api/playlist/manipulate/tracks",
+                data: [
+                    "op": "add",
+                    "pid": playlistID,
+                    "trackIds": "[\"\(trackID)\",\"\(trackID)\"]",
+                    "imme": "true",
+                ],
+                authenticated: true
+            )
+        }
+
+        try validate(responseCode: response.code, message: response.message)
+    }
+
     private func validate(responseCode: Int, message: String? = nil) throws {
         guard (200..<300).contains(responseCode) else {
             throw APIError.server(

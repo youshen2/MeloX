@@ -20,6 +20,9 @@ final class LibraryStore {
     @ObservationIgnored
     private var loadedCookie: String?
 
+    @ObservationIgnored
+    private var refreshingCookie: String?
+
     init(api: NeteaseAPI, settings: AppSettings) {
         self.api = api
         self.settings = settings
@@ -27,6 +30,11 @@ final class LibraryStore {
 
     var isLoggedIn: Bool {
         !settings.cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var ownedPlaylists: [Playlist] {
+        guard let userID = profile?.id else { return [] }
+        return favoritePlaylists.filter { $0.creator?.userID == userID }
     }
 
     func contains(song: Song) -> Bool {
@@ -47,10 +55,17 @@ final class LibraryStore {
             clearAccountData()
             return
         }
+        guard refreshingCookie != cookie else { return }
         guard force || loadedCookie != cookie || phase != .loaded else { return }
 
         if loadedCookie != cookie {
             clearRemoteContent()
+        }
+        refreshingCookie = cookie
+        defer {
+            if refreshingCookie == cookie {
+                refreshingCookie = nil
+            }
         }
         phase = .loading
         errorMessage = nil
@@ -61,7 +76,6 @@ final class LibraryStore {
 
             profile = loadedProfile
             loadedCookie = cookie
-            phase = .loaded
 
             var partialFailures: [String] = []
             var loadedPlaylists: [Playlist] = []
@@ -99,6 +113,7 @@ final class LibraryStore {
             if !partialFailures.isEmpty {
                 errorMessage = "部分音乐库内容暂时无法读取。\n" + partialFailures.joined(separator: "\n")
             }
+            phase = .loaded
         } catch is CancellationError {
             return
         } catch APIError.notLoggedIn {
@@ -176,6 +191,14 @@ final class LibraryStore {
         }
     }
 
+    func add(song: Song, to playlist: Playlist) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        guard playlist.creator?.userID == profile?.id else {
+            throw LibraryOperationError.playlistIsNotOwned
+        }
+        try await api.addSong(id: song.id, toPlaylistID: playlist.id)
+    }
+
     func clearAccountData() {
         loadedCookie = nil
         clearRemoteContent()
@@ -192,5 +215,16 @@ final class LibraryStore {
         favoriteSongs = []
         favoritePlaylists = []
         recentSongs = []
+    }
+}
+
+private enum LibraryOperationError: LocalizedError {
+    case playlistIsNotOwned
+
+    var errorDescription: String? {
+        switch self {
+        case .playlistIsNotOwned:
+            "只能向自己创建的歌单添加歌曲。"
+        }
     }
 }

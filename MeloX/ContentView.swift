@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
+    @Environment(LibraryStore.self) private var library
 
     @State private var selectedTab: AppTab = .home
     @State private var homePath = NavigationPath()
@@ -83,6 +84,9 @@ struct ContentView: View {
         }
         .task {
             await player.restore()
+        }
+        .task(id: settings.cookie) {
+            await library.refresh()
         }
     }
 
