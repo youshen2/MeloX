@@ -360,6 +360,46 @@ struct NowPlayingLyricsPage: View {
         )
     }
 
+    private func waitForLyricFrame(
+        for id: LyricLine.ID
+    ) async -> CGRect? {
+        for attempt in 0..<10 {
+            if let frame = lyricFrameByID[id] {
+                return frame
+            }
+            guard !Task.isCancelled, attempt < 9 else { return nil }
+            do {
+                try await Task.sleep(for: .milliseconds(8))
+            } catch {
+                return nil
+            }
+        }
+        return nil
+    }
+
+    private func waitForPreparedFocus(
+        id: LyricLine.ID,
+        viewportAnchorY: CGFloat,
+        focusPosition: CGFloat
+    ) async -> Bool {
+        for attempt in 0..<10 {
+            if let frame = lyricFrameByID[id] {
+                let preparedAnchorY = frame.minY
+                    + frame.height * focusPosition
+                if abs(preparedAnchorY - viewportAnchorY) <= 4 {
+                    return true
+                }
+            }
+            guard !Task.isCancelled, attempt < 9 else { return false }
+            do {
+                try await Task.sleep(for: .milliseconds(8))
+            } catch {
+                return false
+            }
+        }
+        return false
+    }
+
     private func cascadeMoveFocus(
         to highlightedLyricID: LyricLine.ID?,
         viewportHeight: CGFloat,
@@ -371,13 +411,13 @@ struct NowPlayingLyricsPage: View {
             visualCascadeFocusLyricID = highlightedLyricID
             return
         }
-        guard scrollPositionID != highlightedLyricID else {
+        guard visualCascadeFocusLyricID != highlightedLyricID else {
             visualHighlightedLyricID = highlightedLyricID
             visualCascadeFocusLyricID = highlightedLyricID
             return
         }
         guard isAdjacentFocusTransition(
-            from: scrollPositionID,
+            from: visualCascadeFocusLyricID ?? scrollPositionID,
             to: highlightedLyricID
         ) else {
             await moveFocusWithoutCascade(to: highlightedLyricID)
@@ -385,8 +425,14 @@ struct NowPlayingLyricsPage: View {
         }
 
         guard !accessibilityReduceMotion,
-              settings.lyricsFocusCascadeDelay > 0,
-              let nextFocusFrame = lyricFrameByID[highlightedLyricID] else {
+              settings.lyricsFocusCascadeDelay > 0 else {
+            await moveFocusWithoutCascade(to: highlightedLyricID)
+            return
+        }
+        guard let nextFocusFrame = await waitForLyricFrame(
+            for: highlightedLyricID
+        ) else {
+            guard !Task.isCancelled else { return }
             await moveFocusWithoutCascade(to: highlightedLyricID)
             return
         }
@@ -422,10 +468,6 @@ struct NowPlayingLyricsPage: View {
         )
         let prefersCascadeBounce = settings.lyricsFocusCascadeBounceEnabled
         let focusColorLeadTime = lyricsFocusColorLeadTime
-        guard initialVisibleIDs.count > 1 else {
-            await moveFocusWithoutCascade(to: highlightedLyricID)
-            return
-        }
 
         var preparationTransaction = Transaction(animation: nil)
         preparationTransaction.disablesAnimations = true
@@ -438,22 +480,14 @@ struct NowPlayingLyricsPage: View {
             scrollPositionID = highlightedLyricID
         }
 
-        var destinationIsPrepared = false
-        for _ in 0..<4 {
-            await Task.yield()
-            guard !Task.isCancelled else {
-                resolveInterruptedMovement(to: highlightedLyricID)
-                return
-            }
-            guard let preparedFocusFrame = lyricFrameByID[highlightedLyricID] else {
-                continue
-            }
-            let preparedAnchorY = preparedFocusFrame.minY
-                + preparedFocusFrame.height * focusPosition
-            if abs(preparedAnchorY - viewportAnchorY) <= 1.5 {
-                destinationIsPrepared = true
-                break
-            }
+        let destinationIsPrepared = await waitForPreparedFocus(
+            id: highlightedLyricID,
+            viewportAnchorY: viewportAnchorY,
+            focusPosition: focusPosition
+        )
+        guard !Task.isCancelled else {
+            resolveInterruptedMovement(to: highlightedLyricID)
+            return
         }
         guard destinationIsPrepared else {
             completeCascadeMovement(to: highlightedLyricID)
@@ -498,39 +532,34 @@ struct NowPlayingLyricsPage: View {
             completeCascadeMovement(to: highlightedLyricID)
             return
         }
-        let remainingDuration = remainingFocusDuration(for: highlightedLyricID)
-        let canUseCascade: (TimeInterval) -> Bool = { animationDuration in
-            LyricPlaybackTimeline.shouldUseFocusCascade(
-                visibleLineCount: orderedMovingIDs.count,
-                preferredDelayPerLine: settings.lyricsFocusCascadeDelay,
-                focusColorLeadTime: focusColorLeadTime,
-                animationDuration: animationDuration,
-                remainingDuration: remainingDuration,
-                highlightedLyricID: highlightedLyricID,
-                in: lyrics
-            )
-        }
-        let usesCascadeBounce = prefersCascadeBounce
-            && canUseCascade(bounceAnimationDuration)
-        let animationDuration = usesCascadeBounce
-            ? bounceAnimationDuration
-            : baseAnimationDuration
-        guard usesCascadeBounce || canUseCascade(baseAnimationDuration) else {
+        guard let cascadeTiming = LyricPlaybackTimeline.focusCascadeTiming(
+            visibleLineCount: orderedMovingIDs.count,
+            preferredDelayPerLine: settings.lyricsFocusCascadeDelay,
+            focusColorLeadTime: focusColorLeadTime,
+            baseAnimationDuration: baseAnimationDuration,
+            bounceAnimationDuration: bounceAnimationDuration,
+            prefersBounce: prefersCascadeBounce,
+            remainingDuration: remainingFocusDuration(for: highlightedLyricID),
+            highlightedLyricID: highlightedLyricID,
+            in: lyrics
+        ) else {
             completeCascadeMovement(to: highlightedLyricID)
             return
         }
         await animatePreparedCascade(
             orderedMovingIDs,
             to: highlightedLyricID,
-            usesBounce: usesCascadeBounce,
+            delayPerLine: cascadeTiming.delayPerLine,
+            usesBounce: cascadeTiming.usesBounce,
             focusColorLeadTime: focusColorLeadTime,
-            animationDuration: animationDuration
+            animationDuration: cascadeTiming.animationDuration
         )
     }
 
     private func animatePreparedCascade(
         _ orderedMovingIDs: [LyricLine.ID],
         to highlightedLyricID: LyricLine.ID,
+        delayPerLine: TimeInterval,
         usesBounce: Bool,
         focusColorLeadTime: TimeInterval,
         animationDuration: TimeInterval
@@ -559,7 +588,7 @@ struct NowPlayingLyricsPage: View {
             let targetDelay = LyricPlaybackTimeline.focusCascadeDelay(
                 visibleOrder: order,
                 visibleLineCount: orderedMovingIDs.count,
-                preferredDelayPerLine: settings.lyricsFocusCascadeDelay,
+                preferredDelayPerLine: delayPerLine,
                 highlightedLyricID: highlightedLyricID,
                 in: lyrics
             )

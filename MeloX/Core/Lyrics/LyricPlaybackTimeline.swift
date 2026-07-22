@@ -5,6 +5,12 @@ struct LyricPlaybackPosition: Equatable {
     let nextTransitionTime: TimeInterval?
 }
 
+struct LyricFocusCascadeTiming: Equatable {
+    let delayPerLine: TimeInterval
+    let animationDuration: TimeInterval
+    let usesBounce: Bool
+}
+
 enum LyricPlaybackTimeline {
     static func position(
         at playbackTime: TimeInterval,
@@ -88,21 +94,23 @@ enum LyricPlaybackTimeline {
             * effectiveDelayPerLine
     }
 
-    static func shouldUseFocusCascade(
+    static func focusCascadeTiming(
         visibleLineCount: Int,
         preferredDelayPerLine: TimeInterval,
         focusColorLeadTime: TimeInterval,
-        animationDuration: TimeInterval,
+        baseAnimationDuration: TimeInterval,
+        bounceAnimationDuration: TimeInterval,
+        prefersBounce: Bool,
         remainingDuration: TimeInterval?,
         highlightedLyricID: LyricLine.ID?,
         in lyrics: [LyricLine]
-    ) -> Bool {
+    ) -> LyricFocusCascadeTiming? {
         guard visibleLineCount > 1,
-              preferredDelayPerLine > 0 else {
-            return false
-        }
-        guard let remainingDuration else {
-            return true
+              preferredDelayPerLine.isFinite,
+              preferredDelayPerLine > 0,
+              baseAnimationDuration.isFinite,
+              baseAnimationDuration > 0 else {
+            return nil
         }
         let finalLaunchDelay = focusCascadeDelay(
             visibleOrder: visibleLineCount - 1,
@@ -111,12 +119,57 @@ enum LyricPlaybackTimeline {
             highlightedLyricID: highlightedLyricID,
             in: lyrics
         )
-        let schedulingMargin: TimeInterval = 1.0 / 60.0
-        return max(focusColorLeadTime, 0)
-            + finalLaunchDelay
-            + animationDuration
-            + schedulingMargin
-            < remainingDuration
+        let fullBounceDuration = max(
+            bounceAnimationDuration,
+            baseAnimationDuration
+        )
+        let fullTiming = LyricFocusCascadeTiming(
+            delayPerLine: preferredDelayPerLine,
+            animationDuration: prefersBounce
+                ? fullBounceDuration
+                : baseAnimationDuration,
+            usesBounce: prefersBounce
+        )
+        guard let remainingDuration, remainingDuration.isFinite else {
+            return fullTiming
+        }
+
+        let schedulingMargin: TimeInterval = 1.0 / 120.0
+        let availableDuration = remainingDuration
+            - max(focusColorLeadTime, 0)
+            - schedulingMargin
+        guard availableDuration > 0 else { return nil }
+
+        if prefersBounce,
+           finalLaunchDelay + fullBounceDuration <= availableDuration {
+            return fullTiming
+        }
+        if finalLaunchDelay + baseAnimationDuration <= availableDuration {
+            return LyricFocusCascadeTiming(
+                delayPerLine: preferredDelayPerLine,
+                animationDuration: baseAnimationDuration,
+                usesBounce: false
+            )
+        }
+
+        let fullNormalDuration = finalLaunchDelay + baseAnimationDuration
+        guard fullNormalDuration > 0 else { return nil }
+        let compression = min(max(availableDuration / fullNormalDuration, 0), 1)
+        let compressedAnimationDuration = baseAnimationDuration * compression
+        let minimumAnimationDuration = min(baseAnimationDuration, 0.05)
+        guard compressedAnimationDuration >= minimumAnimationDuration else {
+            return nil
+        }
+
+        let lastVisibleOrder = Double(visibleLineCount - 1)
+        let compressedDelayPerLine = finalLaunchDelay
+            * compression
+            / lastVisibleOrder
+        return LyricFocusCascadeTiming(
+            delayPerLine: compressedDelayPerLine,
+            animationDuration: compressedAnimationDuration,
+            usesBounce: false
+        )
     }
 
     static func remainingFocusDuration(
