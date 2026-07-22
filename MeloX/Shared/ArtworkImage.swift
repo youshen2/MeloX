@@ -5,8 +5,13 @@ struct ArtworkImage: View {
     var cornerRadius: CGFloat = 10
     var aspectRatio: CGFloat = 1
 
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
     var body: some View {
-        AsyncImage(url: url) { phase in
+        AsyncImage(
+            url: url,
+            transaction: Transaction(animation: imageLoadAnimation)
+        ) { phase in
             switch phase {
             case .empty:
                 ZStack {
@@ -17,6 +22,7 @@ struct ArtworkImage: View {
                 image
                     .resizable()
                     .scaledToFill()
+                    .transition(.opacity)
             case .failure:
                 placeholder
             @unknown default:
@@ -26,6 +32,10 @@ struct ArtworkImage: View {
         .aspectRatio(aspectRatio, contentMode: .fit)
         .clipShape(.rect(cornerRadius: cornerRadius))
         .accessibilityHidden(true)
+    }
+
+    private var imageLoadAnimation: Animation? {
+        accessibilityReduceMotion ? nil : .easeOut(duration: 0.18)
     }
 
     private var placeholder: some View {

@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum MusicNavigationTransitionTiming {
+    static let settleDelay = Duration.milliseconds(350)
+}
+
 private struct MusicNavigationNamespaceKey: EnvironmentKey {
     static let defaultValue: Namespace.ID? = nil
 }
@@ -41,6 +45,28 @@ private struct MusicMatchedTransitionSourceModifier: ViewModifier {
                 id: route.transitionID,
                 in: namespace
             )
+            .modifier(
+                ArtworkDetailAssetsPrefetchModifier(
+                    artworkURL: route.transitionArtworkURL
+                )
+            )
+        } else {
+            content
+        }
+    }
+}
+
+private struct ArtworkDetailAssetsPrefetchModifier: ViewModifier {
+    let artworkURL: URL?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let artworkURL {
+            content.task(id: artworkURL) {
+                _ = await ArtworkAccentColorProvider.shared.detailAssets(
+                    for: artworkURL
+                )
+            }
         } else {
             content
         }
@@ -62,4 +88,3 @@ private struct MusicNavigationTransitionModifier: ViewModifier {
         }
     }
 }
-

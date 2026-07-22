@@ -141,6 +141,22 @@ enum MusicRoute: Hashable {
             "toplists"
         }
     }
+
+    var transitionArtworkURL: URL? {
+        switch self {
+        case .playlist(let context), .toplist(let context):
+            context.coverURLString.flatMap(URL.init(string:))
+        case .album(let context):
+            context.picURL.flatMap(URL.init(string:))
+        case .song,
+             .artist,
+             .playlistCategory,
+             .dailySongs,
+             .newAlbums,
+             .toplists:
+            nil
+        }
+    }
 }
 
 struct OpenMusicRouteAction {

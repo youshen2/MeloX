@@ -4,6 +4,7 @@ struct PlaylistDetailContent: View {
     let playlist: Playlist
     let toplistSummary: Playlist?
     let palette: ArtworkDetailPalette
+    let blurredBackdropImage: CGImage?
     let searchQuery: String
     let isLoading: Bool
     let failureMessage: String?
@@ -22,7 +23,7 @@ struct PlaylistDetailContent: View {
     var body: some View {
         ZStack {
             MusicCollectionArtworkBackdrop(
-                artworkURL: artworkURL,
+                blurredArtworkImage: blurredBackdropImage,
                 palette: palette
             )
 
@@ -332,7 +333,7 @@ private struct ExpandablePlaylistDescription: View {
 }
 
 struct MusicCollectionArtworkBackdrop: View {
-    let artworkURL: URL?
+    let blurredArtworkImage: CGImage?
     let palette: ArtworkDetailPalette
 
     var body: some View {
@@ -340,17 +341,14 @@ struct MusicCollectionArtworkBackdrop: View {
             ZStack {
                 palette.backgroundColor
 
-                AsyncImage(url: artworkURL) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    }
+                if let blurredArtworkImage {
+                    Image(decorative: blurredArtworkImage, scale: 1)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .opacity(0.22)
+                        .transition(.opacity)
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .scaleEffect(1.32)
-                .blur(radius: 72)
-                .opacity(0.22)
 
                 LinearGradient(
                     colors: backdropOverlayColors,

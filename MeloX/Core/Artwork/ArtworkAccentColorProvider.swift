@@ -18,18 +18,71 @@ struct ArtworkDetailPalette: Equatable, Sendable {
     }
 }
 
+struct ArtworkDetailAssets: @unchecked Sendable {
+    let palette: ArtworkDetailPalette
+    let blurredBackdropImage: CGImage?
+
+    nonisolated static func fallback(prefersDarkAppearance: Bool) -> Self {
+        Self(
+            palette: .fallback(
+                prefersDarkAppearance: prefersDarkAppearance
+            ),
+            blurredBackdropImage: nil
+        )
+    }
+}
+
+private nonisolated final class ArtworkDetailAssetsBox: NSObject, @unchecked Sendable {
+    let assets: ArtworkDetailAssets
+
+    init(_ assets: ArtworkDetailAssets) {
+        self.assets = assets
+    }
+}
+
+private nonisolated final class ArtworkDetailAssetsCache: @unchecked Sendable {
+    private let storage = NSCache<NSURL, ArtworkDetailAssetsBox>()
+
+    init() {
+        storage.countLimit = 80
+        storage.totalCostLimit = 12 * 1_024 * 1_024
+    }
+
+    func assets(for url: URL) -> ArtworkDetailAssets? {
+        storage.object(forKey: url as NSURL)?.assets
+    }
+
+    func insert(_ assets: ArtworkDetailAssets, for url: URL) {
+        let pixelCost = assets.blurredBackdropImage.map {
+            $0.width * $0.height * 4
+        } ?? 0
+        storage.setObject(
+            ArtworkDetailAssetsBox(assets),
+            forKey: url as NSURL,
+            cost: pixelCost
+        )
+    }
+}
+
 actor ArtworkAccentColorProvider {
     static let shared = ArtworkAccentColorProvider()
     nonisolated static let fallback = SIMD3<Double>(repeating: 0.86)
+    private nonisolated static let assetsCache = ArtworkDetailAssetsCache()
 
     private let context = CIContext(options: [.cacheIntermediates: false])
     private let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
-    private var cache: [URL: ArtworkDetailPalette] = [:]
+
+    nonisolated static func cachedDetailAssets(
+        for artworkURL: URL?
+    ) -> ArtworkDetailAssets? {
+        guard let artworkURL else { return nil }
+        return assetsCache.assets(for: artworkURL)
+    }
 
     func accentColor(for artworkURL: URL?) async -> SIMD3<Double> {
         guard let artworkURL else { return Self.fallback }
-        if let cachedPalette = cache[artworkURL] {
-            return cachedPalette.accentRGB
+        if let cachedAssets = Self.assetsCache.assets(for: artworkURL) {
+            return cachedAssets.palette.accentRGB
         }
 
         return await detailPalette(for: artworkURL).accentRGB
@@ -39,17 +92,28 @@ actor ArtworkAccentColorProvider {
         for artworkURL: URL?,
         fallbackPrefersDarkAppearance: Bool = false
     ) async -> ArtworkDetailPalette {
+        await detailAssets(
+            for: artworkURL,
+            fallbackPrefersDarkAppearance: fallbackPrefersDarkAppearance
+        ).palette
+    }
+
+    func detailAssets(
+        for artworkURL: URL?,
+        fallbackPrefersDarkAppearance: Bool = false
+    ) async -> ArtworkDetailAssets {
         guard let artworkURL else {
             return .fallback(
                 prefersDarkAppearance: fallbackPrefersDarkAppearance
             )
         }
-        if let cachedPalette = cache[artworkURL] {
-            return cachedPalette
+        if let cachedAssets = Self.assetsCache.assets(for: artworkURL) {
+            return cachedAssets
         }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: artworkURL)
+            let requestURL = optimizedArtworkURL(for: artworkURL)
+            let (data, _) = try await URLSession.shared.data(from: requestURL)
             try Task.checkCancellation()
             guard let image = CIImage(
                 data: data,
@@ -60,14 +124,69 @@ actor ArtworkAccentColorProvider {
                 )
             }
 
-            let palette = makeDetailPalette(from: averageColor(of: image))
-            cache[artworkURL] = palette
-            return palette
+            let preparedImage = downsampled(image)
+            let assets = ArtworkDetailAssets(
+                palette: makeDetailPalette(
+                    from: averageColor(of: preparedImage)
+                ),
+                blurredBackdropImage: makeBlurredBackdrop(
+                    from: preparedImage
+                )
+            )
+            Self.assetsCache.insert(assets, for: artworkURL)
+            return assets
         } catch {
             return .fallback(
                 prefersDarkAppearance: fallbackPrefersDarkAppearance
             )
         }
+    }
+
+    private func optimizedArtworkURL(for artworkURL: URL) -> URL {
+        guard artworkURL.host?.hasSuffix(".music.126.net") == true,
+              var components = URLComponents(
+                url: artworkURL,
+                resolvingAgainstBaseURL: false
+              ) else {
+            return artworkURL
+        }
+
+        var queryItems = components.queryItems ?? []
+        queryItems.removeAll { $0.name.caseInsensitiveCompare("param") == .orderedSame }
+        queryItems.append(URLQueryItem(name: "param", value: "160y160"))
+        components.queryItems = queryItems
+        return components.url ?? artworkURL
+    }
+
+    private func downsampled(_ image: CIImage) -> CIImage {
+        let maximumDimension = max(image.extent.width, image.extent.height)
+        guard maximumDimension > 160 else { return image }
+
+        let scale = 160 / maximumDimension
+        let filter = CIFilter.lanczosScaleTransform()
+        filter.inputImage = image
+        filter.scale = Float(scale)
+        filter.aspectRatio = 1
+        return filter.outputImage ?? image
+    }
+
+    private func makeBlurredBackdrop(from image: CIImage) -> CGImage? {
+        let extent = image.extent.integral
+        guard !extent.isEmpty, !extent.isInfinite else { return nil }
+
+        let filter = CIFilter.gaussianBlur()
+        filter.inputImage = image.clampedToExtent()
+        filter.radius = 18
+        guard let outputImage = filter.outputImage?.cropped(to: extent) else {
+            return nil
+        }
+
+        return context.createCGImage(
+            outputImage,
+            from: extent,
+            format: .RGBA8,
+            colorSpace: colorSpace
+        )
     }
 
     private func averageColor(of image: CIImage) -> SIMD3<Double> {

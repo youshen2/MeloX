@@ -7,6 +7,7 @@ struct AlbumDetailView: View {
     @Environment(NeteaseAPI.self) private var api
     @Environment(LibraryStore.self) private var library
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @State private var album: Album?
     @State private var songs: [Song] = []
@@ -16,11 +17,19 @@ struct AlbumDetailView: View {
     @State private var isUpdatingSubscription = false
     @State private var operationError: String?
     @State private var artworkPalette: ArtworkDetailPalette?
+    @State private var blurredBackdropImage: CGImage?
     @State private var searchQuery = ""
 
     init(context: AlbumRouteContext) {
+        let cachedAssets = ArtworkAccentColorProvider.cachedDetailAssets(
+            for: context.picURL.flatMap(URL.init(string:))
+        )
         id = context.id
         initialAlbum = context.albumSummary
+        _artworkPalette = State(initialValue: cachedAssets?.palette)
+        _blurredBackdropImage = State(
+            initialValue: cachedAssets?.blurredBackdropImage
+        )
     }
 
     var body: some View {
@@ -28,13 +37,14 @@ struct AlbumDetailView: View {
             album: displayedAlbum,
             songs: songs,
             palette: resolvedPalette,
+            blurredBackdropImage: blurredBackdropImage,
             searchQuery: searchQuery,
             isLoading: isInitialLoading,
             failureMessage: initialFailureMessage,
             isSubscribed: isSubscribed,
             onToggleSubscription: toggleSubscription,
             onRetry: { reloadToken += 1 },
-            onRefresh: load
+            onRefresh: { await load() }
         )
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -51,16 +61,31 @@ struct AlbumDetailView: View {
         .environment(\.colorScheme, interfaceColorScheme)
         .task(id: reloadToken) {
             guard album == nil else { return }
-            await load()
+            await load(waitingForNavigationTransition: true)
         }
         .task(id: displayedAlbum.artworkURL) {
-            let loadedPalette = await ArtworkAccentColorProvider.shared.detailPalette(
+            let transitionDelay = navigationTransitionDelay()
+            defer { transitionDelay.cancel() }
+
+            let loadedAssets = await ArtworkAccentColorProvider.shared.detailAssets(
                 for: displayedAlbum.artworkURL,
                 fallbackPrefersDarkAppearance: systemColorScheme == .dark
             )
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.35)) {
-                artworkPalette = loadedPalette
+            let backdropAlreadyResolved = blurredBackdropImage != nil
+                || loadedAssets.blurredBackdropImage == nil
+            if artworkPalette == loadedAssets.palette,
+               backdropAlreadyResolved {
+                return
+            }
+            do {
+                try await transitionDelay.value
+            } catch {
+                return
+            }
+            withAnimation(artworkTransitionAnimation) {
+                artworkPalette = loadedAssets.palette
+                blurredBackdropImage = loadedAssets.blurredBackdropImage
             }
         }
         .alert(
@@ -93,6 +118,10 @@ struct AlbumDetailView: View {
 
     private var interfaceColorScheme: ColorScheme {
         resolvedPalette.colorScheme
+    }
+
+    private var artworkTransitionAnimation: Animation? {
+        accessibilityReduceMotion ? nil : .easeOut(duration: 0.18)
     }
 
     private var isInitialLoading: Bool {
@@ -160,10 +189,20 @@ struct AlbumDetailView: View {
         }
     }
 
-    private func load() async {
+    private func load(
+        waitingForNavigationTransition: Bool = false
+    ) async {
+        let transitionDelay = navigationTransitionDelay(
+            isEnabled: waitingForNavigationTransition
+        )
+        defer { transitionDelay.cancel() }
+
         phase = .loading
         do {
-            (album, songs) = try await api.album(id: id)
+            let (loadedAlbum, loadedSongs) = try await api.album(id: id)
+            try await transitionDelay.value
+            album = loadedAlbum
+            songs = loadedSongs
             phase = .loaded
 
             if library.isLoggedIn,
@@ -174,6 +213,17 @@ struct AlbumDetailView: View {
             return
         } catch {
             phase = .failed(error.localizedDescription)
+        }
+    }
+
+    private func navigationTransitionDelay(
+        isEnabled: Bool = true
+    ) -> Task<Void, Error> {
+        Task {
+            guard isEnabled else { return }
+            try await Task.sleep(
+                for: MusicNavigationTransitionTiming.settleDelay
+            )
         }
     }
 }

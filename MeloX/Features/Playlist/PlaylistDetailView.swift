@@ -8,23 +8,39 @@ struct PlaylistDetailView: View {
     @Environment(NeteaseAPI.self) private var api
     @Environment(LibraryStore.self) private var library
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @State private var playlist: Playlist?
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
     @State private var artworkPalette: ArtworkDetailPalette?
+    @State private var blurredBackdropImage: CGImage?
     @State private var searchQuery = ""
 
     init(playlist context: PlaylistRouteContext) {
+        let cachedAssets = ArtworkAccentColorProvider.cachedDetailAssets(
+            for: context.coverURLString.flatMap(URL.init(string:))
+        )
         id = context.id
         initialPlaylist = context.playlistSummary
         prefersToplistLayout = false
+        _artworkPalette = State(initialValue: cachedAssets?.palette)
+        _blurredBackdropImage = State(
+            initialValue: cachedAssets?.blurredBackdropImage
+        )
     }
 
     init(toplist context: PlaylistRouteContext) {
+        let cachedAssets = ArtworkAccentColorProvider.cachedDetailAssets(
+            for: context.coverURLString.flatMap(URL.init(string:))
+        )
         id = context.id
         initialPlaylist = context.playlistSummary
         prefersToplistLayout = true
+        _artworkPalette = State(initialValue: cachedAssets?.palette)
+        _blurredBackdropImage = State(
+            initialValue: cachedAssets?.blurredBackdropImage
+        )
     }
 
     var body: some View {
@@ -32,11 +48,12 @@ struct PlaylistDetailView: View {
             playlist: displayedPlaylist,
             toplistSummary: prefersToplistLayout ? initialPlaylist : nil,
             palette: resolvedPalette,
+            blurredBackdropImage: blurredBackdropImage,
             searchQuery: searchQuery,
             isLoading: isInitialLoading,
             failureMessage: initialFailureMessage,
             onRetry: { reloadToken += 1 },
-            onRefresh: load
+            onRefresh: { await load() }
         )
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -53,16 +70,31 @@ struct PlaylistDetailView: View {
         .environment(\.colorScheme, interfaceColorScheme)
         .task(id: reloadToken) {
             guard playlist == nil else { return }
-            await load()
+            await load(waitingForNavigationTransition: true)
         }
         .task(id: artworkURL) {
-            let loadedPalette = await ArtworkAccentColorProvider.shared.detailPalette(
+            let transitionDelay = navigationTransitionDelay()
+            defer { transitionDelay.cancel() }
+
+            let loadedAssets = await ArtworkAccentColorProvider.shared.detailAssets(
                 for: artworkURL,
                 fallbackPrefersDarkAppearance: systemColorScheme == .dark
             )
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.35)) {
-                artworkPalette = loadedPalette
+            let backdropAlreadyResolved = blurredBackdropImage != nil
+                || loadedAssets.blurredBackdropImage == nil
+            if artworkPalette == loadedAssets.palette,
+               backdropAlreadyResolved {
+                return
+            }
+            do {
+                try await transitionDelay.value
+            } catch {
+                return
+            }
+            withAnimation(artworkTransitionAnimation) {
+                artworkPalette = loadedAssets.palette
+                blurredBackdropImage = loadedAssets.blurredBackdropImage
             }
         }
         .alert(
@@ -99,6 +131,10 @@ struct PlaylistDetailView: View {
 
     private var interfaceColorScheme: ColorScheme {
         resolvedPalette.colorScheme
+    }
+
+    private var artworkTransitionAnimation: Animation? {
+        accessibilityReduceMotion ? nil : .easeOut(duration: 0.18)
     }
 
     private var isInitialLoading: Bool {
@@ -145,15 +181,35 @@ struct PlaylistDetailView: View {
         .sharedBackgroundVisibility(.visible)
     }
 
-    private func load() async {
+    private func load(
+        waitingForNavigationTransition: Bool = false
+    ) async {
+        let transitionDelay = navigationTransitionDelay(
+            isEnabled: waitingForNavigationTransition
+        )
+        defer { transitionDelay.cancel() }
+
         phase = .loading
         do {
-            playlist = try await api.playlist(id: id)
+            let loadedPlaylist = try await api.playlist(id: id)
+            try await transitionDelay.value
+            playlist = loadedPlaylist
             phase = .loaded
         } catch is CancellationError {
             return
         } catch {
             phase = .failed(error.localizedDescription)
+        }
+    }
+
+    private func navigationTransitionDelay(
+        isEnabled: Bool = true
+    ) -> Task<Void, Error> {
+        Task {
+            guard isEnabled else { return }
+            try await Task.sleep(
+                for: MusicNavigationTransitionTiming.settleDelay
+            )
         }
     }
 }
