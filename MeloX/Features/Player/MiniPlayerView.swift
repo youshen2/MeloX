@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MiniPlayerView: View {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @Environment(PlayerStore.self) private var player
 
@@ -42,6 +43,20 @@ struct MiniPlayerView: View {
                     } label: {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                             .font(.title3.weight(.semibold))
+                            .contentTransition(
+                                accessibilityReduceMotion
+                                    ? .identity
+                                    : .symbolEffect(
+                                        .replace.downUp.wholeSymbol,
+                                        options: .speed(1.25)
+                                    )
+                            )
+                            .animation(
+                                accessibilityReduceMotion
+                                    ? nil
+                                    : .snappy(duration: 0.28, extraBounce: 0),
+                                value: player.isPlaying
+                            )
                             .frame(width: 36, height: 36)
                             .contentShape(.circle)
                     }

@@ -81,6 +81,7 @@ struct NowPlayingProgressControl: View {
 }
 
 struct NowPlayingTransportControls: View {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
 
     var body: some View {
@@ -111,6 +112,20 @@ struct NowPlayingTransportControls: View {
                     } else {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 48, weight: .medium))
+                            .contentTransition(
+                                accessibilityReduceMotion
+                                    ? .identity
+                                    : .symbolEffect(
+                                        .replace.downUp.wholeSymbol,
+                                        options: .speed(1.25)
+                                    )
+                            )
+                            .animation(
+                                accessibilityReduceMotion
+                                    ? nil
+                                    : .snappy(duration: 0.28, extraBounce: 0),
+                                value: player.isPlaying
+                            )
                     }
                 }
                 .frame(width: 64, height: 64)
