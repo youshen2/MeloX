@@ -21,6 +21,7 @@ struct NowPlayingLyricsPage: View {
     @State private var scrollPositionID: LyricLine.ID?
     @State private var isBrowsingLyrics = false
     @State private var browsingGeneration = 0
+    @State private var playbackFocusRequestGeneration = 0
     @State private var isPreparingInitialFocus = true
     @State private var visualHighlightedLyricID: LyricLine.ID?
     @State private var visualCascadeFocusLyricID: LyricLine.ID?
@@ -289,12 +290,15 @@ struct NowPlayingLyricsPage: View {
                     visualCascadeFocusLyricID = nil
                     lyricMovementOffsetByID.removeAll()
                 }
+                .onChange(of: player.seekRevision) { _, _ in
+                    requestPlaybackFocus()
+                }
+                .onChange(of: player.isPlaying) { wasPlaying, isPlaying in
+                    guard !wasPlaying, isPlaying else { return }
+                    requestPlaybackFocus()
+                }
                 .onAppear {
                     synchronizeFocusIfNeeded()
-                }
-                .task {
-                    await Task.yield()
-                    isPreparingInitialFocus = false
                 }
                 .task(id: focusMovementTrigger) {
                     await cascadeMoveFocus(
@@ -302,6 +306,8 @@ struct NowPlayingLyricsPage: View {
                         viewportHeight: proxy.size.height,
                         preloadLineCount: 2
                     )
+                    guard !Task.isCancelled else { return }
+                    isPreparingInitialFocus = false
                 }
                 .onDisappear {
                     browsingGeneration += 1
@@ -331,7 +337,8 @@ struct NowPlayingLyricsPage: View {
     private var focusMovementTrigger: LyricFocusMovementTrigger {
         LyricFocusMovementTrigger(
             highlightedLyricID: highlightedLyricID,
-            isBrowsingLyrics: isBrowsingLyrics
+            isBrowsingLyrics: isBrowsingLyrics,
+            playbackFocusRequestGeneration: playbackFocusRequestGeneration
         )
     }
 
@@ -370,13 +377,13 @@ struct NowPlayingLyricsPage: View {
     private func waitForLyricFrame(
         for id: LyricLine.ID
     ) async -> CGRect? {
-        for attempt in 0..<10 {
+        for attempt in 0..<30 {
             if let frame = lyricFrameByID[id] {
                 return frame
             }
-            guard !Task.isCancelled, attempt < 9 else { return nil }
+            guard !Task.isCancelled, attempt < 29 else { return nil }
             do {
-                try await Task.sleep(for: .milliseconds(8))
+                try await Task.sleep(for: .milliseconds(16))
             } catch {
                 return nil
             }
@@ -389,17 +396,17 @@ struct NowPlayingLyricsPage: View {
         viewportAnchorY: CGFloat,
         focusPosition: CGFloat
     ) async -> Bool {
-        for attempt in 0..<10 {
+        for attempt in 0..<30 {
             if let frame = lyricFrameByID[id] {
                 let preparedAnchorY = frame.minY
                     + frame.height * focusPosition
-                if abs(preparedAnchorY - viewportAnchorY) <= 4 {
+                if abs(preparedAnchorY - viewportAnchorY) <= 2 {
                     return true
                 }
             }
-            guard !Task.isCancelled, attempt < 9 else { return false }
+            guard !Task.isCancelled, attempt < 29 else { return false }
             do {
-                try await Task.sleep(for: .milliseconds(8))
+                try await Task.sleep(for: .milliseconds(16))
             } catch {
                 return false
             }
@@ -412,7 +419,15 @@ struct NowPlayingLyricsPage: View {
         viewportHeight: CGFloat,
         preloadLineCount: Int
     ) async {
-        guard let highlightedLyricID else { return }
+        guard let highlightedLyricID else {
+            guard let firstLyricID = lyrics.first?.id else { return }
+            await ensureFocusAlignment(
+                to: firstLyricID,
+                viewportHeight: viewportHeight,
+                animated: false
+            )
+            return
+        }
         guard !isBrowsingLyrics else {
             visualHighlightedLyricID = highlightedLyricID
             visualCascadeFocusLyricID = highlightedLyricID
@@ -421,26 +436,40 @@ struct NowPlayingLyricsPage: View {
         guard visualCascadeFocusLyricID != highlightedLyricID else {
             visualHighlightedLyricID = highlightedLyricID
             visualCascadeFocusLyricID = highlightedLyricID
+            await ensureFocusAlignment(
+                to: highlightedLyricID,
+                viewportHeight: viewportHeight,
+                animated: !isPreparingInitialFocus
+            )
             return
         }
         guard isAdjacentFocusTransition(
             from: visualCascadeFocusLyricID ?? scrollPositionID,
             to: highlightedLyricID
         ) else {
-            await moveFocusWithoutCascade(to: highlightedLyricID)
+            await moveFocusWithoutCascade(
+                to: highlightedLyricID,
+                viewportHeight: viewportHeight
+            )
             return
         }
 
         guard !accessibilityReduceMotion,
               settings.lyricsFocusCascadeDelay > 0 else {
-            await moveFocusWithoutCascade(to: highlightedLyricID)
+            await moveFocusWithoutCascade(
+                to: highlightedLyricID,
+                viewportHeight: viewportHeight
+            )
             return
         }
         guard let nextFocusFrame = await waitForLyricFrame(
             for: highlightedLyricID
         ) else {
             guard !Task.isCancelled else { return }
-            await moveFocusWithoutCascade(to: highlightedLyricID)
+            await moveFocusWithoutCascade(
+                to: highlightedLyricID,
+                viewportHeight: viewportHeight
+            )
             return
         }
 
@@ -498,6 +527,11 @@ struct NowPlayingLyricsPage: View {
         }
         guard destinationIsPrepared else {
             completeCascadeMovement(to: highlightedLyricID)
+            await ensureFocusAlignment(
+                to: highlightedLyricID,
+                viewportHeight: viewportHeight,
+                animated: false
+            )
             return
         }
 
@@ -647,8 +681,15 @@ struct NowPlayingLyricsPage: View {
         return abs(nextIndex - currentIndex) == 1
     }
 
-    private func moveFocusWithoutCascade(to id: LyricLine.ID) async {
-        moveFocus(to: id, animated: true)
+    private func moveFocusWithoutCascade(
+        to id: LyricLine.ID,
+        viewportHeight: CGFloat
+    ) async {
+        await ensureFocusAlignment(
+            to: id,
+            viewportHeight: viewportHeight,
+            animated: true
+        )
         await Task.yield()
         guard !Task.isCancelled else { return }
         withAnimation(
@@ -811,6 +852,12 @@ struct NowPlayingLyricsPage: View {
         }
     }
 
+    private func requestPlaybackFocus() {
+        browsingGeneration += 1
+        isBrowsingLyrics = false
+        playbackFocusRequestGeneration += 1
+    }
+
     private func synchronizeFocusIfNeeded() {
         let existingFocusIsValid = scrollPositionID.map { focusedID in
             lyrics.contains { $0.id == focusedID }
@@ -861,9 +908,42 @@ struct NowPlayingLyricsPage: View {
             update()
         }
     }
+
+    private func ensureFocusAlignment(
+        to id: LyricLine.ID,
+        viewportHeight: CGFloat,
+        animated: Bool
+    ) async {
+        let viewportAnchorY = viewportHeight * lyricsFocusPosition
+
+        for attempt in 0..<3 {
+            guard !Task.isCancelled else { return }
+
+            if scrollPositionID == id || attempt > 0 {
+                var resetTransaction = Transaction(animation: nil)
+                resetTransaction.disablesAnimations = true
+                withTransaction(resetTransaction) {
+                    scrollPositionID = nil
+                }
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+            }
+
+            moveFocus(to: id, animated: animated && attempt == 0)
+            let isAligned = await waitForPreparedFocus(
+                id: id,
+                viewportAnchorY: viewportAnchorY,
+                focusPosition: lyricsFocusPosition
+            )
+            if isAligned {
+                return
+            }
+        }
+    }
 }
 
 private struct LyricFocusMovementTrigger: Hashable {
     let highlightedLyricID: LyricLine.ID?
     let isBrowsingLyrics: Bool
+    let playbackFocusRequestGeneration: Int
 }

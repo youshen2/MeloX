@@ -8,6 +8,7 @@ final class PlayerStore {
     private(set) var isPlaying = false
     private(set) var progress: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
+    private(set) var seekRevision = 0
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var volume: Double = 1
@@ -178,6 +179,7 @@ final class PlayerStore {
         let clamped = max(0, min(seconds, maximum))
         engine.seek(to: clamped)
         progress = clamped
+        seekRevision += 1
         lastProgressUpdateDate = Date()
         updateNowPlayingState()
         persistSnapshot()

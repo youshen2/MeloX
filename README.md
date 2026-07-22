@@ -26,6 +26,13 @@
 
 ### 播放器
 
+> PS：歌词已实现和Apple Music类似的动效，
+> 包括但不限于：
+> - 错峰歌词
+> - 逐字辉光
+> - 逐字抬升
+> 等
+
 <p align="center">
   <img src="docs/screenshots/4.png" alt="歌曲详情" width="20%">
   <img src="docs/screenshots/5.png" alt="歌词页" width="20%">
