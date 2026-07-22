@@ -85,33 +85,15 @@ struct AboutView: View {
             }
 
             Section {
-                ForEach(acknowledgements) { project in
-                    Link(destination: project.url) {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(project.name)
-                                    .foregroundStyle(.primary)
-
-                                Text(project.contribution)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer(minLength: 8)
-
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                        }
-                        .contentShape(.rect)
-                    }
-                    .accessibilityHint("在浏览器中打开 GitHub 项目")
+                NavigationLink {
+                    ProjectLicensesView()
+                } label: {
+                    Label("项目与许可", systemImage: "doc.text")
                 }
             } header: {
-                Text("特别鸣谢")
+                Text("开源与许可")
             } footer: {
-                Text("感谢以上项目为 MeloX 的歌词解析、逐字渲染、文字PV视觉编排和网易云播放器实现提供方法参考。")
+                Text("查看 MeloX、参考项目、内置资源和 PV Tool 的许可与归属说明。")
             }
 
             Section("声明") {
@@ -184,28 +166,6 @@ struct AboutView: View {
         }
     }
 
-    private let acknowledgements = [
-        AcknowledgedProject(
-            name: "jayfunc/BetterLyrics",
-            contribution: "逐字歌词渲染、光效与动效参考",
-            url: URL(string: "https://github.com/jayfunc/BetterLyrics")!
-        ),
-        AcknowledgedProject(
-            name: "WXRIW/Lyricify-Lyrics-Helper",
-            contribution: "网易云 YRC 逐字歌词解析参考",
-            url: URL(string: "https://github.com/WXRIW/Lyricify-Lyrics-Helper")!
-        ),
-        AcknowledgedProject(
-            name: "qier222/YesPlayMusic",
-            contribution: "网易云接口与播放器实现参考",
-            url: URL(string: "https://github.com/qier222/YesPlayMusic")!
-        ),
-        AcknowledgedProject(
-            name: "DanteAlighieri13210914/pv-tool",
-            contribution: "文字PV模板与效果的原始实现 · Non-Commercial License",
-            url: URL(string: "https://github.com/DanteAlighieri13210914/pv-tool")!
-        ),
-    ]
 }
 
 private struct AppUpdateAlert: Identifiable {
@@ -213,12 +173,4 @@ private struct AppUpdateAlert: Identifiable {
     let title: String
     let message: String
     let releaseURL: URL?
-}
-
-private struct AcknowledgedProject: Identifiable {
-    let name: String
-    let contribution: String
-    let url: URL
-
-    var id: String { name }
 }

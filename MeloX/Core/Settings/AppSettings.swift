@@ -41,6 +41,7 @@ final class AppSettings {
     static let defaultLyricsFocusColorLeadTime = 0.06
     static let lyricsFocusColorLeadTimeRange = 0.0...0.1
     private enum Key {
+        static let hasCompletedOnboarding = "melox.hasCompletedOnboarding"
         static let cookie = "musicCookie"
         static let quality = "musicQuality"
         static let area = "musicArea"
@@ -78,6 +79,15 @@ final class AppSettings {
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
+    }
+
+    var hasCompletedOnboarding: Bool {
+        didSet {
+            defaults.set(
+                hasCompletedOnboarding,
+                forKey: Key.hasCompletedOnboarding
+            )
+        }
     }
 
     var cookie: String {
@@ -269,6 +279,9 @@ final class AppSettings {
         self.defaults = defaults
         skylineLyrics = SkylineLyricsPreferences(defaults: defaults)
         textPV = TextPVPreferences(defaults: defaults)
+        hasCompletedOnboarding = defaults.bool(
+            forKey: Key.hasCompletedOnboarding
+        )
         cookie = defaults.string(forKey: Key.cookie) ?? ""
         quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high
         musicArea = defaults.string(forKey: Key.area) ?? "ALL"
@@ -390,6 +403,10 @@ final class AppSettings {
 
     func clearAccount() {
         cookie = ""
+    }
+
+    func completeOnboarding() {
+        hasCompletedOnboarding = true
     }
 
     func resetPlayerSettings() {

@@ -18,6 +18,16 @@ struct ContentView: View {
     private let playerTransitionID = "now-playing"
 
     var body: some View {
+        Group {
+            if settings.hasCompletedOnboarding {
+                mainExperience
+            } else {
+                OnboardingView()
+            }
+        }
+    }
+
+    private var mainExperience: some View {
         playerAwareTabView
             .environment(
                 \.openMusicRoute,
