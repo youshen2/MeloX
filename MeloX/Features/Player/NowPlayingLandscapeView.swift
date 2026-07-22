@@ -13,7 +13,6 @@ struct NowPlayingLandscapeView: View {
     let highlightedLyricID: LyricLine.ID?
     let artworkNamespace: Namespace.ID
     let onDismiss: () -> Void
-    let onShowAudioOutputHelp: () -> Void
 
     @State private var showsLyricsControls = true
     @State private var showsSkylineLyrics = false
@@ -111,10 +110,7 @@ struct NowPlayingLandscapeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if page != .lyrics || showsLyricsControls {
-                NowPlayingPageSelector(
-                    page: $page,
-                    onShowAudioOutputHelp: onShowAudioOutputHelp
-                )
+                NowPlayingPageSelector(page: $page)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }

@@ -64,6 +64,13 @@ struct PlayerSettingsView: View {
             }
 
             Section {
+                Picker("歌词样式", selection: $settings.lyricsStyle) {
+                    ForEach(LyricsStyle.allCases) { style in
+                        Label(style.title, systemImage: style.systemImage)
+                            .tag(style)
+                    }
+                }
+
                 valueSlider(
                     title: "字体大小",
                     value: $settings.lyricsFontSize,
@@ -72,49 +79,53 @@ struct PlayerSettingsView: View {
                     valueText: "\(Int(settings.lyricsFontSize)) 磅"
                 )
 
-                valueSlider(
-                    title: "当前歌词大小",
-                    value: $settings.lyricsCurrentLineScale,
-                    range: AppSettings.lyricsCurrentLineScaleRange,
-                    step: 0.01,
-                    valueText: "\(Int((settings.lyricsCurrentLineScale * 100).rounded()))%"
-                )
+                if settings.lyricsStyle == .appleMusic {
+                    valueSlider(
+                        title: "当前歌词大小",
+                        value: $settings.lyricsCurrentLineScale,
+                        range: AppSettings.lyricsCurrentLineScaleRange,
+                        step: 0.01,
+                        valueText: "\(Int((settings.lyricsCurrentLineScale * 100).rounded()))%"
+                    )
 
-                valueSlider(
-                    title: "歌词行距",
-                    value: $settings.lyricsLineSpacing,
-                    range: 12...36,
-                    step: 1,
-                    valueText: "\(Int(settings.lyricsLineSpacing))"
-                )
+                    valueSlider(
+                        title: "歌词行距",
+                        value: $settings.lyricsLineSpacing,
+                        range: 12...36,
+                        step: 1,
+                        valueText: "\(Int(settings.lyricsLineSpacing))"
+                    )
 
-                valueSlider(
-                    title: "模糊强度",
-                    value: $settings.lyricsBlurIntensity,
-                    range: 0...2,
-                    step: 0.1,
-                    valueText: settings.lyricsBlurIntensity.formatted(.number.precision(.fractionLength(1)))
-                )
+                    valueSlider(
+                        title: "模糊强度",
+                        value: $settings.lyricsBlurIntensity,
+                        range: 0...2,
+                        step: 0.1,
+                        valueText: settings.lyricsBlurIntensity.formatted(
+                            .number.precision(.fractionLength(1))
+                        )
+                    )
 
-                valueSlider(
-                    title: "非焦点歌词变暗",
-                    value: $settings.lyricsDimAmount,
-                    range: 0...1,
-                    step: 0.1,
-                    valueText: "\(Int(settings.lyricsDimAmount * 100))%"
-                )
+                    valueSlider(
+                        title: "非焦点歌词变暗",
+                        value: $settings.lyricsDimAmount,
+                        range: 0...1,
+                        step: 0.1,
+                        valueText: "\(Int(settings.lyricsDimAmount * 100))%"
+                    )
 
-                valueSlider(
-                    title: "焦点垂直位置",
-                    value: $settings.lyricsFocusPosition,
-                    range: 0.2...0.5,
-                    step: 0.01,
-                    valueText: "距顶部 \(Int(settings.lyricsFocusPosition * 100))%"
-                )
+                    valueSlider(
+                        title: "焦点垂直位置",
+                        value: $settings.lyricsFocusPosition,
+                        range: 0.2...0.5,
+                        step: 0.01,
+                        valueText: "距顶部 \(Int(settings.lyricsFocusPosition * 100))%"
+                    )
+                }
             } header: {
                 Text("歌词外观")
             } footer: {
-                Text("歌词字体默认 26 磅，当前歌词默认放大到 120%；升格为当前歌词时会平滑放大。放大比例可在 100%～150% 之间调整，设为 100% 可关闭放大；排版会预留放大后的安全宽度，避免长歌词超出屏幕。焦点的上一句会轻微模糊，下一句只保留极轻微模糊；逐字歌词中尚未播放的文字也会随距离渐进模糊。强度为 0 时关闭全部模糊效果。")
+                Text("\(settings.lyricsStyle.title)：\(settings.lyricsStyle.description)。播放器底部也可以快速切换；两种样式都会沿用字体与翻译设置，逐字动效仅用于 Apple Music 样式。")
             }
 
             Section {

@@ -54,6 +54,12 @@
   <img src="docs/screenshots/9.png" alt="全屏天际歌词" width="60%">
 </p>
 
+### EVA样式歌词（？）
+
+<p align="center">
+  <img src="docs/screenshots/10.png" alt="EVA样式歌词" width="60%">
+</p>
+
 ## 功能
 
 - 首页内容：编辑推荐、每日推荐、推荐歌单、热门排行、新碟上架和热门歌手。

@@ -41,6 +41,7 @@ final class AppSettings {
         static let playerBackgroundBlur = "playerBackgroundBlur"
         static let playerBackgroundSaturation = "playerBackgroundSaturation"
         static let shrinksPausedArtwork = "shrinksPausedArtwork"
+        static let lyricsStyle = "lyricsStyle"
         static let lyricsFontSize = "lyricsFontSize"
         static let lyricsCurrentLineScale = "lyricsCurrentLineScale"
         static let lyricsLineSpacing = "lyricsLineSpacing"
@@ -95,6 +96,10 @@ final class AppSettings {
 
     var shrinksPausedArtwork: Bool {
         didSet { defaults.set(shrinksPausedArtwork, forKey: Key.shrinksPausedArtwork) }
+    }
+
+    var lyricsStyle: LyricsStyle {
+        didSet { defaults.set(lyricsStyle.rawValue, forKey: Key.lyricsStyle) }
     }
 
     var lyricsFontSize: Double {
@@ -236,6 +241,10 @@ final class AppSettings {
         playerBackgroundBlur = defaults.object(forKey: Key.playerBackgroundBlur) as? Double ?? 90
         playerBackgroundSaturation = defaults.object(forKey: Key.playerBackgroundSaturation) as? Double ?? 0.82
         shrinksPausedArtwork = defaults.object(forKey: Key.shrinksPausedArtwork) as? Bool ?? true
+        let storedLyricsStyle = defaults.string(forKey: Key.lyricsStyle) ?? ""
+        lyricsStyle = storedLyricsStyle == "spotlight"
+            ? .eva
+            : LyricsStyle(rawValue: storedLyricsStyle) ?? .appleMusic
         lyricsFontSize = defaults.object(forKey: Key.lyricsFontSize) as? Double
             ?? Self.defaultLyricsFontSize
         let storedCurrentLineScale = defaults.object(
@@ -306,6 +315,7 @@ final class AppSettings {
         playerBackgroundBlur = 90
         playerBackgroundSaturation = 0.82
         shrinksPausedArtwork = true
+        lyricsStyle = .appleMusic
         lyricsFontSize = Self.defaultLyricsFontSize
         lyricsCurrentLineScale = Self.defaultLyricsCurrentLineScale
         lyricsLineSpacing = 24

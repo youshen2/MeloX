@@ -17,7 +17,6 @@ struct NowPlayingView: View {
     @State private var lyrics: [LyricLine] = []
     @State private var lyricError: String?
     @State private var highlightedLyricID: LyricLine.ID?
-    @State private var showsAudioOutputHelp = false
     @Namespace private var pageArtworkNamespace
 
     init(initialPage: NowPlayingPage = .artwork) {
@@ -29,6 +28,11 @@ struct NowPlayingView: View {
             ZStack {
                 NowPlayingBackground(artworkURL: player.currentSong?.album?.artworkURL)
 
+                if page == .lyrics, settings.lyricsStyle == .eva {
+                    Color.black
+                        .ignoresSafeArea()
+                }
+
                 if let song = player.currentSong {
                     if proxy.size.width > proxy.size.height {
                         NowPlayingLandscapeView(
@@ -38,10 +42,7 @@ struct NowPlayingView: View {
                             lyricError: lyricError,
                             highlightedLyricID: highlightedLyricID,
                             artworkNamespace: pageArtworkNamespace,
-                            onDismiss: { dismiss() },
-                            onShowAudioOutputHelp: {
-                                showsAudioOutputHelp = true
-                            }
+                            onDismiss: { dismiss() }
                         )
                     } else {
                         portraitContent(for: song)
@@ -53,11 +54,6 @@ struct NowPlayingView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .alert("音频输出", isPresented: $showsAudioOutputHelp) {
-            Button("好", role: .cancel) {}
-        } message: {
-            Text("请从控制中心选择 AirPlay 或蓝牙播放设备。")
-        }
         .task(id: player.currentSong?.id) {
             await loadLyrics()
         }
@@ -83,12 +79,7 @@ struct NowPlayingView: View {
             NowPlayingProgressControl(song: song)
             NowPlayingTransportControls()
             NowPlayingVolumeControl()
-            NowPlayingPageSelector(
-                page: $page,
-                onShowAudioOutputHelp: {
-                    showsAudioOutputHelp = true
-                }
-            )
+            NowPlayingPageSelector(page: $page)
         }
         .padding(.horizontal, 28)
         .safeAreaPadding(.top, 4)

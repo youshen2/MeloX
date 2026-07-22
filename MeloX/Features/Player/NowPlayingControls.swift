@@ -165,8 +165,9 @@ struct NowPlayingVolumeControl: View {
 }
 
 struct NowPlayingPageSelector: View {
+    @Environment(AppSettings.self) private var settings
+
     @Binding var page: NowPlayingPage
-    let onShowAudioOutputHelp: () -> Void
 
     var body: some View {
         HStack {
@@ -180,14 +181,24 @@ struct NowPlayingPageSelector: View {
 
             Spacer()
 
-            Button(action: onShowAudioOutputHelp) {
-                Image(systemName: "airplayaudio")
+            Menu {
+                Picker("歌词样式", selection: lyricsStyleBinding) {
+                    ForEach(LyricsStyle.allCases) { style in
+                        Label(style.title, systemImage: style.systemImage)
+                            .tag(style)
+                    }
+                }
+            } label: {
+                Image(systemName: "textformat.size")
                     .font(.title3)
                     .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.12), in: .circle)
                     .contentShape(.circle)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("音频输出")
+            .accessibilityLabel("歌词样式")
+            .accessibilityValue(settings.lyricsStyle.title)
+            .accessibilityHint("轻点切换歌词样式")
 
             Spacer()
 
@@ -201,6 +212,18 @@ struct NowPlayingPageSelector: View {
         }
         .foregroundStyle(.white.opacity(0.72))
         .frame(height: 50)
+    }
+
+    private var lyricsStyleBinding: Binding<LyricsStyle> {
+        Binding(
+            get: { settings.lyricsStyle },
+            set: { style in
+                settings.lyricsStyle = style
+                withAnimation(.smooth(duration: 0.3)) {
+                    page = .lyrics
+                }
+            }
+        )
     }
 
     private func pageButton(
