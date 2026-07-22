@@ -6,6 +6,7 @@ struct NowPlayingLandscapeView: View {
     @Environment(AppSettings.self) private var settings
 
     @Binding var page: NowPlayingPage
+    @Binding var showsLyricsControls: Bool
 
     let song: Song
     let lyrics: [LyricLine]
@@ -14,7 +15,6 @@ struct NowPlayingLandscapeView: View {
     let artworkNamespace: Namespace.ID
     let onDismiss: () -> Void
 
-    @State private var showsLyricsControls = true
     @State private var showsSkylineLyrics = false
 
     var body: some View {

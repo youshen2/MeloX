@@ -52,7 +52,6 @@ struct NowPlayingLyricsPage: View {
                 .transition(.opacity)
         }
         .padding(.bottom, presentation == .portrait ? 12 : 0)
-        .keepsScreenAwake(settings.lyricsKeepsScreenAwake)
         .animation(
             accessibilityReduceMotion ? nil : .smooth(duration: 0.3),
             value: settings.lyricsStyle

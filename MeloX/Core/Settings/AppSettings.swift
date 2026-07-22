@@ -25,7 +25,9 @@ enum MusicQuality: String, CaseIterable, Identifiable {
 @Observable
 final class AppSettings {
     static let defaultLyricsFontSize = 26.0
-    static let defaultLyricsCurrentLineScale = 1.2
+    static let defaultLyricsCurrentLineScale = 1.3
+    static let defaultLyricsLineSpacing = 26.0
+    static let defaultLyricsFocusPosition = 0.3
     static let lyricsCurrentLineScaleRange = 1.0...1.5
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
@@ -63,7 +65,8 @@ final class AppSettings {
         static let lyricsFocusColorLeadTime = "lyricsFocusColorLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsRefreshRate = "lyricsRefreshRate"
-        static let lyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
+        static let playerScreenAwakeMode = "playerScreenAwakeMode"
+        static let legacyLyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
@@ -201,8 +204,13 @@ final class AppSettings {
         didSet { defaults.set(lyricsRefreshRate.rawValue, forKey: Key.lyricsRefreshRate) }
     }
 
-    var lyricsKeepsScreenAwake: Bool {
-        didSet { defaults.set(lyricsKeepsScreenAwake, forKey: Key.lyricsKeepsScreenAwake) }
+    var playerScreenAwakeMode: PlayerScreenAwakeMode {
+        didSet {
+            defaults.set(
+                playerScreenAwakeMode.rawValue,
+                forKey: Key.playerScreenAwakeMode
+            )
+        }
     }
 
     var rememberNowPlayingPage: Bool {
@@ -257,7 +265,8 @@ final class AppSettings {
             ),
             Self.lyricsCurrentLineScaleRange.upperBound
         )
-        lyricsLineSpacing = defaults.object(forKey: Key.lyricsLineSpacing) as? Double ?? 24
+        lyricsLineSpacing = defaults.object(forKey: Key.lyricsLineSpacing) as? Double
+            ?? Self.defaultLyricsLineSpacing
         lyricsBlurIntensity = defaults.object(forKey: Key.lyricsBlurIntensity) as? Double ?? 1
         lyricsDimAmount = defaults.object(forKey: Key.lyricsDimAmount) as? Double ?? 1
         lyricsTapToSeek = defaults.object(forKey: Key.lyricsTapToSeek) as? Bool ?? true
@@ -270,7 +279,8 @@ final class AppSettings {
         lyricsTranslationOpacity = defaults.object(forKey: Key.lyricsTranslationOpacity) as? Double ?? 0.66
         lyricsAutoFollow = defaults.object(forKey: Key.lyricsAutoFollow) as? Bool ?? true
         lyricsFollowDelay = defaults.object(forKey: Key.lyricsFollowDelay) as? Double ?? 3
-        lyricsFocusPosition = defaults.object(forKey: Key.lyricsFocusPosition) as? Double ?? 0.34
+        lyricsFocusPosition = defaults.object(forKey: Key.lyricsFocusPosition) as? Double
+            ?? Self.defaultLyricsFocusPosition
         let storedFocusCascadeDelay = defaults.object(
             forKey: Key.lyricsFocusCascadeDelay
         ) as? Double ?? Self.defaultLyricsFocusCascadeDelay
@@ -298,8 +308,20 @@ final class AppSettings {
         lyricsRefreshRate = LyricsRefreshRate(
             rawValue: defaults.object(forKey: Key.lyricsRefreshRate) as? Int ?? 0
         ) ?? .defaultValue
-        lyricsKeepsScreenAwake = defaults.object(forKey: Key.lyricsKeepsScreenAwake) as? Bool
-            ?? true
+        if let storedScreenAwakeMode = defaults.string(
+            forKey: Key.playerScreenAwakeMode
+        ), let screenAwakeMode = PlayerScreenAwakeMode(
+            rawValue: storedScreenAwakeMode
+        ) {
+            playerScreenAwakeMode = screenAwakeMode
+        } else {
+            let legacyLyricsKeepsScreenAwake = defaults.object(
+                forKey: Key.legacyLyricsKeepsScreenAwake
+            ) as? Bool ?? true
+            playerScreenAwakeMode = legacyLyricsKeepsScreenAwake
+                ? .lyrics
+                : .disabled
+        }
         rememberNowPlayingPage = defaults.object(forKey: Key.rememberNowPlayingPage) as? Bool ?? false
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
@@ -318,7 +340,7 @@ final class AppSettings {
         lyricsStyle = .appleMusic
         lyricsFontSize = Self.defaultLyricsFontSize
         lyricsCurrentLineScale = Self.defaultLyricsCurrentLineScale
-        lyricsLineSpacing = 24
+        lyricsLineSpacing = Self.defaultLyricsLineSpacing
         lyricsBlurIntensity = 1
         lyricsDimAmount = 1
         lyricsTapToSeek = true
@@ -331,13 +353,13 @@ final class AppSettings {
         lyricsTranslationOpacity = 0.66
         lyricsAutoFollow = true
         lyricsFollowDelay = 3
-        lyricsFocusPosition = 0.34
+        lyricsFocusPosition = Self.defaultLyricsFocusPosition
         lyricsFocusCascadeDelay = Self.defaultLyricsFocusCascadeDelay
         lyricsFocusCascadeBounceEnabled = Self.defaultLyricsFocusCascadeBounceEnabled
         lyricsFocusColorLeadTime = Self.defaultLyricsFocusColorLeadTime
         lyricsAdvanceTime = 0.2
         lyricsRefreshRate = .defaultValue
-        lyricsKeepsScreenAwake = true
+        playerScreenAwakeMode = .lyrics
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"
         previousRestartsCurrentSong = true

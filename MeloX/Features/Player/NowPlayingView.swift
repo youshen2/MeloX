@@ -39,6 +39,7 @@ struct NowPlayingView: View {
                     if proxy.size.width > proxy.size.height {
                         NowPlayingLandscapeView(
                             page: $page,
+                            showsLyricsControls: $showsLyricsControls,
                             song: song,
                             lyrics: lyrics,
                             lyricError: lyricError,
@@ -55,6 +56,7 @@ struct NowPlayingView: View {
                 }
             }
         }
+        .keepsScreenAwake(keepsPlayerScreenAwake)
         .preferredColorScheme(.dark)
         .task(id: player.currentSong?.id) {
             await loadLyrics()
@@ -114,6 +116,19 @@ struct NowPlayingView: View {
 
     private var hidesLyricsControls: Bool {
         page == .lyrics && !showsLyricsControls
+    }
+
+    private var keepsPlayerScreenAwake: Bool {
+        switch settings.playerScreenAwakeMode {
+        case .disabled:
+            false
+        case .player:
+            true
+        case .lyrics:
+            page == .lyrics
+        case .hiddenLyricsInterface:
+            hidesLyricsControls
+        }
     }
 
     private var usesExpandedAppleMusicLyricsLayout: Bool {

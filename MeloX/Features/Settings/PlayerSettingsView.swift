@@ -220,8 +220,21 @@ struct PlayerSettingsView: View {
             }
 
             Section {
-                Toggle("歌词页屏幕常亮", isOn: $settings.lyricsKeepsScreenAwake)
+                Picker(
+                    "屏幕常亮",
+                    selection: $settings.playerScreenAwakeMode
+                ) {
+                    ForEach(PlayerScreenAwakeMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+            } header: {
+                Text("屏幕常亮")
+            } footer: {
+                Text("用于阻止系统自动锁屏。天际歌词继续使用其独立的屏幕常亮设置。")
+            }
 
+            Section {
                 Toggle("双击歌词跳转", isOn: $settings.lyricsTapToSeek)
 
                 valueSlider(
@@ -246,7 +259,7 @@ struct PlayerSettingsView: View {
             } header: {
                 Text("歌词交互")
             } footer: {
-                Text("屏幕常亮仅在普通歌词页可见时生效。提前量会让歌词比歌曲时间更早进入播放焦点；仅在启用恢复跟随后才会在手动浏览后返回播放位置。")
+                Text("提前量会让歌词比歌曲时间更早进入播放焦点；仅在启用恢复跟随后才会在手动浏览后返回播放位置。")
             }
 
             Section {

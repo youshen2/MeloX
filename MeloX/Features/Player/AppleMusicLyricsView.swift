@@ -2,8 +2,8 @@ import SwiftUI
 
 struct AppleMusicLyricsView: View {
     private static let bottomPreloadLineCount = 2
-    private static let expandedBottomDistanceScale: CGFloat = 0.68
-    private static let expandedBottomBlurScale: CGFloat = 0.55
+    nonisolated private static let expandedBottomDistanceScale: CGFloat = 0.68
+    nonisolated private static let expandedBottomBlurScale: CGFloat = 0.55
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
