@@ -24,16 +24,24 @@ enum MusicQuality: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class AppSettings {
-    static let defaultLyricsFontSize = 26.0
-    static let defaultLyricsCurrentLineScale = 1.3
-    static let defaultLyricsLineSpacing = 26.0
-    static let defaultLyricsFocusPosition = 0.3
+    static let defaultLyricsFontSize = 25.0
+    static let defaultLyricsCurrentLineScale = 1.2
+    static let defaultLyricsLineSpacing = 27.0
+    static let defaultLyricsBlurIntensity = 0.8
+    static let defaultLyricsDimAmount = 1.0
+    static let defaultLyricsFocusPosition = 0.25
+    static let lyricsFocusPositionRange = 0.05...0.8
     static let lyricsCurrentLineScaleRange = 1.0...1.5
+    static let defaultLyricsDistanceBlurScale = 0.65
+    static let defaultLyricsHiddenInterfaceBlurScale = 0.6
+    static let lyricsDistanceBlurScaleRange = 0.0...1.5
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
     static let defaultLyricsFocusCascadeBounceEnabled = true
     static let defaultLyricsFocusColorLeadTime = 0.06
     static let lyricsFocusColorLeadTimeRange = 0.0...0.1
+    static let defaultTextPV1MotionIntensity = 1.0
+    static let textPV1MotionIntensityRange = 0.5...1.5
 
     private enum Key {
         static let cookie = "musicCookie"
@@ -48,6 +56,8 @@ final class AppSettings {
         static let lyricsCurrentLineScale = "lyricsCurrentLineScale"
         static let lyricsLineSpacing = "lyricsLineSpacing"
         static let lyricsBlurIntensity = "lyricsBlurIntensity"
+        static let lyricsDistanceBlurScale = "lyricsDistanceBlurScale"
+        static let lyricsHiddenInterfaceBlurScale = "lyricsHiddenInterfaceBlurScale"
         static let lyricsDimAmount = "lyricsDimAmount"
         static let lyricsTapToSeek = "lyricsTapToSeek"
         static let lyricsWordByWord = "lyricsWordByWord"
@@ -65,6 +75,7 @@ final class AppSettings {
         static let lyricsFocusColorLeadTime = "lyricsFocusColorLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsRefreshRate = "lyricsRefreshRate"
+        static let textPV1MotionIntensity = "textPV1MotionIntensity"
         static let playerScreenAwakeMode = "playerScreenAwakeMode"
         static let legacyLyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
@@ -119,6 +130,24 @@ final class AppSettings {
 
     var lyricsBlurIntensity: Double {
         didSet { defaults.set(lyricsBlurIntensity, forKey: Key.lyricsBlurIntensity) }
+    }
+
+    var lyricsDistanceBlurScale: Double {
+        didSet {
+            defaults.set(
+                lyricsDistanceBlurScale,
+                forKey: Key.lyricsDistanceBlurScale
+            )
+        }
+    }
+
+    var lyricsHiddenInterfaceBlurScale: Double {
+        didSet {
+            defaults.set(
+                lyricsHiddenInterfaceBlurScale,
+                forKey: Key.lyricsHiddenInterfaceBlurScale
+            )
+        }
     }
 
     var lyricsDimAmount: Double {
@@ -204,6 +233,15 @@ final class AppSettings {
         didSet { defaults.set(lyricsRefreshRate.rawValue, forKey: Key.lyricsRefreshRate) }
     }
 
+    var textPV1MotionIntensity: Double {
+        didSet {
+            defaults.set(
+                textPV1MotionIntensity,
+                forKey: Key.textPV1MotionIntensity
+            )
+        }
+    }
+
     var playerScreenAwakeMode: PlayerScreenAwakeMode {
         didSet {
             defaults.set(
@@ -267,8 +305,30 @@ final class AppSettings {
         )
         lyricsLineSpacing = defaults.object(forKey: Key.lyricsLineSpacing) as? Double
             ?? Self.defaultLyricsLineSpacing
-        lyricsBlurIntensity = defaults.object(forKey: Key.lyricsBlurIntensity) as? Double ?? 1
-        lyricsDimAmount = defaults.object(forKey: Key.lyricsDimAmount) as? Double ?? 1
+        lyricsBlurIntensity = defaults.object(forKey: Key.lyricsBlurIntensity) as? Double
+            ?? Self.defaultLyricsBlurIntensity
+        let storedLyricsDistanceBlurScale = defaults.object(
+            forKey: Key.lyricsDistanceBlurScale
+        ) as? Double ?? Self.defaultLyricsDistanceBlurScale
+        lyricsDistanceBlurScale = min(
+            max(
+                storedLyricsDistanceBlurScale,
+                Self.lyricsDistanceBlurScaleRange.lowerBound
+            ),
+            Self.lyricsDistanceBlurScaleRange.upperBound
+        )
+        let storedLyricsHiddenInterfaceBlurScale = defaults.object(
+            forKey: Key.lyricsHiddenInterfaceBlurScale
+        ) as? Double ?? Self.defaultLyricsHiddenInterfaceBlurScale
+        lyricsHiddenInterfaceBlurScale = min(
+            max(
+                storedLyricsHiddenInterfaceBlurScale,
+                Self.lyricsDistanceBlurScaleRange.lowerBound
+            ),
+            Self.lyricsDistanceBlurScaleRange.upperBound
+        )
+        lyricsDimAmount = defaults.object(forKey: Key.lyricsDimAmount) as? Double
+            ?? Self.defaultLyricsDimAmount
         lyricsTapToSeek = defaults.object(forKey: Key.lyricsTapToSeek) as? Bool ?? true
         lyricsWordByWord = defaults.object(forKey: Key.lyricsWordByWord) as? Bool ?? true
         lyricsPseudoWordByWord = defaults.object(forKey: Key.lyricsPseudoWordByWord) as? Bool ?? false
@@ -279,8 +339,16 @@ final class AppSettings {
         lyricsTranslationOpacity = defaults.object(forKey: Key.lyricsTranslationOpacity) as? Double ?? 0.66
         lyricsAutoFollow = defaults.object(forKey: Key.lyricsAutoFollow) as? Bool ?? true
         lyricsFollowDelay = defaults.object(forKey: Key.lyricsFollowDelay) as? Double ?? 3
-        lyricsFocusPosition = defaults.object(forKey: Key.lyricsFocusPosition) as? Double
-            ?? Self.defaultLyricsFocusPosition
+        let storedLyricsFocusPosition = defaults.object(
+            forKey: Key.lyricsFocusPosition
+        ) as? Double ?? Self.defaultLyricsFocusPosition
+        lyricsFocusPosition = min(
+            max(
+                storedLyricsFocusPosition,
+                Self.lyricsFocusPositionRange.lowerBound
+            ),
+            Self.lyricsFocusPositionRange.upperBound
+        )
         let storedFocusCascadeDelay = defaults.object(
             forKey: Key.lyricsFocusCascadeDelay
         ) as? Double ?? Self.defaultLyricsFocusCascadeDelay
@@ -308,6 +376,16 @@ final class AppSettings {
         lyricsRefreshRate = LyricsRefreshRate(
             rawValue: defaults.object(forKey: Key.lyricsRefreshRate) as? Int ?? 0
         ) ?? .defaultValue
+        let storedTextPV1MotionIntensity = defaults.object(
+            forKey: Key.textPV1MotionIntensity
+        ) as? Double ?? Self.defaultTextPV1MotionIntensity
+        textPV1MotionIntensity = min(
+            max(
+                storedTextPV1MotionIntensity,
+                Self.textPV1MotionIntensityRange.lowerBound
+            ),
+            Self.textPV1MotionIntensityRange.upperBound
+        )
         if let storedScreenAwakeMode = defaults.string(
             forKey: Key.playerScreenAwakeMode
         ), let screenAwakeMode = PlayerScreenAwakeMode(
@@ -341,8 +419,10 @@ final class AppSettings {
         lyricsFontSize = Self.defaultLyricsFontSize
         lyricsCurrentLineScale = Self.defaultLyricsCurrentLineScale
         lyricsLineSpacing = Self.defaultLyricsLineSpacing
-        lyricsBlurIntensity = 1
-        lyricsDimAmount = 1
+        lyricsBlurIntensity = Self.defaultLyricsBlurIntensity
+        lyricsDistanceBlurScale = Self.defaultLyricsDistanceBlurScale
+        lyricsHiddenInterfaceBlurScale = Self.defaultLyricsHiddenInterfaceBlurScale
+        lyricsDimAmount = Self.defaultLyricsDimAmount
         lyricsTapToSeek = true
         lyricsWordByWord = true
         lyricsPseudoWordByWord = false
@@ -359,6 +439,7 @@ final class AppSettings {
         lyricsFocusColorLeadTime = Self.defaultLyricsFocusColorLeadTime
         lyricsAdvanceTime = 0.2
         lyricsRefreshRate = .defaultValue
+        textPV1MotionIntensity = Self.defaultTextPV1MotionIntensity
         playerScreenAwakeMode = .lyrics
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"

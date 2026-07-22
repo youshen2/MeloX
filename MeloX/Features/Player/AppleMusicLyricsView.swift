@@ -3,7 +3,6 @@ import SwiftUI
 struct AppleMusicLyricsView: View {
     private static let bottomPreloadLineCount = 2
     nonisolated private static let expandedBottomDistanceScale: CGFloat = 0.68
-    nonisolated private static let expandedBottomBlurScale: CGFloat = 0.55
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
@@ -98,6 +97,10 @@ struct AppleMusicLyricsView: View {
                 1
             )
             let blurIntensity = CGFloat(settings.lyricsBlurIntensity)
+            let distanceBlurScale = CGFloat(settings.lyricsDistanceBlurScale)
+            let hiddenInterfaceBlurScale = CGFloat(
+                settings.lyricsHiddenInterfaceBlurScale
+            )
             let dimAmount = settings.lyricsDimAmount
             let currentLineScale = lyricsCurrentLineScale
             let glowOverflow = Self.lyricGlowOverflow(
@@ -167,16 +170,14 @@ struct AppleMusicLyricsView: View {
                                 .visualEffect { content, geometry in
                                     let frame = geometry.frame(in: .scrollView(axis: .vertical))
                                     let visualMidY = frame.midY + movementOffset
-                                    let isFollowingFocus = visualMidY > focusAnchorY
                                     let distance = Self.lyricVisualDistance(
                                         visualMidY: visualMidY,
                                         focusAnchorY: focusAnchorY,
                                         softensFollowingLyrics: isInterfaceHidden
                                     )
-                                    let distanceBlurIntensity = isInterfaceHidden
-                                        && isFollowingFocus
-                                        ? blurIntensity * Self.expandedBottomBlurScale
-                                        : blurIntensity
+                                    let activeDistanceBlurScale = isInterfaceHidden
+                                        ? hiddenInterfaceBlurScale
+                                        : distanceBlurScale
                                     let bottomRevealOpacity = Self.lyricBottomRevealOpacity(
                                         frame: frame,
                                         movementOffset: movementOffset,
@@ -187,7 +188,8 @@ struct AppleMusicLyricsView: View {
                                             radius: Self.lyricDistanceBlurRadius(
                                                 forPixelDistance: distance,
                                                 lyricStride: lyricStride,
-                                                intensity: distanceBlurIntensity
+                                                intensity: blurIntensity
+                                                    * activeDistanceBlurScale
                                             )
                                         )
                                         .opacity(
@@ -251,6 +253,8 @@ struct AppleMusicLyricsView: View {
                         focusPosition: focusPosition,
                         lyricStride: lyricStride,
                         blurIntensity: blurIntensity,
+                        distanceBlurScale: distanceBlurScale,
+                        hiddenInterfaceBlurScale: hiddenInterfaceBlurScale,
                         dimAmount: dimAmount,
                         currentLineScale: currentLineScale,
                         usesPseudoTiming: usesPseudoTiming,
@@ -325,6 +329,8 @@ struct AppleMusicLyricsView: View {
         focusPosition: CGFloat,
         lyricStride: CGFloat,
         blurIntensity: CGFloat,
+        distanceBlurScale: CGFloat,
+        hiddenInterfaceBlurScale: CGFloat,
         dimAmount: Double,
         currentLineScale: CGFloat,
         usesPseudoTiming: Bool,
@@ -347,16 +353,14 @@ struct AppleMusicLyricsView: View {
                     let visualOffset = movementOffset - retainedLyric.movementDistance
                     let visualMidY = retainedLyric.frame.midY + visualOffset
                     let focusAnchorY = viewportSize.height * focusPosition
-                    let isFollowingFocus = visualMidY > focusAnchorY
                     let distance = Self.lyricVisualDistance(
                         visualMidY: visualMidY,
                         focusAnchorY: focusAnchorY,
                         softensFollowingLyrics: isInterfaceHidden
                     )
-                    let distanceBlurIntensity = isInterfaceHidden
-                        && isFollowingFocus
-                        ? blurIntensity * Self.expandedBottomBlurScale
-                        : blurIntensity
+                    let activeDistanceBlurScale = isInterfaceHidden
+                        ? hiddenInterfaceBlurScale
+                        : distanceBlurScale
                     let focusBlurRadius = Self.lyricFocusBlurRadius(
                         intensity: blurIntensity,
                         isPrecedingFocusLine: line.id == focusNeighborIDs.preceding,
@@ -383,7 +387,7 @@ struct AppleMusicLyricsView: View {
                         radius: Self.lyricDistanceBlurRadius(
                             forPixelDistance: distance,
                             lyricStride: lyricStride,
-                            intensity: distanceBlurIntensity
+                            intensity: blurIntensity * activeDistanceBlurScale
                         )
                     )
                     .opacity(
@@ -412,7 +416,15 @@ struct AppleMusicLyricsView: View {
     }
 
     private var preferredLyricsFocusPosition: CGFloat {
-        CGFloat(min(max(settings.lyricsFocusPosition, 0.2), 0.5))
+        CGFloat(
+            min(
+                max(
+                    settings.lyricsFocusPosition,
+                    AppSettings.lyricsFocusPositionRange.lowerBound
+                ),
+                AppSettings.lyricsFocusPositionRange.upperBound
+            )
+        )
     }
 
     private func lyricsFocusPosition(for viewportHeight: CGFloat) -> CGFloat {

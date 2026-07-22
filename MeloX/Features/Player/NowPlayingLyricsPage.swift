@@ -107,6 +107,13 @@ struct NowPlayingLyricsPage: View {
                 highlightedLyricID: highlightedLyricID,
                 onToggleInterface: onToggleInterface
             )
+        case .textPV1:
+            TextPV1LyricsView(
+                lyrics: lyrics,
+                errorMessage: errorMessage,
+                highlightedLyricID: highlightedLyricID,
+                onToggleInterface: onToggleInterface
+            )
         }
     }
 

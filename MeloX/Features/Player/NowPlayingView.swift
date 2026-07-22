@@ -30,7 +30,8 @@ struct NowPlayingView: View {
             ZStack {
                 NowPlayingBackground(artworkURL: player.currentSong?.album?.artworkURL)
 
-                if page == .lyrics, settings.lyricsStyle == .eva {
+                if page == .lyrics,
+                   settings.lyricsStyle.usesMonochromePlayerBackground {
                     Color.black
                         .ignoresSafeArea()
                 }

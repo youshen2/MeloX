@@ -97,13 +97,29 @@ struct PlayerSettingsView: View {
                     )
 
                     valueSlider(
-                        title: "模糊强度",
+                        title: "基础模糊强度",
                         value: $settings.lyricsBlurIntensity,
                         range: 0...2,
                         step: 0.1,
                         valueText: settings.lyricsBlurIntensity.formatted(
                             .number.precision(.fractionLength(1))
                         )
+                    )
+
+                    valueSlider(
+                        title: "默认逐句模糊加强",
+                        value: $settings.lyricsDistanceBlurScale,
+                        range: AppSettings.lyricsDistanceBlurScaleRange,
+                        step: 0.05,
+                        valueText: "\(Int((settings.lyricsDistanceBlurScale * 100).rounded()))%"
+                    )
+
+                    valueSlider(
+                        title: "隐藏 UI 逐句模糊加强",
+                        value: $settings.lyricsHiddenInterfaceBlurScale,
+                        range: AppSettings.lyricsDistanceBlurScaleRange,
+                        step: 0.05,
+                        valueText: "\(Int((settings.lyricsHiddenInterfaceBlurScale * 100).rounded()))%"
                     )
 
                     valueSlider(
@@ -117,15 +133,25 @@ struct PlayerSettingsView: View {
                     valueSlider(
                         title: "焦点垂直位置",
                         value: $settings.lyricsFocusPosition,
-                        range: 0.2...0.5,
+                        range: AppSettings.lyricsFocusPositionRange,
                         step: 0.01,
                         valueText: "距顶部 \(Int(settings.lyricsFocusPosition * 100))%"
+                    )
+                }
+
+                if settings.lyricsStyle == .textPV1 {
+                    valueSlider(
+                        title: "PV 动效强度",
+                        value: $settings.textPV1MotionIntensity,
+                        range: AppSettings.textPV1MotionIntensityRange,
+                        step: 0.1,
+                        valueText: "\(Int((settings.textPV1MotionIntensity * 100).rounded()))%"
                     )
                 }
             } header: {
                 Text("歌词外观")
             } footer: {
-                Text("\(settings.lyricsStyle.title)：\(settings.lyricsStyle.description)。播放器底部也可以快速切换；两种样式都会沿用字体与翻译设置，逐字动效仅用于 Apple Music 样式。")
+                Text("\(settings.lyricsStyle.title)：\(settings.lyricsStyle.description)。播放器底部也可以快速切换；所有样式都会沿用字体与翻译设置，逐字动效仅用于 Apple Music 样式。逐句模糊加强只调整随焦点距离递增的模糊，100% 为原始强度；默认状态与隐藏 UI 后可以分别设置。文字PV1 每两句更换一次构图；同构图换词仅做轻量回弹，高潮段使用猛烈旋转重击转场，停留阶段保持静止。系统减少动态效果开启时自动停用强动效。")
             }
 
             Section {
