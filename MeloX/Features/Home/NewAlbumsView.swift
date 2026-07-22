@@ -30,6 +30,7 @@ struct NewAlbumsView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .musicMatchedTransitionSource(for: MusicRoute.album(album))
                         }
                     }
                     .padding()

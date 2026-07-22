@@ -32,6 +32,7 @@ struct PlaylistCategoryView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                         }
                     }
                     .padding()

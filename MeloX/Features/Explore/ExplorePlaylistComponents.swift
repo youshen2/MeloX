@@ -84,6 +84,7 @@ struct ExploreFeaturedPlaylistView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
         .accessibilityLabel("\(badge)，\(playlist.name)")
     }
 }

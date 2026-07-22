@@ -95,6 +95,7 @@ struct ArtistDetailView: View {
                             }
                         }
                     }
+                    .musicMatchedTransitionSource(for: MusicRoute.album(album))
                 }
             }
         }

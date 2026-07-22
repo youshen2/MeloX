@@ -63,6 +63,7 @@ struct SearchDiscoveryView: View {
                                 .frame(width: 172)
                             }
                             .buttonStyle(.plain)
+                            .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                         }
                     }
                 }

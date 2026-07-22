@@ -107,6 +107,7 @@ struct HomeView: View {
                         HomeFeaturedPlaylistCard(playlist: playlist)
                     }
                     .homeFeaturedWidth()
+                    .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                 }
             }
             .scrollTargetLayout()
@@ -127,6 +128,7 @@ struct HomeView: View {
                     HomePlaylistCard(playlist: playlist)
                 }
                 .buttonStyle(.plain)
+                .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
             }
         }
     }
@@ -138,6 +140,7 @@ struct HomeView: View {
                     HomeAlbumCard(album: album)
                 }
                 .buttonStyle(.plain)
+                .musicMatchedTransitionSource(for: MusicRoute.album(album))
             }
         }
     }
@@ -149,6 +152,7 @@ struct HomeView: View {
                     HomeArtistCard(artist: artist)
                 }
                 .buttonStyle(.plain)
+                .musicMatchedTransitionSource(for: MusicRoute.artist(artist.id))
             }
         }
     }

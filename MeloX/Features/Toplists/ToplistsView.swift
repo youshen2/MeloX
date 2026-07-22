@@ -122,6 +122,7 @@ private struct ToplistGridSection: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .musicMatchedTransitionSource(for: MusicRoute.toplist(playlist))
                     .accessibilityHint("查看榜单歌曲")
                 }
             }

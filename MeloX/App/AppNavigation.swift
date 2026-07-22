@@ -109,6 +109,38 @@ enum MusicRoute: Hashable {
     static func album(_ album: Album) -> Self {
         .album(AlbumRouteContext(album))
     }
+
+    var usesCardExpansionTransition: Bool {
+        switch self {
+        case .song, .playlist, .toplist, .album, .artist:
+            true
+        case .playlistCategory, .dailySongs, .newAlbums, .toplists:
+            false
+        }
+    }
+
+    var transitionID: String {
+        switch self {
+        case .song(let song):
+            "song-\(song.id)"
+        case .playlist(let context):
+            "playlist-\(context.id)"
+        case .toplist(let context):
+            "toplist-\(context.id)"
+        case .playlistCategory(let category):
+            "playlist-category-\(category)"
+        case .album(let context):
+            "album-\(context.id)"
+        case .artist(let id):
+            "artist-\(id)"
+        case .dailySongs:
+            "daily-songs"
+        case .newAlbums:
+            "new-albums"
+        case .toplists:
+            "toplists"
+        }
+    }
 }
 
 struct OpenMusicRouteAction {
@@ -141,28 +173,38 @@ enum PlayerPresentation: String, Identifiable {
 }
 
 extension View {
-    func musicDestinations() -> some View {
+    func musicDestinations(in namespace: Namespace.ID) -> some View {
         navigationDestination(for: MusicRoute.self) { route in
-            switch route {
-            case .song(let song):
-                SongDetailView(song: song)
-            case .playlist(let context):
-                PlaylistDetailView(playlist: context)
-            case .toplist(let context):
-                PlaylistDetailView(toplist: context)
-            case .playlistCategory(let category):
-                PlaylistCategoryView(category: category)
-            case .album(let context):
-                AlbumDetailView(context: context)
-            case .artist(let id):
-                ArtistDetailView(id: id)
-            case .dailySongs:
-                DailySongsView()
-            case .newAlbums:
-                NewAlbumsView()
-            case .toplists:
-                ToplistsView()
-            }
+            MusicRouteDestination(route: route)
+                .musicNavigationTransition(for: route, in: namespace)
+        }
+    }
+}
+
+private struct MusicRouteDestination: View {
+    let route: MusicRoute
+
+    @ViewBuilder
+    var body: some View {
+        switch route {
+        case .song(let song):
+            SongDetailView(song: song)
+        case .playlist(let context):
+            PlaylistDetailView(playlist: context)
+        case .toplist(let context):
+            PlaylistDetailView(toplist: context)
+        case .playlistCategory(let category):
+            PlaylistCategoryView(category: category)
+        case .album(let context):
+            AlbumDetailView(context: context)
+        case .artist(let id):
+            ArtistDetailView(id: id)
+        case .dailySongs:
+            DailySongsView()
+        case .newAlbums:
+            NewAlbumsView()
+        case .toplists:
+            ToplistsView()
         }
     }
 }

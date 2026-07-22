@@ -88,6 +88,7 @@ struct ExploreView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                     }
                 }
             }

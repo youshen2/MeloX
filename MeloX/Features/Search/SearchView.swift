@@ -105,6 +105,7 @@ struct SearchView: View {
                             circular: false
                         )
                     }
+                    .musicMatchedTransitionSource(for: MusicRoute.album(album))
                 }
             case .artists:
                 ForEach(artists) { artist in
@@ -116,6 +117,7 @@ struct SearchView: View {
                             circular: true
                         )
                     }
+                    .musicMatchedTransitionSource(for: MusicRoute.artist(artist.id))
                 }
             case .playlists:
                 ForEach(playlists) { playlist in
@@ -127,6 +129,7 @@ struct SearchView: View {
                             circular: false
                         )
                     }
+                    .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                 }
             }
         }

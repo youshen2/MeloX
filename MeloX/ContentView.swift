@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var playerPresentation: PlayerPresentation?
     @State private var pendingMusicRoute: MusicRoute?
     @Namespace private var playerTransitionNamespace
+    @Namespace private var musicNavigationNamespace
 
     private let playerTransitionID = "now-playing"
 
@@ -85,21 +86,21 @@ struct ContentView: View {
             Tab("首页", systemImage: "house", value: AppTab.home) {
                 NavigationStack(path: $homePath) {
                     HomeView()
-                        .musicDestinations()
+                        .musicDestinations(in: musicNavigationNamespace)
                 }
             }
 
             Tab("发现", systemImage: "safari", value: AppTab.explore) {
                 NavigationStack(path: $explorePath) {
                     ExploreView()
-                        .musicDestinations()
+                        .musicDestinations(in: musicNavigationNamespace)
                 }
             }
 
             Tab("音乐库", systemImage: "music.note.list", value: AppTab.library) {
                 NavigationStack(path: $libraryPath) {
                     LibraryView()
-                        .musicDestinations()
+                        .musicDestinations(in: musicNavigationNamespace)
                 }
             }
 
@@ -111,18 +112,19 @@ struct ContentView: View {
             ) {
                 NavigationStack(path: $searchPath) {
                     SearchView()
-                        .musicDestinations()
+                        .musicDestinations(in: musicNavigationNamespace)
                 }
             }
 
             Tab("设置", systemImage: "gearshape", value: AppTab.settings) {
                 NavigationStack(path: $settingsPath) {
                     SettingsView()
-                        .musicDestinations()
+                        .musicDestinations(in: musicNavigationNamespace)
                 }
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .environment(\.musicNavigationNamespace, musicNavigationNamespace)
     }
 
     private var initialNowPlayingPage: NowPlayingPage {

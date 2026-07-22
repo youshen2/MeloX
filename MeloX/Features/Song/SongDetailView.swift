@@ -107,12 +107,14 @@ struct SongDetailView: View {
                 NavigationLink(value: MusicRoute.artist(artist.id)) {
                     LabeledContent("歌手", value: artist.name)
                 }
+                .musicMatchedTransitionSource(for: MusicRoute.artist(artist.id))
             }
 
             if let album = song.album {
                 NavigationLink(value: MusicRoute.album(album)) {
                     LabeledContent("专辑", value: album.name)
                 }
+                .musicMatchedTransitionSource(for: MusicRoute.album(album))
             }
 
             if let publishTime = song.publishTime ?? song.album?.publishTime {

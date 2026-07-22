@@ -139,6 +139,7 @@ struct LibraryView: View {
             NavigationLink(value: MusicRoute.playlist(playlist)) {
                 SearchMediaRowForLibrary(playlist: playlist)
             }
+            .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
             .swipeActions(edge: .trailing) {
                 if library.canUnsubscribe(playlist) {
                     Button(role: .destructive) {

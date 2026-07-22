@@ -38,6 +38,7 @@ struct TrackRowView: View {
             }
         }
         .contentShape(.rect)
+        .musicMatchedTransitionSource(for: .song(song))
         .contextMenu {
             Button {
                 openMusicRoute(.song(song))

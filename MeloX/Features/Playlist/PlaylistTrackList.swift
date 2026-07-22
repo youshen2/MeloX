@@ -114,6 +114,7 @@ private struct PlaylistTrackRow: View {
         .padding(.trailing, 8)
         .padding(.vertical, showsArtwork ? 8 : 11)
         .background(isCurrentSong ? Color.primary.opacity(0.10) : .clear)
+        .musicMatchedTransitionSource(for: .song(song))
         .accessibilityElement(children: .contain)
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {
