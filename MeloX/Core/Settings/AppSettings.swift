@@ -29,7 +29,7 @@ final class AppSettings {
     static let defaultLyricsLineSpacing = 27.0
     static let defaultLyricsBlurIntensity = 0.8
     static let defaultLyricsDimAmount = 1.0
-    static let defaultLyricsFocusPosition = 0.25
+    static let defaultLyricsFocusPosition = 0.28
     static let lyricsFocusPositionRange = 0.05...0.8
     static let lyricsCurrentLineScaleRange = 1.0...1.5
     static let defaultLyricsDistanceBlurScale = 0.65
