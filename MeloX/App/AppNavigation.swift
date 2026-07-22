@@ -15,6 +15,7 @@ enum MusicRoute: Hashable {
     case artist(Int)
     case dailySongs
     case newAlbums
+    case toplists
 }
 
 enum PlayerPresentation: String, Identifiable {
@@ -39,6 +40,8 @@ extension View {
                 DailySongsView()
             case .newAlbums:
                 NewAlbumsView()
+            case .toplists:
+                ToplistsView()
             }
         }
     }

@@ -23,7 +23,7 @@ struct SearchDiscoveryView: View {
 
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(SearchMusicCategory.all) { category in
-                            NavigationLink(value: MusicRoute.playlistCategory(category.name)) {
+                            NavigationLink(value: category.route) {
                                 SearchCategoryCard(category: category)
                             }
                             .buttonStyle(.plain)
@@ -140,7 +140,12 @@ private struct SearchMusicCategory: Identifiable {
 
     var id: String { name }
 
+    var route: MusicRoute {
+        name == "排行榜" ? .toplists : .playlistCategory(name)
+    }
+
     static let all: [SearchMusicCategory] = [
+        .init(name: "排行榜", systemImage: "chart.bar.fill", colors: [.orange, .red]),
         .init(name: "华语", systemImage: "character.book.closed.fill", colors: [.pink, .red]),
         .init(name: "欧美", systemImage: "globe.americas.fill", colors: [.blue, .indigo]),
         .init(name: "日语", systemImage: "sun.max.fill", colors: [.orange, .pink]),

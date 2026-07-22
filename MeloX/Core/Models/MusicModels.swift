@@ -264,6 +264,7 @@ struct Playlist: Codable, Hashable, Identifiable {
     let trackCount: Int
     let playCount: Int
     let updateFrequency: String?
+    let toplistType: String?
     let copywriter: String?
     let creator: UserSummary?
     var tracks: [Song]
@@ -274,9 +275,14 @@ struct Playlist: Codable, Hashable, Identifiable {
         makeArtworkURL(from: coverURLString)
     }
 
+    var isOfficialToplist: Bool {
+        !(toplistType?.isEmpty ?? true)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, name, coverImgUrl, picUrl, description, trackCount, playCount
         case updateFrequency, copywriter, creator, tracks, trackIds, subscribed
+        case toplistType = "ToplistType"
     }
 
     init(
@@ -287,6 +293,7 @@ struct Playlist: Codable, Hashable, Identifiable {
         trackCount: Int = 0,
         playCount: Int = 0,
         updateFrequency: String? = nil,
+        toplistType: String? = nil,
         copywriter: String? = nil,
         creator: UserSummary? = nil,
         tracks: [Song] = [],
@@ -300,6 +307,7 @@ struct Playlist: Codable, Hashable, Identifiable {
         self.trackCount = trackCount
         self.playCount = playCount
         self.updateFrequency = updateFrequency
+        self.toplistType = toplistType
         self.copywriter = copywriter
         self.creator = creator
         self.tracks = tracks
@@ -317,6 +325,7 @@ struct Playlist: Codable, Hashable, Identifiable {
         trackCount = try container.decodeIfPresent(Int.self, forKey: .trackCount) ?? 0
         playCount = try container.decodeIfPresent(Int.self, forKey: .playCount) ?? 0
         updateFrequency = try container.decodeIfPresent(String.self, forKey: .updateFrequency)
+        toplistType = try container.decodeIfPresent(String.self, forKey: .toplistType)
         copywriter = try container.decodeIfPresent(String.self, forKey: .copywriter)
         creator = try container.decodeIfPresent(UserSummary.self, forKey: .creator)
         tracks = try container.decodeIfPresent([Song].self, forKey: .tracks) ?? []
@@ -333,6 +342,7 @@ struct Playlist: Codable, Hashable, Identifiable {
         try container.encode(trackCount, forKey: .trackCount)
         try container.encode(playCount, forKey: .playCount)
         try container.encodeIfPresent(updateFrequency, forKey: .updateFrequency)
+        try container.encodeIfPresent(toplistType, forKey: .toplistType)
         try container.encodeIfPresent(copywriter, forKey: .copywriter)
         try container.encodeIfPresent(creator, forKey: .creator)
         try container.encode(tracks, forKey: .tracks)

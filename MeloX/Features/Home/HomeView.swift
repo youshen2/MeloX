@@ -59,7 +59,7 @@ struct HomeView: View {
                 }
 
                 if !charts.isEmpty {
-                    playlistSection(title: "热门排行", playlists: charts)
+                    playlistSection(title: "热门排行", playlists: charts, destination: .toplists)
                 }
 
                 if !albums.isEmpty {
@@ -116,8 +116,12 @@ struct HomeView: View {
         .scrollTargetBehavior(.viewAligned)
     }
 
-    private func playlistSection(title: String, playlists: [Playlist]) -> some View {
-        HomeHorizontalSection(title: title) {
+    private func playlistSection(
+        title: String,
+        playlists: [Playlist],
+        destination: MusicRoute? = nil
+    ) -> some View {
+        HomeHorizontalSection(title: title, destination: destination) {
             ForEach(playlists) { playlist in
                 NavigationLink(value: MusicRoute.playlist(playlist.id)) {
                     HomePlaylistCard(playlist: playlist)
