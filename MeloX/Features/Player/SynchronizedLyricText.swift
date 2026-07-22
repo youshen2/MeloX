@@ -164,7 +164,8 @@ struct SynchronizedLyricText: View {
                                 glowRadius: glowRadius,
                                 glowOpacity: glowOpacity,
                                 unplayedOpacity: 0.3,
-                                maximumUnplayedBlurRadius: maximumUnplayedBlurRadius
+                                maximumUnplayedBlurRadius: maximumUnplayedBlurRadius,
+                                playedRise: playedRise
                             ),
                             layoutConfiguration: .init(
                                 width: timedLayoutWidth,
@@ -250,6 +251,11 @@ struct SynchronizedLyricText: View {
 
     private var maximumUnplayedBlurRadius: CGFloat {
         CGFloat(settings.lyricsBlurIntensity) * 0.55 * fontScale
+    }
+
+    private var playedRise: CGFloat {
+        guard !accessibilityReduceMotion else { return 0 }
+        return min(max(fontSize * 0.1, 1.5), 6)
     }
 
     private var timedLayoutWidth: CGFloat? {
