@@ -103,11 +103,11 @@ final class LibraryStore {
             }
 
             do {
-                recentSongs = try await api.recentSongs(userID: loadedProfile.id)
+                recentSongs = try await api.recentSongs()
             } catch is CancellationError {
                 return
             } catch {
-                partialFailures.append("最近播放：\(error.localizedDescription)")
+                partialFailures.append("播放历史：\(error.localizedDescription)")
             }
 
             if !partialFailures.isEmpty {

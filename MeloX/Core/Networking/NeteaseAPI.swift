@@ -391,16 +391,23 @@ final class NeteaseAPI {
         return response.playlist
     }
 
-    func recentSongs(userID: Int) async throws -> [Song] {
-        // The reference library defaults to the weekly play history. This is a
-        // different authenticated route from `/play-record/song/list`.
-        let response: PlayHistoryResponse = try await client.eapi(
-            "/api/v1/play/record",
-            data: ["uid": userID, "type": 1],
-            authenticated: true
-        )
-        try validate(responseCode: response.code)
-        return response.weekData?.map(\.song) ?? []
+    func recentSongs(limit: Int = 100) async throws -> [Song] {
+        let path = "/api/play-record/song/list"
+        let data: [String: Any] = ["limit": limit]
+        let response: RecentSongsResponse
+        do {
+            // Mirrors @neteaseapireborn/api/module/record_recent_song.js.
+            response = try await client.weapi(path, data: data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            // CFNetwork may receive an HTTP 200 empty body from this weapi
+            // route. Keep its original route and parameters, changing only
+            // to the authenticated eapi transport for compatibility.
+            response = try await client.eapi(path, data: data, authenticated: true)
+        }
+        try validate(responseCode: response.code, message: response.message)
+        return response.data?.list.compactMap(\.data) ?? []
     }
 
     func setSongLiked(id: Int, isLiked: Bool) async throws {

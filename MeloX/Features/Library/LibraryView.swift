@@ -3,7 +3,7 @@ import SwiftUI
 private enum LibrarySection: String, CaseIterable, Identifiable {
     case songs = "歌曲"
     case playlists = "歌单"
-    case history = "最近播放"
+    case history = "播放历史"
 
     var id: String { rawValue }
 }

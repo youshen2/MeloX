@@ -77,7 +77,7 @@ struct OnboardingAccountView: View {
                 accountIdentity
 
                 if isLoggedIn {
-                    Text("你的收藏歌曲、歌单和最近播放会显示在音乐库中。")
+                    Text("你的收藏歌曲、歌单和播放历史会显示在音乐库中。")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -160,7 +160,7 @@ struct OnboardingAccountView: View {
 
     private var signInBenefits: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Label("同步收藏歌曲、歌单和最近播放", systemImage: "music.note.list")
+            Label("同步收藏歌曲、歌单和播放历史", systemImage: "music.note.list")
             Label("访问每日推荐等账号专属内容", systemImage: "sparkles")
             Label("登录 Cookie 仅保存在本机", systemImage: "lock.iphone")
         }

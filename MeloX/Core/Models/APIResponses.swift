@@ -122,15 +122,18 @@ struct UserPlaylistsResponse: Decodable {
     let more: Bool?
 }
 
-struct PlayHistoryResponse: Decodable {
+struct RecentSongsResponse: Decodable {
     let code: Int
-    let weekData: [PlayHistoryItem]?
-    let allData: [PlayHistoryItem]?
+    let data: RecentSongsData?
+    let message: String?
 }
 
-struct PlayHistoryItem: Decodable {
-    let song: Song
-    let playCount: Int?
+struct RecentSongsData: Decodable {
+    let list: [RecentSongItem]
+}
+
+struct RecentSongItem: Decodable {
+    let data: Song?
 }
 
 struct APIStatusResponse: Decodable {
