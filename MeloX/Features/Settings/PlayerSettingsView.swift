@@ -130,6 +130,11 @@ struct PlayerSettingsView: View {
                     valueText: "\(Int((settings.lyricsFocusCascadeDelay * 1_000).rounded())) 毫秒"
                 )
 
+                Toggle(
+                    "错峰轻微回弹",
+                    isOn: $settings.lyricsFocusCascadeBounceEnabled
+                )
+
                 valueSlider(
                     title: "焦点颜色提前",
                     value: $settings.lyricsFocusColorLeadTime,
@@ -140,7 +145,7 @@ struct PlayerSettingsView: View {
             } header: {
                 Text("歌词动画")
             } footer: {
-                Text("焦点颜色会先开始过渡；等待设置的提前量后，可视顶部第一行与模糊同时开始变化，随后各行依次向上。短句会自动压缩总延迟；实际剩余播放时间不足时会直接跳过错峰以保持同步，每行延迟设为 0 可恢复整体滚动。")
+                Text("焦点颜色会先开始过渡；等待设置的提前量后，可视顶部第一行与模糊同时开始变化，随后各行依次向上。默认开启较慢的轻微回弹；剩余时间放不下回弹时，本次仍会错峰但自动关闭回弹，只有连普通错峰也来不及时才直接同步。每行延迟设为 0 可恢复整体滚动。")
             }
 
             Section {

@@ -54,6 +54,14 @@ enum LyricPlaybackTimeline {
         return min(max(availableDuration * 0.35, 0.05), 0.34)
     }
 
+    static func focusCascadeAnimationDuration(
+        baseDuration: TimeInterval,
+        bounceEnabled: Bool
+    ) -> TimeInterval {
+        let duration = max(baseDuration, 0)
+        return bounceEnabled ? max(duration, 0.56) : duration
+    }
+
     static func focusCascadeDelay(
         visibleOrder: Int,
         visibleLineCount: Int,

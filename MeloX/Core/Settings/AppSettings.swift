@@ -26,6 +26,7 @@ enum MusicQuality: String, CaseIterable, Identifiable {
 final class AppSettings {
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
+    static let defaultLyricsFocusCascadeBounceEnabled = true
     static let defaultLyricsFocusColorLeadTime = 0.06
     static let lyricsFocusColorLeadTimeRange = 0.0...0.1
 
@@ -53,6 +54,7 @@ final class AppSettings {
         static let lyricsFollowDelay = "lyricsFollowDelay"
         static let lyricsFocusPosition = "lyricsFocusPosition"
         static let lyricsFocusCascadeDelay = "lyricsFocusCascadeDelay"
+        static let lyricsFocusCascadeBounceEnabled = "lyricsFocusCascadeBounceEnabled"
         static let lyricsFocusColorLeadTime = "lyricsFocusColorLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsRefreshRate = "lyricsRefreshRate"
@@ -160,6 +162,15 @@ final class AppSettings {
         }
     }
 
+    var lyricsFocusCascadeBounceEnabled: Bool {
+        didSet {
+            defaults.set(
+                lyricsFocusCascadeBounceEnabled,
+                forKey: Key.lyricsFocusCascadeBounceEnabled
+            )
+        }
+    }
+
     var lyricsFocusColorLeadTime: Double {
         didSet {
             defaults.set(
@@ -242,6 +253,9 @@ final class AppSettings {
             ),
             Self.lyricsFocusCascadeDelayRange.upperBound
         )
+        lyricsFocusCascadeBounceEnabled = defaults.object(
+            forKey: Key.lyricsFocusCascadeBounceEnabled
+        ) as? Bool ?? Self.defaultLyricsFocusCascadeBounceEnabled
         let storedFocusColorLeadTime = defaults.object(
             forKey: Key.lyricsFocusColorLeadTime
         ) as? Double ?? Self.defaultLyricsFocusColorLeadTime
@@ -289,6 +303,7 @@ final class AppSettings {
         lyricsFollowDelay = 3
         lyricsFocusPosition = 0.34
         lyricsFocusCascadeDelay = Self.defaultLyricsFocusCascadeDelay
+        lyricsFocusCascadeBounceEnabled = Self.defaultLyricsFocusCascadeBounceEnabled
         lyricsFocusColorLeadTime = Self.defaultLyricsFocusColorLeadTime
         lyricsAdvanceTime = 0.2
         lyricsRefreshRate = .defaultValue
