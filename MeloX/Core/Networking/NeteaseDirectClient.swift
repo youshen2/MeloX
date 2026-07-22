@@ -21,12 +21,15 @@ final class NeteaseDirectClient {
         _ uri: String,
         data: [String: Any] = [:],
         requiresCheckToken: Bool = false,
-        authenticated: Bool = false
+        authenticated: Bool = false,
+        domain: String = "https://interface.music.163.com",
+        cookieOS: String? = nil
     ) async throws -> Response {
         var requestData = data
         let header = eapiHeader(
             requiresCheckToken: requiresCheckToken,
-            authenticated: authenticated
+            authenticated: authenticated,
+            cookieOS: cookieOS
         )
         requestData["header"] = header
         requestData["e_r"] = false
@@ -38,7 +41,7 @@ final class NeteaseDirectClient {
             .map { String(format: "%02X", $0) }
             .joined()
         let path = uri.replacingOccurrences(of: "/api/", with: "/eapi/")
-        guard let url = URL(string: "https://interface.music.163.com\(path)") else {
+        guard let url = URL(string: "\(domain)\(path)") else {
             throw APIError.requestEncoding
         }
         return try await send(
@@ -281,16 +284,17 @@ final class NeteaseDirectClient {
 
     private func eapiHeader(
         requiresCheckToken: Bool,
-        authenticated: Bool
+        authenticated: Bool,
+        cookieOS: String?
     ) -> [String: String] {
         var header: [String: String]
         if authenticated {
             let values = cookieValues
-            let profile = Self.weapiCookieProfile(for: values["os"])
+            let profile = Self.weapiCookieProfile(for: cookieOS ?? values["os"])
             header = [
                 "osver": nonEmpty(values["osver"]) ?? profile.osVersion,
                 "deviceId": nonEmpty(values["deviceId"]) ?? syntheticDeviceID,
-                "os": nonEmpty(values["os"]) ?? profile.os,
+                "os": cookieOS ?? nonEmpty(values["os"]) ?? profile.os,
                 "appver": nonEmpty(values["appver"]) ?? profile.appVersion,
                 "versioncode": nonEmpty(values["versioncode"]) ?? "140",
                 "mobilename": nonEmpty(values["mobilename"]) ?? "",

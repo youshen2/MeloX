@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlaylistTrackList: View {
     let tracks: [Song]
+    let sourceID: Int
     let showsArtwork: Bool
 
     var body: some View {
@@ -15,6 +16,7 @@ struct PlaylistTrackList: View {
                     PlaylistTrackRow(
                         song: song,
                         tracks: tracks,
+                        sourceID: sourceID,
                         index: index,
                         showsArtwork: showsArtwork
                     )
@@ -34,6 +36,7 @@ struct PlaylistTrackList: View {
 private struct PlaylistTrackRow: View {
     let song: Song
     let tracks: [Song]
+    let sourceID: Int
     let index: Int
     let showsArtwork: Bool
 
@@ -160,7 +163,7 @@ private struct PlaylistTrackRow: View {
         if isCurrentSong {
             player.togglePlayback()
         } else {
-            Task { await player.play(song, in: tracks) }
+            Task { await player.play(song, in: tracks, sourceID: sourceID) }
         }
     }
 }

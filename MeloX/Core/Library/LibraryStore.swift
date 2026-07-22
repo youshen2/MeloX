@@ -45,6 +45,14 @@ final class LibraryStore {
         favoritePlaylists.contains { $0.id == playlist.id }
     }
 
+    func recordRecentlyPlayed(_ song: Song) {
+        recentSongs.removeAll { $0.id == song.id }
+        recentSongs.insert(song, at: 0)
+        if recentSongs.count > 100 {
+            recentSongs.removeLast(recentSongs.count - 100)
+        }
+    }
+
     func canUnsubscribe(_ playlist: Playlist) -> Bool {
         playlist.creator?.userID != profile?.id
     }

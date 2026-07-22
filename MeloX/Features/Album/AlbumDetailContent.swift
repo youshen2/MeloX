@@ -28,12 +28,14 @@ struct AlbumDetailContent: View {
                         subtitle: album.artistText,
                         metadataText: metadataText,
                         tracks: songs,
+                        sourceID: album.id,
                         isSaved: isSubscribed,
                         onToggleSaved: onToggleSubscription
                     )
 
                     MusicCollectionTrackContent(
                         tracks: filteredTracks,
+                        sourceID: album.id,
                         showsArtwork: false,
                         loadingTitle: "正在载入专辑",
                         isLoading: isLoading,

@@ -410,6 +410,61 @@ final class NeteaseAPI {
         return response.data?.list.compactMap(\.data) ?? []
     }
 
+    func recordRecentPlayback(songID: Int, sourceID: Int) async throws {
+        try await submitPlaybackLog(
+            action: "startplay",
+            fields: [
+                "id": String(songID),
+                "type": "song",
+                "mainsite": "1",
+                "mainsiteWeb": "1",
+                "content": "id=\(sourceID)",
+            ]
+        )
+    }
+
+    func recordPlaybackDuration(songID: Int, sourceID: Int, time: Int) async throws {
+        try await submitPlaybackLog(
+            action: "play",
+            fields: [
+                "download": 0,
+                "end": "playend",
+                "id": String(songID),
+                "sourceId": String(sourceID),
+                "time": String(max(time, 0)),
+                "type": "song",
+                "wifi": 0,
+                "source": "list",
+                "mainsite": "1",
+                "mainsiteWeb": "1",
+                "content": "id=\(sourceID)",
+            ]
+        )
+    }
+
+    private func submitPlaybackLog(
+        action: String,
+        fields: [String: Any]
+    ) async throws {
+        let logs: [[String: Any]] = [["action": action, "json": fields]]
+        let logsData = try JSONSerialization.data(withJSONObject: logs)
+        guard let logsJSON = String(data: logsData, encoding: .utf8) else {
+            throw APIError.requestEncoding
+        }
+        // The current upstream implementation posts both `startplay` and
+        // `play` events to the original client-log endpoint using eapi and an
+        // OSX client cookie. `startplay` feeds /api/play-record/song/list;
+        // `play` carries the elapsed listening time.
+        let response: APIStatusResponse = try await client.eapi(
+            "/api/feedback/weblog",
+            data: ["logs": logsJSON],
+            authenticated: true,
+            domain: "https://clientlog.music.163.com",
+            cookieOS: "osx"
+        )
+        try validate(responseCode: response.code, message: response.message)
+    }
+
     func setSongLiked(id: Int, isLiked: Bool) async throws {
         let response: APIStatusResponse = try await client.eapi(
             "/api/radio/like",

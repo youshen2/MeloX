@@ -50,7 +50,7 @@ struct ArtistDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                     Button {
-                        Task { await player.playAll(songs) }
+                        Task { await player.playAll(songs, sourceID: artist.id) }
                     } label: {
                         Text("播放热门歌曲")
                     }
@@ -64,7 +64,9 @@ struct ArtistDetailView: View {
             Section("热门歌曲") {
                 ForEach(Array(songs.prefix(20).enumerated()), id: \.element.id) { index, song in
                     Button {
-                        Task { await player.play(song, in: songs) }
+                        Task {
+                            await player.play(song, in: songs, sourceID: artist.id)
+                        }
                     } label: {
                         TrackRowView(song: song, index: index)
                     }

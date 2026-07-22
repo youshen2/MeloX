@@ -39,6 +39,9 @@ final class PlayerStore {
     private let persistence: PlaybackPersistence
 
     @ObservationIgnored
+    private let historyRecorder: PlaybackHistoryRecorder
+
+    @ObservationIgnored
     private var loadGeneration = 0
 
     @ObservationIgnored
@@ -56,14 +59,26 @@ final class PlayerStore {
     @ObservationIgnored
     private var lastProgressUpdateDate = Date()
 
+    @ObservationIgnored
+    private var historySourceID: Int?
+
+    @ObservationIgnored
+    private var hasRecordedCurrentStart = false
+
     init(
         api: NeteaseAPI,
         settings: AppSettings,
-        persistence: PlaybackPersistence? = nil
+        persistence: PlaybackPersistence? = nil,
+        onPlaybackRecorded: @escaping (Song) -> Void = { _ in }
     ) {
         self.api = api
         self.settings = settings
         self.persistence = persistence ?? PlaybackPersistence()
+        historyRecorder = PlaybackHistoryRecorder(
+            api: api,
+            settings: settings,
+            onRecorded: onPlaybackRecorded
+        )
         engine = AudioPlaybackEngine()
         nowPlayingSession = NowPlayingSession(player: engine.nowPlayingPlayer)
         bindEngine()
@@ -88,6 +103,7 @@ final class PlayerStore {
         duration = TimeInterval(currentSong?.durationMS ?? 0) / 1_000
         repeatMode = RepeatMode(rawValue: snapshot.repeatMode) ?? .off
         volume = min(max(snapshot.volume, 0), 1)
+        historySourceID = snapshot.historySourceID
         engine.setVolume(volume)
 
         await loadCurrentSong(
@@ -96,21 +112,32 @@ final class PlayerStore {
         )
     }
 
-    func play(_ song: Song, in songs: [Song]? = nil) async {
+    func play(
+        _ song: Song,
+        in songs: [Song]? = nil,
+        sourceID: Int? = nil
+    ) async {
+        recordCurrentPlayback()
         if let songs, !songs.isEmpty {
             let index = songs.firstIndex(where: { $0.id == song.id }) ?? 0
             playbackQueue.replace(with: songs, startingAt: index)
+            historySourceID = sourceID
         } else if let existingIndex = queue.firstIndex(where: { $0.id == song.id }) {
             _ = playbackQueue.select(index: existingIndex)
         } else {
             playbackQueue.replace(with: [song], startingAt: 0)
+            historySourceID = sourceID
         }
+        hasRecordedCurrentStart = false
         await loadCurrentSong(autoplay: true)
     }
 
-    func playAll(_ songs: [Song]) async {
+    func playAll(_ songs: [Song], sourceID: Int? = nil) async {
         guard !songs.isEmpty else { return }
+        recordCurrentPlayback()
         playbackQueue.replace(with: songs, startingAt: 0)
+        historySourceID = sourceID
+        hasRecordedCurrentStart = false
         await loadCurrentSong(autoplay: true)
     }
 
@@ -151,11 +178,19 @@ final class PlayerStore {
     }
 
     func next() async {
+        await moveToNext(recordingCurrentPlayback: true)
+    }
+
+    private func moveToNext(recordingCurrentPlayback: Bool) async {
         guard !queue.isEmpty else { return }
+        if recordingCurrentPlayback {
+            recordCurrentPlayback()
+        }
         guard playbackQueue.move(by: 1, wraps: repeatMode == .all) else {
             stopAtQueueEnd()
             return
         }
+        hasRecordedCurrentStart = false
         await loadCurrentSong(autoplay: true)
     }
 
@@ -165,15 +200,21 @@ final class PlayerStore {
             seek(to: 0)
             return
         }
-        guard playbackQueue.move(by: -1, wraps: repeatMode == .all) else {
+        guard playbackQueue.canMove(by: -1, wraps: repeatMode == .all) else {
             seek(to: 0)
             return
         }
+        recordCurrentPlayback()
+        guard playbackQueue.move(by: -1, wraps: repeatMode == .all) else { return }
+        hasRecordedCurrentStart = false
         await loadCurrentSong(autoplay: true)
     }
 
     func playFromQueue(at index: Int) async {
+        guard queue.indices.contains(index) else { return }
+        recordCurrentPlayback()
         guard playbackQueue.select(index: index) else { return }
+        hasRecordedCurrentStart = false
         await loadCurrentSong(autoplay: true)
     }
 
@@ -260,12 +301,14 @@ final class PlayerStore {
     }
 
     private func handlePlaybackEnded() async {
+        recordCurrentPlayback(completed: true)
         if repeatMode == .one {
+            hasRecordedCurrentStart = false
             seek(to: 0)
             engine.play()
             return
         }
-        await next()
+        await moveToNext(recordingCurrentPlayback: false)
     }
 
     private func handleEngineFailure(_ error: Error) async {
@@ -313,6 +356,7 @@ final class PlayerStore {
                 self.isPlaying = true
                 self.isLoading = false
                 self.playbackIssue = nil
+                self.recordCurrentPlaybackStartIfNeeded()
             }
             self.lastProgressUpdateDate = Date()
             self.updateNowPlayingState()
@@ -390,6 +434,25 @@ final class PlayerStore {
         )
     }
 
+    private func recordCurrentPlayback(completed: Bool = false) {
+        guard hasRecordedCurrentStart, let currentSong else { return }
+        historyRecorder.recordPlaybackDuration(
+            song: currentSong,
+            sourceID: historySourceID,
+            playbackTime: estimatedProgress(),
+            completed: completed
+        )
+    }
+
+    private func recordCurrentPlaybackStartIfNeeded() {
+        guard !hasRecordedCurrentStart, let currentSong else { return }
+        hasRecordedCurrentStart = true
+        historyRecorder.recordRecentPlayback(
+            song: currentSong,
+            sourceID: historySourceID
+        )
+    }
+
     private func persistSnapshot() {
         guard !queue.isEmpty else {
             persistence.clear()
@@ -403,7 +466,8 @@ final class PlayerStore {
                 repeatMode: repeatMode.rawValue,
                 isShuffled: isShuffled,
                 shuffledOrder: playbackQueue.persistedShuffleOrder,
-                volume: volume
+                volume: volume,
+                historySourceID: historySourceID
             )
         )
     }

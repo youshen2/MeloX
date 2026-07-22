@@ -86,7 +86,10 @@ struct LibraryView: View {
                 case .playlists:
                     playlistList
                 case .history:
-                    songList(library.recentSongs, emptyTitle: "还没有播放记录")
+                    songList(
+                        library.recentSongs,
+                        emptyTitle: "还没有播放记录"
+                    )
                 }
             }
         }
@@ -128,7 +131,7 @@ struct LibraryView: View {
                 ContentUnavailableView(
                     emptyTitle,
                     systemImage: section == .history ? "clock" : "heart",
-                    description: Text(section == .history ? "网易云音乐中的播放记录会显示在这里。" : "在歌曲列表左滑即可收藏到网易云音乐。")
+                    description: Text(section == .history ? "网易云音乐中的最近播放会显示在这里。" : "在歌曲列表左滑即可收藏到网易云音乐。")
                 )
             }
         }

@@ -43,6 +43,7 @@ struct PlaylistDetailContent: View {
                             subtitle: playlist.creator?.nickname ?? "网易云音乐",
                             metadataText: standardMetadata,
                             tracks: playlist.tracks,
+                            sourceID: playlist.id,
                             isSaved: library.contains(playlist: playlist),
                             onToggleSaved: {
                                 library.toggle(playlist: playlist)
@@ -52,6 +53,7 @@ struct PlaylistDetailContent: View {
 
                     MusicCollectionTrackContent(
                         tracks: filteredTracks,
+                        sourceID: playlist.id,
                         showsArtwork: usesToplistLayout,
                         loadingTitle: usesToplistLayout ? "正在载入排行榜" : "正在载入歌单",
                         isLoading: isLoading,
@@ -85,6 +87,7 @@ struct PlaylistDetailContent: View {
 
 struct MusicCollectionTrackContent: View {
     let tracks: [Song]
+    let sourceID: Int
     let showsArtwork: Bool
     let loadingTitle: String
     let isLoading: Bool
@@ -107,6 +110,7 @@ struct MusicCollectionTrackContent: View {
             } else {
                 PlaylistTrackList(
                     tracks: tracks,
+                    sourceID: sourceID,
                     showsArtwork: showsArtwork
                 )
             }
@@ -123,6 +127,7 @@ struct StandardMusicCollectionDetailHero: View {
     let subtitle: String
     let metadataText: String
     let tracks: [Song]
+    let sourceID: Int
     let isSaved: Bool
     let onToggleSaved: () -> Void
 
@@ -154,6 +159,7 @@ struct StandardMusicCollectionDetailHero: View {
 
             MusicCollectionPrimaryActions(
                 tracks: tracks,
+                sourceID: sourceID,
                 isSaved: isSaved,
                 onToggleSaved: onToggleSaved
             )
@@ -211,6 +217,7 @@ private struct ToplistDetailHero: View {
 
             MusicCollectionPrimaryActions(
                 tracks: playlist.tracks,
+                sourceID: playlist.id,
                 isSaved: library.contains(playlist: playlist),
                 onToggleSaved: {
                     library.toggle(playlist: playlist)
@@ -248,6 +255,7 @@ private struct ToplistDetailHero: View {
 
 struct MusicCollectionPrimaryActions: View {
     let tracks: [Song]
+    let sourceID: Int
     let isSaved: Bool
     let onToggleSaved: () -> Void
 
@@ -258,7 +266,9 @@ struct MusicCollectionPrimaryActions: View {
         GlassEffectContainer(spacing: 14) {
             HStack(spacing: 14) {
                 Button {
-                    Task { await player.playAll(tracks.shuffled()) }
+                    Task {
+                        await player.playAll(tracks.shuffled(), sourceID: sourceID)
+                    }
                 } label: {
                     Image(systemName: "shuffle")
                         .font(.title2.weight(.semibold))
@@ -271,7 +281,7 @@ struct MusicCollectionPrimaryActions: View {
                 .accessibilityLabel("随机播放")
 
                 Button {
-                    Task { await player.playAll(tracks) }
+                    Task { await player.playAll(tracks, sourceID: sourceID) }
                 } label: {
                     Label("播放", systemImage: "play.fill")
                         .font(.title3.weight(.bold))

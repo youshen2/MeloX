@@ -17,7 +17,15 @@ struct MeloXApp: App {
         _settings = State(initialValue: settings)
         _api = State(initialValue: api)
         _library = State(initialValue: library)
-        _player = State(initialValue: PlayerStore(api: api, settings: settings))
+        _player = State(
+            initialValue: PlayerStore(
+                api: api,
+                settings: settings,
+                onPlaybackRecorded: { song in
+                    library.recordRecentlyPlayed(song)
+                }
+            )
+        )
         _screenAwakeCoordinator = State(initialValue: ScreenAwakeCoordinator())
     }
 

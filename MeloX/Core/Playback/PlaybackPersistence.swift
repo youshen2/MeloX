@@ -8,6 +8,7 @@ struct PlaybackSnapshot: Codable {
     let isShuffled: Bool
     let shuffledOrder: [Int]
     let volume: Double
+    let historySourceID: Int?
 }
 
 @MainActor
