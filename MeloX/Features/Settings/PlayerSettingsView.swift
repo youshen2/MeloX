@@ -73,6 +73,14 @@ struct PlayerSettingsView: View {
                 )
 
                 valueSlider(
+                    title: "当前歌词大小",
+                    value: $settings.lyricsCurrentLineScale,
+                    range: AppSettings.lyricsCurrentLineScaleRange,
+                    step: 0.01,
+                    valueText: "\(Int((settings.lyricsCurrentLineScale * 100).rounded()))%"
+                )
+
+                valueSlider(
                     title: "歌词行距",
                     value: $settings.lyricsLineSpacing,
                     range: 12...36,
@@ -106,7 +114,7 @@ struct PlayerSettingsView: View {
             } header: {
                 Text("歌词外观")
             } footer: {
-                Text("焦点的上一句会轻微模糊，下一句只保留极轻微模糊；逐字歌词中尚未播放的文字也会随距离渐进模糊。强度为 0 时关闭全部模糊效果。")
+                Text("歌词字体默认 26 磅，当前歌词默认放大到 120%；升格为当前歌词时会平滑放大。放大比例可在 100%～150% 之间调整，设为 100% 可关闭放大。焦点的上一句会轻微模糊，下一句只保留极轻微模糊；逐字歌词中尚未播放的文字也会随距离渐进模糊。强度为 0 时关闭全部模糊效果。")
             }
 
             Section {

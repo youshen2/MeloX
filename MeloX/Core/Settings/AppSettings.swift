@@ -24,6 +24,9 @@ enum MusicQuality: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class AppSettings {
+    static let defaultLyricsFontSize = 26.0
+    static let defaultLyricsCurrentLineScale = 1.2
+    static let lyricsCurrentLineScaleRange = 1.0...1.5
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
     static let defaultLyricsFocusCascadeBounceEnabled = true
@@ -39,6 +42,7 @@ final class AppSettings {
         static let playerBackgroundSaturation = "playerBackgroundSaturation"
         static let shrinksPausedArtwork = "shrinksPausedArtwork"
         static let lyricsFontSize = "lyricsFontSize"
+        static let lyricsCurrentLineScale = "lyricsCurrentLineScale"
         static let lyricsLineSpacing = "lyricsLineSpacing"
         static let lyricsBlurIntensity = "lyricsBlurIntensity"
         static let lyricsDimAmount = "lyricsDimAmount"
@@ -95,6 +99,10 @@ final class AppSettings {
 
     var lyricsFontSize: Double {
         didSet { defaults.set(lyricsFontSize, forKey: Key.lyricsFontSize) }
+    }
+
+    var lyricsCurrentLineScale: Double {
+        didSet { defaults.set(lyricsCurrentLineScale, forKey: Key.lyricsCurrentLineScale) }
     }
 
     var lyricsLineSpacing: Double {
@@ -228,7 +236,18 @@ final class AppSettings {
         playerBackgroundBlur = defaults.object(forKey: Key.playerBackgroundBlur) as? Double ?? 90
         playerBackgroundSaturation = defaults.object(forKey: Key.playerBackgroundSaturation) as? Double ?? 0.82
         shrinksPausedArtwork = defaults.object(forKey: Key.shrinksPausedArtwork) as? Bool ?? true
-        lyricsFontSize = defaults.object(forKey: Key.lyricsFontSize) as? Double ?? 29
+        lyricsFontSize = defaults.object(forKey: Key.lyricsFontSize) as? Double
+            ?? Self.defaultLyricsFontSize
+        let storedCurrentLineScale = defaults.object(
+            forKey: Key.lyricsCurrentLineScale
+        ) as? Double ?? Self.defaultLyricsCurrentLineScale
+        lyricsCurrentLineScale = min(
+            max(
+                storedCurrentLineScale,
+                Self.lyricsCurrentLineScaleRange.lowerBound
+            ),
+            Self.lyricsCurrentLineScaleRange.upperBound
+        )
         lyricsLineSpacing = defaults.object(forKey: Key.lyricsLineSpacing) as? Double ?? 24
         lyricsBlurIntensity = defaults.object(forKey: Key.lyricsBlurIntensity) as? Double ?? 1
         lyricsDimAmount = defaults.object(forKey: Key.lyricsDimAmount) as? Double ?? 1
@@ -287,7 +306,8 @@ final class AppSettings {
         playerBackgroundBlur = 90
         playerBackgroundSaturation = 0.82
         shrinksPausedArtwork = true
-        lyricsFontSize = 29
+        lyricsFontSize = Self.defaultLyricsFontSize
+        lyricsCurrentLineScale = Self.defaultLyricsCurrentLineScale
         lyricsLineSpacing = 24
         lyricsBlurIntensity = 1
         lyricsDimAmount = 1

@@ -22,7 +22,7 @@ struct NowPlayingLyricsPage: View {
     @State private var browsingGeneration = 0
     @State private var isPreparingInitialFocus = true
     @State private var visualHighlightedLyricID: LyricLine.ID?
-    @State private var visualBlurFocusLyricID: LyricLine.ID?
+    @State private var visualCascadeFocusLyricID: LyricLine.ID?
     @State private var lyricFrameByID: [LyricLine.ID: CGRect] = [:]
     @State private var lyricMovementOffsetByID: [LyricLine.ID: CGFloat] = [:]
 
@@ -42,7 +42,7 @@ struct NowPlayingLyricsPage: View {
         self.onToggleInterface = onToggleInterface
         _scrollPositionID = State(initialValue: highlightedLyricID)
         _visualHighlightedLyricID = State(initialValue: highlightedLyricID)
-        _visualBlurFocusLyricID = State(initialValue: highlightedLyricID)
+        _visualCascadeFocusLyricID = State(initialValue: highlightedLyricID)
     }
 
     var body: some View {
@@ -107,7 +107,7 @@ struct NowPlayingLyricsPage: View {
             let focusPosition = lyricsFocusPosition
             let blurFocusLyricID = isBrowsingLyrics
                 ? scrollPositionID
-                : visualBlurFocusLyricID ?? scrollPositionID ?? highlightedLyricID
+                : visualCascadeFocusLyricID ?? scrollPositionID ?? highlightedLyricID
             let focusNeighborIDs = lyricNeighborIDs(around: blurFocusLyricID)
             let focusEffectAnimation = lyricFocusEffectAnimation(
                 for: visualHighlightedLyricID
@@ -128,6 +128,7 @@ struct NowPlayingLyricsPage: View {
             )
             let blurIntensity = CGFloat(settings.lyricsBlurIntensity)
             let dimAmount = settings.lyricsDimAmount
+            let currentLineScale = lyricsCurrentLineScale
             let glowOverflow = Self.lyricGlowOverflow(
                 isEnabled: settings.lyricsGlowEnabled
                     && (
@@ -143,6 +144,7 @@ struct NowPlayingLyricsPage: View {
                     LazyVStack(alignment: .leading, spacing: CGFloat(settings.lyricsLineSpacing)) {
                         ForEach(lyrics) { line in
                             let isPlaybackLine = line.id == visualHighlightedLyricID
+                            let isCascadeFocusLine = line.id == visualCascadeFocusLyricID
                             let isActualPlaybackLine = line.id == highlightedLyricID
                             let isPrecedingFocusLine = line.id == focusNeighborIDs.preceding
                             let isFollowingFocusLine = line.id == focusNeighborIDs.following
@@ -161,6 +163,10 @@ struct NowPlayingLyricsPage: View {
                                 fontSize: CGFloat(settings.lyricsFontSize),
                                 layoutWidth: proxy.size.width
                             )
+                                .scaleEffect(
+                                    isCascadeFocusLine ? currentLineScale : 1,
+                                    anchor: .leading
+                                )
                                 .opacity(
                                     Self.lyricEmphasis(
                                         isPlaybackLine: isPlaybackLine,
@@ -274,7 +280,7 @@ struct NowPlayingLyricsPage: View {
                 .onChange(of: highlightedLyricID) { _, newValue in
                     guard newValue == nil else { return }
                     visualHighlightedLyricID = nil
-                    visualBlurFocusLyricID = nil
+                    visualCascadeFocusLyricID = nil
                     lyricMovementOffsetByID.removeAll()
                 }
                 .onAppear {
@@ -302,6 +308,18 @@ struct NowPlayingLyricsPage: View {
 
     private var lyricsFocusPosition: CGFloat {
         CGFloat(min(max(settings.lyricsFocusPosition, 0.2), 0.5))
+    }
+
+    private var lyricsCurrentLineScale: CGFloat {
+        CGFloat(
+            min(
+                max(
+                    settings.lyricsCurrentLineScale,
+                    AppSettings.lyricsCurrentLineScaleRange.lowerBound
+                ),
+                AppSettings.lyricsCurrentLineScaleRange.upperBound
+            )
+        )
     }
 
     private var focusMovementTrigger: LyricFocusMovementTrigger {
@@ -351,12 +369,12 @@ struct NowPlayingLyricsPage: View {
         guard let highlightedLyricID else { return }
         guard !isBrowsingLyrics else {
             visualHighlightedLyricID = highlightedLyricID
-            visualBlurFocusLyricID = highlightedLyricID
+            visualCascadeFocusLyricID = highlightedLyricID
             return
         }
         guard scrollPositionID != highlightedLyricID else {
             visualHighlightedLyricID = highlightedLyricID
-            visualBlurFocusLyricID = highlightedLyricID
+            visualCascadeFocusLyricID = highlightedLyricID
             return
         }
         guard isAdjacentFocusTransition(
@@ -382,7 +400,7 @@ struct NowPlayingLyricsPage: View {
         guard abs(movementDistance) > 0.5 else {
             moveFocus(to: highlightedLyricID, animated: false)
             visualHighlightedLyricID = highlightedLyricID
-            visualBlurFocusLyricID = highlightedLyricID
+            visualCascadeFocusLyricID = highlightedLyricID
             return
         }
 
@@ -562,7 +580,7 @@ struct NowPlayingLyricsPage: View {
 
             withAnimation(cascadeAnimation) {
                 if order == 0 {
-                    visualBlurFocusLyricID = highlightedLyricID
+                    visualCascadeFocusLyricID = highlightedLyricID
                 }
                 lyricMovementOffsetByID[id] = 0
             }
@@ -609,7 +627,7 @@ struct NowPlayingLyricsPage: View {
                 )
         ) {
             visualHighlightedLyricID = id
-            visualBlurFocusLyricID = id
+            visualCascadeFocusLyricID = id
         }
     }
 
@@ -627,7 +645,7 @@ struct NowPlayingLyricsPage: View {
         withTransaction(transaction) {
             scrollPositionID = id
             visualHighlightedLyricID = id
-            visualBlurFocusLyricID = id
+            visualCascadeFocusLyricID = id
             lyricMovementOffsetByID.removeAll()
         }
     }
