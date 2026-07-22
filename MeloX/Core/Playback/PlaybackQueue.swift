@@ -100,6 +100,13 @@ struct PlaybackQueue {
         return true
     }
 
+    func canMove(by offset: Int, wraps: Bool) -> Bool {
+        let order = isShuffled ? shuffledOrder : Array(songs.indices)
+        guard !order.isEmpty else { return false }
+        let position = isShuffled ? shuffledPosition : currentIndex
+        return order.indices.contains(position + offset) || wraps
+    }
+
     mutating func toggleShuffle() {
         isShuffled.toggle()
         if isShuffled {

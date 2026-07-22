@@ -60,6 +60,29 @@ struct ContentView: View {
             .task(id: settings.cookie) {
                 await library.refresh()
             }
+            .alert(
+                "歌曲无法播放",
+                isPresented: Binding(
+                    get: { player.playbackIssue != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            player.dismissPlaybackIssue()
+                        }
+                    }
+                )
+            ) {
+                if player.canPlayNext {
+                    Button("播放下一首") {
+                        player.dismissPlaybackIssue()
+                        Task { await player.next() }
+                    }
+                }
+                Button("好", role: .cancel) {
+                    player.dismissPlaybackIssue()
+                }
+            } message: {
+                Text(player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
+            }
             .appLaunchExperience()
     }
 

@@ -25,7 +25,6 @@ enum APIError: LocalizedError {
     case emptyResponse(statusCode: Int)
     case server(statusCode: Int, message: String)
     case noPlayableSource
-    case trialSourceOnly
     case notLoggedIn
 
     var errorDescription: String? {
@@ -39,9 +38,7 @@ enum APIError: LocalizedError {
         case .server(let statusCode, let message):
             "请求失败（\(statusCode)）：\(message)"
         case .noPlayableSource:
-            "当前歌曲没有可用的播放地址。"
-        case .trialSourceOnly:
-            "当前歌曲仅提供试听片段，已跳过播放。"
+            "当前歌曲可能因版权或地区限制，没有可用的播放地址。"
         case .notLoggedIn:
             "请先登录网易云音乐。"
         }
@@ -239,9 +236,6 @@ final class NeteaseAPI {
             )
             guard let source = response.data.first(where: { $0.id == id }) else {
                 throw APIError.noPlayableSource
-            }
-            guard source.freeTrialInfo == nil else {
-                throw APIError.trialSourceOnly
             }
             guard let string = source.url,
                   let url = securePlaybackURL(from: string) else {

@@ -10,7 +10,7 @@ final class PlayerStore {
     private(set) var duration: TimeInterval = 0
     private(set) var seekRevision = 0
     private(set) var isLoading = false
-    private(set) var errorMessage: String?
+    private(set) var playbackIssue: PlaybackIssue?
     private(set) var volume: Double = 1
     private(set) var repeatMode: RepeatMode = .off
 
@@ -19,6 +19,9 @@ final class PlayerStore {
     var queue: [Song] { playbackQueue.songs }
     var currentIndex: Int { playbackQueue.currentIndex }
     var isShuffled: Bool { playbackQueue.isShuffled }
+    var canPlayNext: Bool {
+        queue.count > 1 && playbackQueue.canMove(by: 1, wraps: repeatMode == .all)
+    }
 
     @ObservationIgnored
     private let api: NeteaseAPI
@@ -46,9 +49,6 @@ final class PlayerStore {
 
     @ObservationIgnored
     private var shouldResumeAfterInterruption = false
-
-    @ObservationIgnored
-    private var currentFailureAttempt = 0
 
     @ObservationIgnored
     private var lastPersistedSecond = -1
@@ -92,8 +92,7 @@ final class PlayerStore {
 
         await loadCurrentSong(
             autoplay: false,
-            startAt: progress,
-            failureAttempt: 0
+            startAt: progress
         )
     }
 
@@ -122,7 +121,7 @@ final class PlayerStore {
                 engine.pause()
                 persistSnapshot()
             } else {
-                errorMessage = nil
+                playbackIssue = nil
                 engine.play()
             }
         } else {
@@ -135,6 +134,10 @@ final class PlayerStore {
     func retry() async {
         guard currentSong != nil else { return }
         await loadCurrentSong(autoplay: true)
+    }
+
+    func dismissPlaybackIssue() {
+        playbackIssue = nil
     }
 
     func reloadCurrentSongForQualityChange() async {
@@ -215,13 +218,11 @@ final class PlayerStore {
 
     private func loadCurrentSong(
         autoplay: Bool,
-        startAt: TimeInterval = 0,
-        failureAttempt: Int = 0
+        startAt: TimeInterval = 0
     ) async {
         guard let song = playbackQueue.currentSong else { return }
         loadGeneration += 1
         let generation = loadGeneration
-        currentFailureAttempt = failureAttempt
         currentSong = song
         progress = max(0, startAt)
         lastProgressUpdateDate = Date()
@@ -229,7 +230,7 @@ final class PlayerStore {
         isResolvingSource = true
         isLoading = true
         isPlaying = false
-        errorMessage = nil
+        playbackIssue = nil
         engine.unload()
         nowPlayingSession.setSong(
             song,
@@ -252,24 +253,10 @@ final class PlayerStore {
             isResolvingSource = false
             isLoading = false
             isPlaying = false
-            errorMessage = error.localizedDescription
+            playbackIssue = PlaybackIssue(song: song, error: error)
             updateNowPlayingState()
-            if autoplay {
-                await advancePastFailure(attempt: failureAttempt + 1)
-            }
-        }
-    }
-
-    private func advancePastFailure(attempt: Int) async {
-        guard attempt < queue.count,
-              playbackQueue.move(by: 1, wraps: repeatMode == .all) else {
-            engine.unload()
-            isLoading = false
-            isPlaying = false
             persistSnapshot()
-            return
         }
-        await loadCurrentSong(autoplay: true, failureAttempt: attempt)
     }
 
     private func handlePlaybackEnded() async {
@@ -282,17 +269,18 @@ final class PlayerStore {
     }
 
     private func handleEngineFailure(_ error: Error) async {
-        errorMessage = error.localizedDescription
+        if let song = currentSong {
+            playbackIssue = PlaybackIssue(song: song, error: error)
+        }
         isLoading = false
         isPlaying = false
         updateNowPlayingState()
 
-        guard let playbackError = error as? AudioPlaybackError,
-              case .itemFailed = playbackError else {
-            persistSnapshot()
-            return
+        if let playbackError = error as? AudioPlaybackError,
+           case .itemFailed = playbackError {
+            engine.unload()
         }
-        await advancePastFailure(attempt: currentFailureAttempt + 1)
+        persistSnapshot()
     }
 
     private func stopAtQueueEnd() {
@@ -324,8 +312,7 @@ final class PlayerStore {
             case .playing:
                 self.isPlaying = true
                 self.isLoading = false
-                self.errorMessage = nil
-                self.currentFailureAttempt = 0
+                self.playbackIssue = nil
             }
             self.lastProgressUpdateDate = Date()
             self.updateNowPlayingState()
