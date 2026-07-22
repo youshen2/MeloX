@@ -28,6 +28,7 @@ struct NowPlayingLyricsPage: View {
     @State private var visualCascadeFocusLyricID: LyricLine.ID?
     @State private var lyricFrameByID: [LyricLine.ID: CGRect] = [:]
     @State private var lyricMovementOffsetByID: [LyricLine.ID: CGFloat] = [:]
+    @State private var retainedTopCascadeLyrics: [RetainedCascadeLyric] = []
 
     init(
         song: Song,
@@ -167,6 +168,9 @@ struct NowPlayingLyricsPage: View {
                             let isPrecedingFocusLine = line.id == focusNeighborIDs.preceding
                             let isFollowingFocusLine = line.id == focusNeighborIDs.following
                             let isBrowsingFocus = isBrowsingLyrics && line.id == scrollPositionID
+                            let isRetainedTopCascadeLine = retainedTopCascadeLyrics.contains {
+                                $0.id == line.id
+                            }
                             let movementOffset = lyricMovementOffsetByID[line.id, default: 0]
                             let focusBlurRadius = Self.lyricFocusBlurRadius(
                                 intensity: blurIntensity,
@@ -183,11 +187,13 @@ struct NowPlayingLyricsPage: View {
                                 layoutWidth: lyricLayoutWidth
                             )
                                 .opacity(
-                                    Self.lyricEmphasis(
-                                        isPlaybackLine: isPlaybackLine,
-                                        isBrowsingFocus: isBrowsingFocus,
-                                        dimAmount: dimAmount
-                                    )
+                                    isRetainedTopCascadeLine
+                                        ? 0
+                                        : Self.lyricEmphasis(
+                                            isPlaybackLine: isPlaybackLine,
+                                            isBrowsingFocus: isBrowsingFocus,
+                                            dimAmount: dimAmount
+                                        )
                                 )
                                 .animation(
                                     focusEffectAnimation,
@@ -233,7 +239,6 @@ struct NowPlayingLyricsPage: View {
                                 .id(line.id)
                                 .onDisappear {
                                     lyricFrameByID.removeValue(forKey: line.id)
-                                    lyricMovementOffsetByID.removeValue(forKey: line.id)
                                 }
                                 .accessibilityLabel(
                                     line.accessibilityText(
@@ -268,6 +273,19 @@ struct NowPlayingLyricsPage: View {
                         transaction.animation = nil
                     }
                 }
+                .overlay(alignment: .topLeading) {
+                    retainedTopCascadeLyricsOverlay(
+                        viewportSize: proxy.size,
+                        lyricLayoutWidth: lyricLayoutWidth,
+                        focusPosition: focusPosition,
+                        lyricStride: lyricStride,
+                        blurIntensity: blurIntensity,
+                        dimAmount: dimAmount,
+                        currentLineScale: currentLineScale,
+                        usesPseudoTiming: usesPseudoTiming,
+                        focusEffectAnimation: focusEffectAnimation
+                    )
+                }
                 .mask {
                     LinearGradient(
                         stops: [
@@ -297,6 +315,7 @@ struct NowPlayingLyricsPage: View {
                     visualHighlightedLyricID = nil
                     visualCascadeFocusLyricID = nil
                     lyricMovementOffsetByID.removeAll()
+                    retainedTopCascadeLyrics.removeAll()
                 }
                 .onChange(of: player.seekRevision) { _, _ in
                     requestPlaybackFocus()
@@ -321,9 +340,95 @@ struct NowPlayingLyricsPage: View {
                     browsingGeneration += 1
                     lyricFrameByID.removeAll()
                     lyricMovementOffsetByID.removeAll()
+                    retainedTopCascadeLyrics.removeAll()
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func retainedTopCascadeLyricsOverlay(
+        viewportSize: CGSize,
+        lyricLayoutWidth: CGFloat,
+        focusPosition: CGFloat,
+        lyricStride: CGFloat,
+        blurIntensity: CGFloat,
+        dimAmount: Double,
+        currentLineScale: CGFloat,
+        usesPseudoTiming: Bool,
+        focusEffectAnimation: Animation?
+    ) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(retainedTopCascadeLyrics) { retainedLyric in
+                if let line = lyrics.first(where: { $0.id == retainedLyric.id }) {
+                    let isPlaybackLine = line.id == visualHighlightedLyricID
+                    let isCascadeFocusLine = line.id == visualCascadeFocusLyricID
+                    let isBrowsingFocus = isBrowsingLyrics && line.id == scrollPositionID
+                    let blurFocusLyricID = isBrowsingLyrics
+                        ? scrollPositionID
+                        : visualCascadeFocusLyricID ?? scrollPositionID ?? highlightedLyricID
+                    let focusNeighborIDs = lyricNeighborIDs(around: blurFocusLyricID)
+                    let movementOffset = lyricMovementOffsetByID[
+                        line.id,
+                        default: retainedLyric.movementDistance
+                    ]
+                    let visualOffset = movementOffset - retainedLyric.movementDistance
+                    let visualMidY = retainedLyric.frame.midY + visualOffset
+                    let distance = abs(
+                        visualMidY - viewportSize.height * focusPosition
+                    )
+                    let focusBlurRadius = Self.lyricFocusBlurRadius(
+                        intensity: blurIntensity,
+                        isPrecedingFocusLine: line.id == focusNeighborIDs.preceding,
+                        isFollowingFocusLine: line.id == focusNeighborIDs.following
+                    )
+
+                    SynchronizedLyricText(
+                        line: line,
+                        isPlaybackLine: isPlaybackLine,
+                        usesPseudoTiming: usesPseudoTiming,
+                        fontSize: CGFloat(settings.lyricsFontSize),
+                        visualScale: isCascadeFocusLine ? currentLineScale : 1,
+                        layoutWidth: lyricLayoutWidth
+                    )
+                    .opacity(
+                        Self.lyricEmphasis(
+                            isPlaybackLine: isPlaybackLine,
+                            isBrowsingFocus: isBrowsingFocus,
+                            dimAmount: dimAmount
+                        )
+                    )
+                    .animation(focusEffectAnimation, value: isPlaybackLine)
+                    .blur(
+                        radius: Self.lyricDistanceBlurRadius(
+                            forPixelDistance: distance,
+                            lyricStride: lyricStride,
+                            intensity: blurIntensity
+                        )
+                    )
+                    .opacity(
+                        Self.lyricOpacity(
+                            forPixelDistance: distance,
+                            lyricStride: lyricStride,
+                            dimAmount: dimAmount
+                        )
+                    )
+                    .blur(radius: focusBlurRadius)
+                    .animation(focusEffectAnimation, value: focusBlurRadius)
+                    .frame(width: viewportSize.width, alignment: .leading)
+                    .offset(
+                        y: retainedLyric.frame.minY + visualOffset
+                    )
+                }
+            }
+        }
+        .frame(
+            width: viewportSize.width,
+            height: viewportSize.height,
+            alignment: .topLeading
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var lyricsFocusPosition: CGFloat {
@@ -512,10 +617,23 @@ struct NowPlayingLyricsPage: View {
         )
         let prefersCascadeBounce = settings.lyricsFocusCascadeBounceEnabled
         let focusColorLeadTime = lyricsFocusColorLeadTime
+        let retainedTopLyrics: [RetainedCascadeLyric] = initialVisibleIDs.compactMap { id in
+            guard movementDistance > 0,
+                  let frame = lyricFrameByID[id],
+                  frame.minY < movementDistance else {
+                return nil
+            }
+            return RetainedCascadeLyric(
+                id: id,
+                frame: frame,
+                movementDistance: movementDistance
+            )
+        }
 
         var preparationTransaction = Transaction(animation: nil)
         preparationTransaction.disablesAnimations = true
         withTransaction(preparationTransaction) {
+            retainedTopCascadeLyrics = retainedTopLyrics
             lyricMovementOffsetByID = Dictionary(
                 uniqueKeysWithValues: lyrics.map { line in
                     (line.id, movementDistance)
@@ -731,6 +849,7 @@ struct NowPlayingLyricsPage: View {
             visualHighlightedLyricID = id
             visualCascadeFocusLyricID = id
             lyricMovementOffsetByID.removeAll()
+            retainedTopCascadeLyrics.removeAll()
         }
     }
 
@@ -739,6 +858,7 @@ struct NowPlayingLyricsPage: View {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             lyricMovementOffsetByID.removeAll()
+            retainedTopCascadeLyrics.removeAll()
         }
     }
 
@@ -954,4 +1074,10 @@ private struct LyricFocusMovementTrigger: Hashable {
     let highlightedLyricID: LyricLine.ID?
     let isBrowsingLyrics: Bool
     let playbackFocusRequestGeneration: Int
+}
+
+private struct RetainedCascadeLyric: Identifiable, Equatable {
+    let id: LyricLine.ID
+    let frame: CGRect
+    let movementDistance: CGFloat
 }
