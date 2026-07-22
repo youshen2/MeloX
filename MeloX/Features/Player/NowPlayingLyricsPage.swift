@@ -140,6 +140,8 @@ struct NowPlayingLyricsPage: View {
             )
 
             GeometryReader { proxy in
+                let lyricLayoutWidth = max(proxy.size.width / currentLineScale, 1)
+
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: CGFloat(settings.lyricsLineSpacing)) {
                         ForEach(lyrics) { line in
@@ -161,12 +163,9 @@ struct NowPlayingLyricsPage: View {
                                 isPlaybackLine: isPlaybackLine,
                                 usesPseudoTiming: usesPseudoTiming,
                                 fontSize: CGFloat(settings.lyricsFontSize),
-                                layoutWidth: proxy.size.width
+                                visualScale: isCascadeFocusLine ? currentLineScale : 1,
+                                layoutWidth: lyricLayoutWidth
                             )
-                                .scaleEffect(
-                                    isCascadeFocusLine ? currentLineScale : 1,
-                                    anchor: .leading
-                                )
                                 .opacity(
                                     Self.lyricEmphasis(
                                         isPlaybackLine: isPlaybackLine,

@@ -24,6 +24,13 @@ enum SynchronizedLyricTextAlignment: Equatable {
         case .center: .center
         }
     }
+
+    var scaleAnchor: UnitPoint {
+        switch self {
+        case .leading: .leading
+        case .center: .center
+        }
+    }
 }
 
 struct SynchronizedLyricText: View {
@@ -40,6 +47,7 @@ struct SynchronizedLyricText: View {
     let fontScale: CGFloat
     let primaryColor: Color
     let showsTranslation: Bool
+    let visualScale: CGFloat
     let layoutWidth: CGFloat?
     let playbackScaleRange: ClosedRange<CGFloat>?
     let playbackScaleStartDelay: TimeInterval
@@ -57,6 +65,7 @@ struct SynchronizedLyricText: View {
         fontScale: CGFloat = 1,
         primaryColor: Color = .white,
         showsTranslation: Bool = true,
+        visualScale: CGFloat = 1,
         layoutWidth: CGFloat? = nil,
         playbackScaleRange: ClosedRange<CGFloat>? = nil,
         playbackScaleStartDelay: TimeInterval = 0
@@ -69,6 +78,7 @@ struct SynchronizedLyricText: View {
         self.fontScale = fontScale
         self.primaryColor = primaryColor
         self.showsTranslation = showsTranslation
+        self.visualScale = visualScale
         self.layoutWidth = layoutWidth
         self.playbackScaleRange = playbackScaleRange
         self.playbackScaleStartDelay = playbackScaleStartDelay
@@ -124,6 +134,8 @@ struct SynchronizedLyricText: View {
             }
         }
         .multilineTextAlignment(alignment.textAlignment)
+        .frame(width: layoutWidth, alignment: alignment.frameAlignment)
+        .scaleEffect(visualScale, anchor: alignment.scaleAnchor)
         .frame(maxWidth: .infinity, alignment: alignment.frameAlignment)
     }
 
