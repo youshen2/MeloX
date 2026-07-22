@@ -26,8 +26,8 @@ enum MusicQuality: String, CaseIterable, Identifiable {
 final class AppSettings {
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
-    static let defaultLyricsFocusTransitionLeadTime = 0.06
-    static let lyricsFocusTransitionLeadTimeRange = 0.0...0.1
+    static let defaultLyricsFocusColorLeadTime = 0.06
+    static let lyricsFocusColorLeadTimeRange = 0.0...0.1
 
     private enum Key {
         static let cookie = "musicCookie"
@@ -53,7 +53,7 @@ final class AppSettings {
         static let lyricsFollowDelay = "lyricsFollowDelay"
         static let lyricsFocusPosition = "lyricsFocusPosition"
         static let lyricsFocusCascadeDelay = "lyricsFocusCascadeDelay"
-        static let lyricsFocusTransitionLeadTime = "lyricsFocusTransitionLeadTime"
+        static let lyricsFocusColorLeadTime = "lyricsFocusColorLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsRefreshRate = "lyricsRefreshRate"
         static let lyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
@@ -160,11 +160,11 @@ final class AppSettings {
         }
     }
 
-    var lyricsFocusTransitionLeadTime: Double {
+    var lyricsFocusColorLeadTime: Double {
         didSet {
             defaults.set(
-                lyricsFocusTransitionLeadTime,
-                forKey: Key.lyricsFocusTransitionLeadTime
+                lyricsFocusColorLeadTime,
+                forKey: Key.lyricsFocusColorLeadTime
             )
         }
     }
@@ -242,15 +242,15 @@ final class AppSettings {
             ),
             Self.lyricsFocusCascadeDelayRange.upperBound
         )
-        let storedFocusTransitionLeadTime = defaults.object(
-            forKey: Key.lyricsFocusTransitionLeadTime
-        ) as? Double ?? Self.defaultLyricsFocusTransitionLeadTime
-        lyricsFocusTransitionLeadTime = min(
+        let storedFocusColorLeadTime = defaults.object(
+            forKey: Key.lyricsFocusColorLeadTime
+        ) as? Double ?? Self.defaultLyricsFocusColorLeadTime
+        lyricsFocusColorLeadTime = min(
             max(
-                storedFocusTransitionLeadTime,
-                Self.lyricsFocusTransitionLeadTimeRange.lowerBound
+                storedFocusColorLeadTime,
+                Self.lyricsFocusColorLeadTimeRange.lowerBound
             ),
-            Self.lyricsFocusTransitionLeadTimeRange.upperBound
+            Self.lyricsFocusColorLeadTimeRange.upperBound
         )
         lyricsAdvanceTime = defaults.object(forKey: Key.lyricsAdvanceTime) as? Double ?? 0.2
         lyricsRefreshRate = LyricsRefreshRate(
@@ -289,7 +289,7 @@ final class AppSettings {
         lyricsFollowDelay = 3
         lyricsFocusPosition = 0.34
         lyricsFocusCascadeDelay = Self.defaultLyricsFocusCascadeDelay
-        lyricsFocusTransitionLeadTime = Self.defaultLyricsFocusTransitionLeadTime
+        lyricsFocusColorLeadTime = Self.defaultLyricsFocusColorLeadTime
         lyricsAdvanceTime = 0.2
         lyricsRefreshRate = .defaultValue
         lyricsKeepsScreenAwake = true

@@ -22,6 +22,7 @@ struct NowPlayingLyricsPage: View {
     @State private var browsingGeneration = 0
     @State private var isPreparingInitialFocus = true
     @State private var visualHighlightedLyricID: LyricLine.ID?
+    @State private var visualBlurFocusLyricID: LyricLine.ID?
     @State private var lyricFrameByID: [LyricLine.ID: CGRect] = [:]
     @State private var lyricMovementOffsetByID: [LyricLine.ID: CGFloat] = [:]
 
@@ -41,6 +42,7 @@ struct NowPlayingLyricsPage: View {
         self.onToggleInterface = onToggleInterface
         _scrollPositionID = State(initialValue: highlightedLyricID)
         _visualHighlightedLyricID = State(initialValue: highlightedLyricID)
+        _visualBlurFocusLyricID = State(initialValue: highlightedLyricID)
     }
 
     var body: some View {
@@ -103,10 +105,10 @@ struct NowPlayingLyricsPage: View {
             }
         } else {
             let focusPosition = lyricsFocusPosition
-            let focusedLyricID = isBrowsingLyrics
+            let blurFocusLyricID = isBrowsingLyrics
                 ? scrollPositionID
-                : visualHighlightedLyricID ?? scrollPositionID ?? highlightedLyricID
-            let focusNeighborIDs = lyricNeighborIDs(around: focusedLyricID)
+                : visualBlurFocusLyricID ?? scrollPositionID ?? highlightedLyricID
+            let focusNeighborIDs = lyricNeighborIDs(around: blurFocusLyricID)
             let focusEffectAnimation = lyricFocusEffectAnimation(
                 for: visualHighlightedLyricID
             )
@@ -272,6 +274,7 @@ struct NowPlayingLyricsPage: View {
                 .onChange(of: highlightedLyricID) { _, newValue in
                     guard newValue == nil else { return }
                     visualHighlightedLyricID = nil
+                    visualBlurFocusLyricID = nil
                     lyricMovementOffsetByID.removeAll()
                 }
                 .onAppear {
@@ -319,13 +322,13 @@ struct NowPlayingLyricsPage: View {
         return .easeInOut(duration: max(movementDuration, 0.2))
     }
 
-    private var lyricsFocusTransitionLeadTime: TimeInterval {
+    private var lyricsFocusColorLeadTime: TimeInterval {
         min(
             max(
-                settings.lyricsFocusTransitionLeadTime,
-                AppSettings.lyricsFocusTransitionLeadTimeRange.lowerBound
+                settings.lyricsFocusColorLeadTime,
+                AppSettings.lyricsFocusColorLeadTimeRange.lowerBound
             ),
-            AppSettings.lyricsFocusTransitionLeadTimeRange.upperBound
+            AppSettings.lyricsFocusColorLeadTimeRange.upperBound
         )
     }
 
@@ -348,10 +351,12 @@ struct NowPlayingLyricsPage: View {
         guard let highlightedLyricID else { return }
         guard !isBrowsingLyrics else {
             visualHighlightedLyricID = highlightedLyricID
+            visualBlurFocusLyricID = highlightedLyricID
             return
         }
         guard scrollPositionID != highlightedLyricID else {
             visualHighlightedLyricID = highlightedLyricID
+            visualBlurFocusLyricID = highlightedLyricID
             return
         }
         guard isAdjacentFocusTransition(
@@ -377,6 +382,7 @@ struct NowPlayingLyricsPage: View {
         guard abs(movementDistance) > 0.5 else {
             moveFocus(to: highlightedLyricID, animated: false)
             visualHighlightedLyricID = highlightedLyricID
+            visualBlurFocusLyricID = highlightedLyricID
             return
         }
 
@@ -393,7 +399,7 @@ struct NowPlayingLyricsPage: View {
             for: highlightedLyricID,
             in: lyrics
         )
-        let focusTransitionLeadTime = lyricsFocusTransitionLeadTime
+        let focusColorLeadTime = lyricsFocusColorLeadTime
         guard initialVisibleIDs.count > 1 else {
             await moveFocusWithoutCascade(to: highlightedLyricID)
             return
@@ -473,7 +479,7 @@ struct NowPlayingLyricsPage: View {
         guard LyricPlaybackTimeline.shouldUseFocusCascade(
             visibleLineCount: orderedMovingIDs.count,
             preferredDelayPerLine: settings.lyricsFocusCascadeDelay,
-            focusTransitionLeadTime: focusTransitionLeadTime,
+            focusColorLeadTime: focusColorLeadTime,
             animationDuration: animationDuration,
             remainingDuration: remainingFocusDuration(
                 for: highlightedLyricID
@@ -487,7 +493,7 @@ struct NowPlayingLyricsPage: View {
         await animatePreparedCascade(
             orderedMovingIDs,
             to: highlightedLyricID,
-            focusTransitionLeadTime: focusTransitionLeadTime,
+            focusColorLeadTime: focusColorLeadTime,
             animationDuration: animationDuration
         )
     }
@@ -495,15 +501,15 @@ struct NowPlayingLyricsPage: View {
     private func animatePreparedCascade(
         _ orderedMovingIDs: [LyricLine.ID],
         to highlightedLyricID: LyricLine.ID,
-        focusTransitionLeadTime: TimeInterval,
+        focusColorLeadTime: TimeInterval,
         animationDuration: TimeInterval
     ) async {
         withAnimation(lyricFocusEffectAnimation(for: highlightedLyricID)) {
             visualHighlightedLyricID = highlightedLyricID
         }
-        if focusTransitionLeadTime > 0 {
+        if focusColorLeadTime > 0 {
             do {
-                try await Task.sleep(for: .seconds(focusTransitionLeadTime))
+                try await Task.sleep(for: .seconds(focusColorLeadTime))
             } catch {
                 resolveInterruptedMovement(to: highlightedLyricID)
                 return
@@ -538,6 +544,9 @@ struct NowPlayingLyricsPage: View {
             }
 
             withAnimation(.smooth(duration: animationDuration)) {
+                if order == 0 {
+                    visualBlurFocusLyricID = highlightedLyricID
+                }
                 lyricMovementOffsetByID[id] = 0
             }
             elapsedDelay = targetDelay
@@ -583,6 +592,7 @@ struct NowPlayingLyricsPage: View {
                 )
         ) {
             visualHighlightedLyricID = id
+            visualBlurFocusLyricID = id
         }
     }
 
@@ -600,6 +610,7 @@ struct NowPlayingLyricsPage: View {
         withTransaction(transaction) {
             scrollPositionID = id
             visualHighlightedLyricID = id
+            visualBlurFocusLyricID = id
             lyricMovementOffsetByID.removeAll()
         }
     }

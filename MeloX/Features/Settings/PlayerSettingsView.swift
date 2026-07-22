@@ -131,16 +131,16 @@ struct PlayerSettingsView: View {
                 )
 
                 valueSlider(
-                    title: "焦点过渡提前",
-                    value: $settings.lyricsFocusTransitionLeadTime,
-                    range: AppSettings.lyricsFocusTransitionLeadTimeRange,
+                    title: "焦点颜色提前",
+                    value: $settings.lyricsFocusColorLeadTime,
+                    range: AppSettings.lyricsFocusColorLeadTimeRange,
                     step: 0.005,
-                    valueText: "\(Int((settings.lyricsFocusTransitionLeadTime * 1_000).rounded())) 毫秒"
+                    valueText: "\(Int((settings.lyricsFocusColorLeadTime * 1_000).rounded())) 毫秒"
                 )
             } header: {
                 Text("歌词动画")
             } footer: {
-                Text("焦点颜色和模糊会先开始过渡，等待设置的提前量后，可视顶部第一行开始移动，随后各行依次向上。短句会自动压缩总延迟；实际剩余播放时间不足时会直接跳过错峰以保持同步，每行延迟设为 0 可恢复整体滚动。")
+                Text("焦点颜色会先开始过渡；等待设置的提前量后，可视顶部第一行与模糊同时开始变化，随后各行依次向上。短句会自动压缩总延迟；实际剩余播放时间不足时会直接跳过错峰以保持同步，每行延迟设为 0 可恢复整体滚动。")
             }
 
             Section {
