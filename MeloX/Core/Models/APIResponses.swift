@@ -54,6 +54,11 @@ struct AlbumDetailResponse: Decodable {
     let songs: [Song]
 }
 
+struct AlbumDynamicResponse: Decodable {
+    let code: Int
+    let isSub: Bool?
+}
+
 struct ArtistDetailResponse: Decodable {
     let artist: Artist
     let hotSongs: [Song]

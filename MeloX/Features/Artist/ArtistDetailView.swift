@@ -82,7 +82,7 @@ struct ArtistDetailView: View {
 
             Section("专辑") {
                 ForEach(albums) { album in
-                    NavigationLink(value: MusicRoute.album(album.id)) {
+                    NavigationLink(value: MusicRoute.album(album)) {
                         HStack(spacing: 12) {
                             ArtworkImage(url: album.artworkURL, cornerRadius: 7)
                                 .frame(width: 54, height: 54)

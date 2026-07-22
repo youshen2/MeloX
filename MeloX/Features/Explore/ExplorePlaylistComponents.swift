@@ -40,7 +40,7 @@ struct ExploreFeaturedPlaylistView: View {
     let showsPlayCount: Bool
 
     var body: some View {
-        NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+        NavigationLink(value: MusicRoute.playlist(playlist)) {
             ZStack(alignment: .bottomLeading) {
                 ArtworkImage(
                     url: playlist.artworkURL,

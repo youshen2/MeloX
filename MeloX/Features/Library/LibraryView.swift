@@ -136,7 +136,7 @@ struct LibraryView: View {
 
     private var playlistList: some View {
         List(library.favoritePlaylists) { playlist in
-            NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+            NavigationLink(value: MusicRoute.playlist(playlist)) {
                 SearchMediaRowForLibrary(playlist: playlist)
             }
             .swipeActions(edge: .trailing) {

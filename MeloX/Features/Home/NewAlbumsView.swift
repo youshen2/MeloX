@@ -22,7 +22,7 @@ struct NewAlbumsView: View {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
                         ForEach(albums) { album in
-                            NavigationLink(value: MusicRoute.album(album.id)) {
+                            NavigationLink(value: MusicRoute.album(album)) {
                                 MediaCardView(
                                     title: album.name,
                                     subtitle: album.artistText,

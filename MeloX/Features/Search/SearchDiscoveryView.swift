@@ -54,7 +54,7 @@ struct SearchDiscoveryView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(recommendations) { playlist in
-                            NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                            NavigationLink(value: MusicRoute.playlist(playlist)) {
                                 MediaCardView(
                                     title: playlist.name,
                                     subtitle: playlist.copywriter ?? playlist.creator?.nickname,

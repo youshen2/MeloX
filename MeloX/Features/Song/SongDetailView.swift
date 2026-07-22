@@ -110,7 +110,7 @@ struct SongDetailView: View {
             }
 
             if let album = song.album {
-                NavigationLink(value: MusicRoute.album(album.id)) {
+                NavigationLink(value: MusicRoute.album(album)) {
                     LabeledContent("专辑", value: album.name)
                 }
             }

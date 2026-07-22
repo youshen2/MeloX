@@ -2,130 +2,147 @@ import SwiftUI
 
 struct PlaylistDetailView: View {
     let id: Int
+    private let initialPlaylist: Playlist
+    private let prefersToplistLayout: Bool
 
     @Environment(NeteaseAPI.self) private var api
-    @Environment(PlayerStore.self) private var player
     @Environment(LibraryStore.self) private var library
+    @Environment(\.colorScheme) private var systemColorScheme
 
     @State private var playlist: Playlist?
     @State private var phase: LoadingPhase = .loading
-    @State private var query = ""
     @State private var reloadToken = 0
+    @State private var artworkPalette: ArtworkDetailPalette?
+    @State private var searchQuery = ""
+
+    init(playlist context: PlaylistRouteContext) {
+        id = context.id
+        initialPlaylist = context.playlistSummary
+        prefersToplistLayout = false
+    }
+
+    init(toplist context: PlaylistRouteContext) {
+        id = context.id
+        initialPlaylist = context.playlistSummary
+        prefersToplistLayout = true
+    }
 
     var body: some View {
-        Group {
-            switch phase {
-            case .loading where playlist == nil:
-                ProgressView("正在载入歌单")
-            case .failed(let message) where playlist == nil:
-                ConnectionUnavailableView(message: message) {
-                    reloadToken += 1
-                }
-            default:
-                if let playlist {
-                    playlistContent(playlist)
-                }
-            }
-        }
-        .navigationTitle(playlist?.name ?? "歌单")
+        PlaylistDetailContent(
+            playlist: displayedPlaylist,
+            toplistSummary: prefersToplistLayout ? initialPlaylist : nil,
+            palette: resolvedPalette,
+            searchQuery: searchQuery,
+            isLoading: isInitialLoading,
+            failureMessage: initialFailureMessage,
+            onRetry: { reloadToken += 1 },
+            onRefresh: load
+        )
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $query, prompt: "在歌单中搜索")
+        .searchable(
+            text: $searchQuery,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: Text(prefersToplistLayout ? "在排行榜中搜索" : "在歌单中搜索")
+        )
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(interfaceColorScheme, for: .navigationBar, .tabBar)
+        .toolbar {
+            playlistToolbar(for: displayedPlaylist)
+        }
+        .environment(\.colorScheme, interfaceColorScheme)
         .task(id: reloadToken) {
             guard playlist == nil else { return }
             await load()
         }
-    }
-
-    private func playlistContent(_ playlist: Playlist) -> some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(alignment: .top, spacing: 16) {
-                        ArtworkImage(url: playlist.artworkURL, cornerRadius: 12)
-                            .frame(width: 132, height: 132)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(playlist.name)
-                                .font(.title2.bold())
-                            if let creator = playlist.creator {
-                                Text(creator.nickname)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Text("\(playlist.trackCount) 首歌曲")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    if let description = playlist.playlistDescription,
-                       !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(4)
-                    }
-
-                    HStack {
-                        Button {
-                            Task { await player.playAll(playlist.tracks) }
-                        } label: {
-                            Text("播放全部")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(playlist.tracks.isEmpty)
-
-                        Button {
-                            library.toggle(playlist: playlist)
-                        } label: {
-                            Label(
-                                library.contains(playlist: playlist) ? "已收藏" : "收藏",
-                                systemImage: library.contains(playlist: playlist) ? "heart.fill" : "heart"
-                            )
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                }
-                .padding(.vertical, 8)
-            }
-
-            Section("歌曲") {
-                ForEach(filteredTracks) { song in
-                    Button {
-                        Task { await player.play(song, in: playlist.tracks) }
-                    } label: {
-                        TrackRowView(song: song, showsArtwork: true)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .trailing) {
-                        Button {
-                            library.toggle(song: song)
-                        } label: {
-                            Label(
-                                library.contains(song: song) ? "取消收藏" : "收藏",
-                                systemImage: library.contains(song: song) ? "heart.slash" : "heart"
-                            )
-                        }
-                        .tint(.pink)
-                    }
-                }
+        .task(id: artworkURL) {
+            let loadedPalette = await ArtworkAccentColorProvider.shared.detailPalette(
+                for: artworkURL,
+                fallbackPrefersDarkAppearance: systemColorScheme == .dark
+            )
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.35)) {
+                artworkPalette = loadedPalette
             }
         }
-        .listStyle(.insetGrouped)
-        .refreshable {
-            await load()
+        .alert(
+            "音乐库操作失败",
+            isPresented: Binding(
+                get: { library.errorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        library.clearError()
+                    }
+                }
+            )
+        ) {
+            Button("好", role: .cancel) {
+                library.clearError()
+            }
+        } message: {
+            Text(library.errorMessage ?? "未知错误")
         }
     }
 
-    private var filteredTracks: [Song] {
-        guard let tracks = playlist?.tracks else { return [] }
-        let keywords = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !keywords.isEmpty else { return tracks }
-        return tracks.filter { song in
-            song.name.localizedCaseInsensitiveContains(keywords)
-                || song.artistText.localizedCaseInsensitiveContains(keywords)
-                || (song.album?.name.localizedCaseInsensitiveContains(keywords) ?? false)
+    private var displayedPlaylist: Playlist {
+        playlist ?? initialPlaylist
+    }
+
+    private var artworkURL: URL? {
+        displayedPlaylist.artworkURL ?? initialPlaylist.artworkURL
+    }
+
+    private var resolvedPalette: ArtworkDetailPalette {
+        artworkPalette
+            ?? .fallback(prefersDarkAppearance: systemColorScheme == .dark)
+    }
+
+    private var interfaceColorScheme: ColorScheme {
+        resolvedPalette.colorScheme
+    }
+
+    private var isInitialLoading: Bool {
+        guard playlist == nil else { return false }
+        if case .loading = phase {
+            return true
         }
+        return false
+    }
+
+    private var initialFailureMessage: String? {
+        guard playlist == nil, case .failed(let message) = phase else { return nil }
+        return message
+    }
+
+    @ToolbarContentBuilder
+    private func playlistToolbar(for playlist: Playlist) -> some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            ShareLink(item: "https://music.163.com/playlist?id=\(playlist.id)") {
+                Image(systemName: "square.and.arrow.up")
+            }
+            .accessibilityLabel("分享歌单")
+
+            Menu {
+                Button {
+                    library.toggle(playlist: playlist)
+                } label: {
+                    Label(
+                        library.contains(playlist: playlist) ? "取消收藏" : "收藏歌单",
+                        systemImage: library.contains(playlist: playlist) ? "checkmark" : "plus"
+                    )
+                }
+
+                Button {
+                    Task { await load() }
+                } label: {
+                    Label("刷新", systemImage: "arrow.clockwise")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .accessibilityLabel("更多")
+        }
+        .sharedBackgroundVisibility(.visible)
     }
 
     private func load() async {

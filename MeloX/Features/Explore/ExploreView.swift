@@ -81,7 +81,7 @@ struct ExploreView: View {
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
                     ForEach(playlists.dropFirst()) { playlist in
-                        NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                        NavigationLink(value: MusicRoute.playlist(playlist)) {
                             ExplorePlaylistCardView(
                                 playlist: playlist,
                                 showsPlayCount: settings.showPlayCount

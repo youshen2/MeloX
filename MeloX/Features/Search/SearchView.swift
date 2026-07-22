@@ -97,7 +97,7 @@ struct SearchView: View {
                 }
             case .albums:
                 ForEach(albums) { album in
-                    NavigationLink(value: MusicRoute.album(album.id)) {
+                    NavigationLink(value: MusicRoute.album(album)) {
                         SearchMediaRow(
                             title: album.name,
                             subtitle: album.artistText,
@@ -119,7 +119,7 @@ struct SearchView: View {
                 }
             case .playlists:
                 ForEach(playlists) { playlist in
-                    NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                    NavigationLink(value: MusicRoute.playlist(playlist)) {
                         SearchMediaRow(
                             title: playlist.name,
                             subtitle: "\(playlist.trackCount) 首歌曲",

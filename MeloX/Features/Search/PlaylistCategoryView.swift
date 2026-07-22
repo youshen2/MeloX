@@ -24,7 +24,7 @@ struct PlaylistCategoryView: View {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
                         ForEach(playlists) { playlist in
-                            NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                            NavigationLink(value: MusicRoute.playlist(playlist)) {
                                 MediaCardView(
                                     title: playlist.name,
                                     subtitle: playlist.creator?.nickname,

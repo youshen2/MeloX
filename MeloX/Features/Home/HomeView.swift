@@ -103,7 +103,7 @@ struct HomeView: View {
                 .homeFeaturedWidth()
 
                 ForEach(recommended.prefix(3)) { playlist in
-                    NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                    NavigationLink(value: MusicRoute.playlist(playlist)) {
                         HomeFeaturedPlaylistCard(playlist: playlist)
                     }
                     .homeFeaturedWidth()
@@ -123,7 +123,7 @@ struct HomeView: View {
     ) -> some View {
         HomeHorizontalSection(title: title, destination: destination) {
             ForEach(playlists) { playlist in
-                NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                NavigationLink(value: MusicRoute.playlist(playlist)) {
                     HomePlaylistCard(playlist: playlist)
                 }
                 .buttonStyle(.plain)
@@ -134,7 +134,7 @@ struct HomeView: View {
     private var albumSection: some View {
         HomeHorizontalSection(title: "新碟上架", destination: .newAlbums) {
             ForEach(albums) { album in
-                NavigationLink(value: MusicRoute.album(album.id)) {
+                NavigationLink(value: MusicRoute.album(album)) {
                     HomeAlbumCard(album: album)
                 }
                 .buttonStyle(.plain)

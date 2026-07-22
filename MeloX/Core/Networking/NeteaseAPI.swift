@@ -136,6 +136,24 @@ final class NeteaseAPI {
         return (response.album, response.songs)
     }
 
+    func albumSubscriptionStatus(id: Int) async throws -> Bool {
+        let response: AlbumDynamicResponse = try await client.weapi(
+            "/api/album/detail/dynamic",
+            data: ["id": id]
+        )
+        try validate(responseCode: response.code)
+        return response.isSub ?? false
+    }
+
+    func setAlbumSubscribed(id: Int, isSubscribed: Bool) async throws {
+        let path = isSubscribed ? "/api/album/sub" : "/api/album/unsub"
+        let response: APIStatusResponse = try await client.weapi(
+            path,
+            data: ["id": id]
+        )
+        try validate(responseCode: response.code, message: response.message)
+    }
+
     func artist(id: Int) async throws -> (Artist, [Song], [Album]) {
         let detail: ArtistDetailResponse = try await client.eapi("/api/v1/artist/\(id)")
         let albums: ArtistAlbumsResponse = try await client.eapi(

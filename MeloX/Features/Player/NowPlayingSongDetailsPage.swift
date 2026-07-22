@@ -102,7 +102,7 @@ struct NowPlayingSongDetailsPage: View {
                 destinationRow(
                     title: "专辑",
                     value: album.name,
-                    route: .album(album.id)
+                    route: .album(album)
                 )
             }
 

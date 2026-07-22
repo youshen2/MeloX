@@ -114,7 +114,7 @@ private struct ToplistGridSection: View {
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
                 ForEach(playlists) { playlist in
-                    NavigationLink(value: MusicRoute.playlist(playlist.id)) {
+                    NavigationLink(value: MusicRoute.toplist(playlist)) {
                         MediaCardView(
                             title: playlist.name,
                             subtitle: playlist.updateFrequency ?? "\(playlist.trackCount) 首歌曲",
