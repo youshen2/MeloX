@@ -9,11 +9,13 @@ enum NowPlayingPage: String, Hashable {
 
 struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(NeteaseAPI.self) private var api
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
 
     @State private var page: NowPlayingPage
+    @State private var showsLyricsControls = true
     @State private var lyrics: [LyricLine] = []
     @State private var lyricError: String?
     @State private var highlightedLyricID: LyricLine.ID?
@@ -61,6 +63,10 @@ struct NowPlayingView: View {
             await synchronizeHighlightedLyric()
         }
         .onChange(of: page) { _, newPage in
+            if newPage != .lyrics {
+                showsLyricsControls = true
+            }
+
             guard settings.rememberNowPlayingPage else { return }
             settings.rememberedNowPlayingPage = (
                 newPage == .details ? NowPlayingPage.artwork : newPage
@@ -73,17 +79,45 @@ struct NowPlayingView: View {
         VStack(spacing: 0) {
             dismissalHandle
 
-            pageContent(for: song)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if usesExpandedAppleMusicLyricsLayout {
+                pageContent(for: song)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .bottom) {
+                        portraitPlayerControls(for: song)
+                            .opacity(hidesLyricsControls ? 0 : 1)
+                            .allowsHitTesting(!hidesLyricsControls)
+                            .accessibilityHidden(hidesLyricsControls)
+                    }
+            } else {
+                pageContent(for: song)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+                portraitPlayerControls(for: song)
+                    .opacity(hidesLyricsControls ? 0 : 1)
+                    .allowsHitTesting(!hidesLyricsControls)
+                    .accessibilityHidden(hidesLyricsControls)
+            }
+        }
+        .padding(.horizontal, 28)
+        .safeAreaPadding(.top, 4)
+        .safeAreaPadding(.bottom, 8)
+    }
+
+    private func portraitPlayerControls(for song: Song) -> some View {
+        VStack(spacing: 0) {
             NowPlayingProgressControl(song: song)
             NowPlayingTransportControls()
             NowPlayingVolumeControl()
             NowPlayingPageSelector(page: $page)
         }
-        .padding(.horizontal, 28)
-        .safeAreaPadding(.top, 4)
-        .safeAreaPadding(.bottom, 8)
+    }
+
+    private var hidesLyricsControls: Bool {
+        page == .lyrics && !showsLyricsControls
+    }
+
+    private var usesExpandedAppleMusicLyricsLayout: Bool {
+        page == .lyrics && settings.lyricsStyle == .appleMusic
     }
 
     private var dismissalHandle: some View {
@@ -129,9 +163,16 @@ struct NowPlayingView: View {
                     lyrics: lyrics,
                     errorMessage: lyricError,
                     highlightedLyricID: highlightedLyricID,
+                    isInterfaceHidden: hidesLyricsControls,
                     artworkNamespace: pageArtworkNamespace,
+                    onToggleInterface: toggleLyricsControls,
                     onShowDetails: showDetails
                 )
+                .accessibilityAction(
+                    named: showsLyricsControls ? "隐藏播放器控制" : "显示播放器控制"
+                ) {
+                    toggleLyricsControls()
+                }
                 .transition(.opacity)
             case .queue:
                 NowPlayingQueuePage()
@@ -160,6 +201,12 @@ struct NowPlayingView: View {
     private func showArtwork() {
         withAnimation(.smooth(duration: 0.3)) {
             page = .artwork
+        }
+    }
+
+    private func toggleLyricsControls() {
+        withAnimation(accessibilityReduceMotion ? nil : .smooth(duration: 0.3)) {
+            showsLyricsControls.toggle()
         }
     }
 

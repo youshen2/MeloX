@@ -14,6 +14,7 @@ struct NowPlayingLyricsPage: View {
     let errorMessage: String?
     let highlightedLyricID: LyricLine.ID?
     let presentation: NowPlayingLyricsPresentation
+    let isInterfaceHidden: Bool
     let artworkNamespace: Namespace.ID
     let onToggleInterface: (() -> Void)?
     let onShowDetails: (() -> Void)?
@@ -24,6 +25,7 @@ struct NowPlayingLyricsPage: View {
         errorMessage: String?,
         highlightedLyricID: LyricLine.ID?,
         presentation: NowPlayingLyricsPresentation = .portrait,
+        isInterfaceHidden: Bool = false,
         artworkNamespace: Namespace.ID,
         onToggleInterface: (() -> Void)? = nil,
         onShowDetails: (() -> Void)? = nil
@@ -33,6 +35,7 @@ struct NowPlayingLyricsPage: View {
         self.errorMessage = errorMessage
         self.highlightedLyricID = highlightedLyricID
         self.presentation = presentation
+        self.isInterfaceHidden = isInterfaceHidden
         self.artworkNamespace = artworkNamespace
         self.onToggleInterface = onToggleInterface
         self.onShowDetails = onShowDetails
@@ -94,6 +97,8 @@ struct NowPlayingLyricsPage: View {
                 lyrics: lyrics,
                 errorMessage: errorMessage,
                 highlightedLyricID: highlightedLyricID,
+                isInterfaceHidden: isInterfaceHidden,
+                bottomOverlayHeight: appleMusicBottomOverlayHeight,
                 onToggleInterface: onToggleInterface
             )
         case .eva:
@@ -103,6 +108,15 @@ struct NowPlayingLyricsPage: View {
                 highlightedLyricID: highlightedLyricID,
                 onToggleInterface: onToggleInterface
             )
+        }
+    }
+
+    private var appleMusicBottomOverlayHeight: CGFloat {
+        switch presentation {
+        case .portrait:
+            226
+        case .landscape:
+            50
         }
     }
 }

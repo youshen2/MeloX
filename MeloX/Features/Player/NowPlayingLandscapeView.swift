@@ -106,14 +106,34 @@ struct NowPlayingLandscapeView: View {
         VStack(spacing: 0) {
             songHeader
 
-            pageContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if usesExpandedAppleMusicLyricsLayout {
+                pageContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .bottom) {
+                        pageSelector
+                    }
+            } else {
+                pageContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if page != .lyrics || showsLyricsControls {
-                NowPlayingPageSelector(page: $page)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                pageSelector
             }
         }
+    }
+
+    private var pageSelector: some View {
+        NowPlayingPageSelector(page: $page)
+            .opacity(hidesLyricsControls ? 0 : 1)
+            .allowsHitTesting(!hidesLyricsControls)
+            .accessibilityHidden(hidesLyricsControls)
+    }
+
+    private var hidesLyricsControls: Bool {
+        page == .lyrics && !showsLyricsControls
+    }
+
+    private var usesExpandedAppleMusicLyricsLayout: Bool {
+        page == .lyrics && settings.lyricsStyle == .appleMusic
     }
 
     private var songHeader: some View {
@@ -178,6 +198,7 @@ struct NowPlayingLandscapeView: View {
                     errorMessage: lyricError,
                     highlightedLyricID: highlightedLyricID,
                     presentation: .landscape,
+                    isInterfaceHidden: hidesLyricsControls,
                     artworkNamespace: artworkNamespace,
                     onToggleInterface: toggleLyricsControls,
                     onShowDetails: { page = .details }

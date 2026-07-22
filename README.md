@@ -57,7 +57,7 @@
 ### EVA样式歌词（？）
 
 <p align="center">
-  <img src="docs/screenshots/10.png" alt="EVA样式歌词" width="60%">
+  <img src="docs/screenshots/10.png" alt="EVA样式歌词" width="30%">
 </p>
 
 ## 功能

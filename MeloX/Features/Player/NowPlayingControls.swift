@@ -192,7 +192,6 @@ struct NowPlayingPageSelector: View {
                 Image(systemName: "textformat.size")
                     .font(.title3)
                     .frame(width: 44, height: 44)
-                    .background(.white.opacity(0.12), in: .circle)
                     .contentShape(.circle)
             }
             .buttonStyle(.plain)

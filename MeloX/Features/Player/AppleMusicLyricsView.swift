@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct AppleMusicLyricsView: View {
+    private static let bottomPreloadLineCount = 2
+    private static let expandedBottomDistanceScale: CGFloat = 0.68
+    private static let expandedBottomBlurScale: CGFloat = 0.55
+
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
@@ -8,6 +12,8 @@ struct AppleMusicLyricsView: View {
     let lyrics: [LyricLine]
     let errorMessage: String?
     let highlightedLyricID: LyricLine.ID?
+    let isInterfaceHidden: Bool
+    let bottomOverlayHeight: CGFloat
     let onToggleInterface: (() -> Void)?
 
     @State private var scrollPositionID: LyricLine.ID?
@@ -25,11 +31,15 @@ struct AppleMusicLyricsView: View {
         lyrics: [LyricLine],
         errorMessage: String?,
         highlightedLyricID: LyricLine.ID?,
+        isInterfaceHidden: Bool = false,
+        bottomOverlayHeight: CGFloat = 0,
         onToggleInterface: (() -> Void)? = nil
     ) {
         self.lyrics = lyrics
         self.errorMessage = errorMessage
         self.highlightedLyricID = highlightedLyricID
+        self.isInterfaceHidden = isInterfaceHidden
+        self.bottomOverlayHeight = bottomOverlayHeight
         self.onToggleInterface = onToggleInterface
         _scrollPositionID = State(initialValue: highlightedLyricID)
         _visualHighlightedLyricID = State(initialValue: highlightedLyricID)
@@ -66,7 +76,6 @@ struct AppleMusicLyricsView: View {
                     }
             }
         } else {
-            let focusPosition = lyricsFocusPosition
             let blurFocusLyricID = isBrowsingLyrics
                 ? scrollPositionID
                 : visualCascadeFocusLyricID ?? scrollPositionID ?? highlightedLyricID
@@ -102,6 +111,16 @@ struct AppleMusicLyricsView: View {
             )
 
             GeometryReader { proxy in
+                let focusPosition = lyricsFocusPosition(
+                    for: proxy.size.height
+                )
+                let focusAnchorY = proxy.size.height * focusPosition
+                let visibleViewportHeight = visibleLyricsViewportHeight(
+                    for: proxy.size.height
+                )
+                let maskLocations = lyricsMaskLocations(
+                    for: proxy.size.height
+                )
                 let lyricLayoutWidth = max(proxy.size.width / currentLineScale, 1)
 
                 ScrollView {
@@ -148,9 +167,16 @@ struct AppleMusicLyricsView: View {
                                 .visualEffect { content, geometry in
                                     let frame = geometry.frame(in: .scrollView(axis: .vertical))
                                     let visualMidY = frame.midY + movementOffset
-                                    let distance = abs(
-                                        visualMidY - proxy.size.height * focusPosition
+                                    let isFollowingFocus = visualMidY > focusAnchorY
+                                    let distance = Self.lyricVisualDistance(
+                                        visualMidY: visualMidY,
+                                        focusAnchorY: focusAnchorY,
+                                        softensFollowingLyrics: isInterfaceHidden
                                     )
+                                    let distanceBlurIntensity = isInterfaceHidden
+                                        && isFollowingFocus
+                                        ? blurIntensity * Self.expandedBottomBlurScale
+                                        : blurIntensity
                                     let bottomRevealOpacity = Self.lyricBottomRevealOpacity(
                                         frame: frame,
                                         movementOffset: movementOffset,
@@ -161,7 +187,7 @@ struct AppleMusicLyricsView: View {
                                             radius: Self.lyricDistanceBlurRadius(
                                                 forPixelDistance: distance,
                                                 lyricStride: lyricStride,
-                                                intensity: blurIntensity
+                                                intensity: distanceBlurIntensity
                                             )
                                         )
                                         .opacity(
@@ -235,9 +261,9 @@ struct AppleMusicLyricsView: View {
                     LinearGradient(
                         stops: [
                             .init(color: .clear, location: 0),
-                            .init(color: .black, location: 0.08),
-                            .init(color: .black, location: 0.84),
-                            .init(color: .clear, location: 1),
+                            .init(color: .black, location: maskLocations.topOpaque),
+                            .init(color: .black, location: maskLocations.bottomOpaque),
+                            .init(color: .clear, location: maskLocations.bottomClear),
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -276,7 +302,8 @@ struct AppleMusicLyricsView: View {
                     await cascadeMoveFocus(
                         to: highlightedLyricID,
                         viewportHeight: proxy.size.height,
-                        preloadLineCount: 2
+                        visibleViewportHeight: visibleViewportHeight,
+                        preloadLineCount: Self.bottomPreloadLineCount
                     )
                     guard !Task.isCancelled else { return }
                     isPreparingInitialFocus = false
@@ -319,9 +346,17 @@ struct AppleMusicLyricsView: View {
                     ]
                     let visualOffset = movementOffset - retainedLyric.movementDistance
                     let visualMidY = retainedLyric.frame.midY + visualOffset
-                    let distance = abs(
-                        visualMidY - viewportSize.height * focusPosition
+                    let focusAnchorY = viewportSize.height * focusPosition
+                    let isFollowingFocus = visualMidY > focusAnchorY
+                    let distance = Self.lyricVisualDistance(
+                        visualMidY: visualMidY,
+                        focusAnchorY: focusAnchorY,
+                        softensFollowingLyrics: isInterfaceHidden
                     )
+                    let distanceBlurIntensity = isInterfaceHidden
+                        && isFollowingFocus
+                        ? blurIntensity * Self.expandedBottomBlurScale
+                        : blurIntensity
                     let focusBlurRadius = Self.lyricFocusBlurRadius(
                         intensity: blurIntensity,
                         isPrecedingFocusLine: line.id == focusNeighborIDs.preceding,
@@ -348,7 +383,7 @@ struct AppleMusicLyricsView: View {
                         radius: Self.lyricDistanceBlurRadius(
                             forPixelDistance: distance,
                             lyricStride: lyricStride,
-                            intensity: blurIntensity
+                            intensity: distanceBlurIntensity
                         )
                     )
                     .opacity(
@@ -376,8 +411,50 @@ struct AppleMusicLyricsView: View {
         .accessibilityHidden(true)
     }
 
-    private var lyricsFocusPosition: CGFloat {
+    private var preferredLyricsFocusPosition: CGFloat {
         CGFloat(min(max(settings.lyricsFocusPosition, 0.2), 0.5))
+    }
+
+    private func lyricsFocusPosition(for viewportHeight: CGFloat) -> CGFloat {
+        guard viewportHeight > 0 else { return preferredLyricsFocusPosition }
+        return preferredLyricsFocusPosition
+            * referenceLyricsViewportHeight(for: viewportHeight)
+            / viewportHeight
+    }
+
+    private func referenceLyricsViewportHeight(
+        for viewportHeight: CGFloat
+    ) -> CGFloat {
+        let overlayHeight = min(
+            max(bottomOverlayHeight, 0),
+            max(viewportHeight - 1, 0)
+        )
+        return max(viewportHeight - overlayHeight, 1)
+    }
+
+    private func visibleLyricsViewportHeight(
+        for viewportHeight: CGFloat
+    ) -> CGFloat {
+        isInterfaceHidden
+            ? viewportHeight
+            : referenceLyricsViewportHeight(for: viewportHeight)
+    }
+
+    private func lyricsMaskLocations(
+        for viewportHeight: CGFloat
+    ) -> (
+        topOpaque: CGFloat,
+        bottomOpaque: CGFloat,
+        bottomClear: CGFloat
+    ) {
+        guard viewportHeight > 0 else { return (0.08, 0.84, 1) }
+        let referenceRatio = referenceLyricsViewportHeight(for: viewportHeight)
+            / viewportHeight
+        return (
+            topOpaque: 0.08 * referenceRatio,
+            bottomOpaque: isInterfaceHidden ? 0.92 : 0.84 * referenceRatio,
+            bottomClear: isInterfaceHidden ? 1 : referenceRatio
+        )
     }
 
     private var lyricsCurrentLineScale: CGFloat {
@@ -475,6 +552,7 @@ struct AppleMusicLyricsView: View {
     private func cascadeMoveFocus(
         to highlightedLyricID: LyricLine.ID?,
         viewportHeight: CGFloat,
+        visibleViewportHeight: CGFloat,
         preloadLineCount: Int
     ) async {
         guard let highlightedLyricID else {
@@ -531,7 +609,7 @@ struct AppleMusicLyricsView: View {
             return
         }
 
-        let focusPosition = lyricsFocusPosition
+        let focusPosition = lyricsFocusPosition(for: viewportHeight)
         let viewportAnchorY = viewportHeight * focusPosition
         let nextFocusAnchorY = nextFocusFrame.minY
             + nextFocusFrame.height * focusPosition
@@ -546,7 +624,7 @@ struct AppleMusicLyricsView: View {
         let initialVisibleIDs = lyricFrameByID
             .filter { entry in
                 let frame = entry.value
-                return frame.maxY >= 0 && frame.minY <= viewportHeight
+                return frame.maxY >= 0 && frame.minY <= visibleViewportHeight
             }
             .sorted { left, right in
                 left.value.minY < right.value.minY
@@ -609,7 +687,7 @@ struct AppleMusicLyricsView: View {
         let destinationVisibleIDs = lyricFrameByID
             .filter { entry in
                 let frame = entry.value
-                return frame.maxY >= 0 && frame.minY <= viewportHeight
+                return frame.maxY >= 0 && frame.minY <= visibleViewportHeight
             }
             .sorted { left, right in
                 left.value.minY < right.value.minY
@@ -851,6 +929,18 @@ struct AppleMusicLyricsView: View {
         return baseRadius * intensity
     }
 
+    nonisolated private static func lyricVisualDistance(
+        visualMidY: CGFloat,
+        focusAnchorY: CGFloat,
+        softensFollowingLyrics: Bool
+    ) -> CGFloat {
+        let signedDistance = visualMidY - focusAnchorY
+        guard softensFollowingLyrics, signedDistance > 0 else {
+            return abs(signedDistance)
+        }
+        return signedDistance * expandedBottomDistanceScale
+    }
+
     nonisolated private static func lyricFocusBlurRadius(
         intensity: CGFloat,
         isPrecedingFocusLine: Bool,
@@ -987,7 +1077,8 @@ struct AppleMusicLyricsView: View {
         viewportHeight: CGFloat,
         animated: Bool
     ) async {
-        let viewportAnchorY = viewportHeight * lyricsFocusPosition
+        let focusPosition = lyricsFocusPosition(for: viewportHeight)
+        let viewportAnchorY = viewportHeight * focusPosition
 
         for attempt in 0..<3 {
             guard !Task.isCancelled else { return }
@@ -1006,7 +1097,7 @@ struct AppleMusicLyricsView: View {
             let isAligned = await waitForPreparedFocus(
                 id: id,
                 viewportAnchorY: viewportAnchorY,
-                focusPosition: lyricsFocusPosition
+                focusPosition: focusPosition
             )
             if isAligned {
                 return
