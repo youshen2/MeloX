@@ -24,6 +24,7 @@ struct SkylineCentralLyricsView: View {
     @State private var promotionSourceHeight: CGFloat = 0
     @State private var currentLyricReveal = 1.0
     @State private var nextLyricReveal = 1.0
+    @State private var nextLyricPositionProgress = 1.0
     @State private var outgoingLyricProgress = 1.0
     @State private var hasPresentedInitialLine = false
 
@@ -83,7 +84,8 @@ struct SkylineCentralLyricsView: View {
                         nextLyricHeight = height
                     }
                     .offset(
-                        y: nextLyricStartOffset * (1 - nextLyricReveal)
+                        y: nextLyricStartOffset
+                            * (1 - nextLyricPositionProgress)
                     )
                     .opacity(nextLyricReveal)
             }
@@ -140,11 +142,21 @@ struct SkylineCentralLyricsView: View {
     }
 
     private var currentLyricEntranceAnimation: Animation {
-        .spring(duration: lyricEntranceDuration, bounce: 0.06)
+        .spring(duration: lyricEntranceDuration, bounce: 0.18)
     }
 
-    private var nextLyricEntranceAnimation: Animation {
-        .easeOut(duration: lyricEntranceDuration)
+    private var nextLyricPositionAnimation: Animation {
+        .spring(duration: lyricEntranceDuration, bounce: 0.18)
+    }
+
+    private var nextLyricOpacityAnimation: Animation {
+        .timingCurve(
+            0.16,
+            0.84,
+            0.24,
+            1,
+            duration: lyricEntranceDuration
+        )
     }
 
     private var outgoingLyricAnimation: Animation {
@@ -220,6 +232,7 @@ struct SkylineCentralLyricsView: View {
             promotionSourceHeight = sourceHeight
             currentLyricReveal = shouldAnimate ? 0 : 1
             nextLyricReveal = shouldAnimate ? 0 : 1
+            nextLyricPositionProgress = shouldAnimate ? 0 : 1
             hasPresentedInitialLine = true
         }
 
@@ -238,7 +251,10 @@ struct SkylineCentralLyricsView: View {
         withAnimation(outgoingLyricAnimation) {
             outgoingLyricProgress = 1
         }
-        withAnimation(nextLyricEntranceAnimation) {
+        withAnimation(nextLyricPositionAnimation) {
+            nextLyricPositionProgress = 1
+        }
+        withAnimation(nextLyricOpacityAnimation) {
             nextLyricReveal = 1
         }
 
@@ -256,8 +272,9 @@ struct SkylineCentralLyricsView: View {
 
     private func settleAnimations() {
         withAnimation(nil) {
-        currentLyricReveal = 1
-        nextLyricReveal = 1
+            currentLyricReveal = 1
+            nextLyricReveal = 1
+            nextLyricPositionProgress = 1
             outgoingLyricProgress = 1
             outgoingLine = nil
         }
