@@ -6,8 +6,26 @@ import SwiftUI
 struct TextPVEffectCanvas: View {
     let frame: TextPVRenderContext
 
+    @ViewBuilder
     var body: some View {
-        Canvas(opaque: false, colorMode: .linear, rendersAsynchronously: true) { context, size in
+        if frame.template.style == .cyberGrunge {
+            TextPVBatchedEffectCanvas(frame: frame)
+        } else {
+            TextPVSingleEffectCanvas(frame: frame)
+        }
+    }
+}
+
+private struct TextPVSingleEffectCanvas: View {
+    let frame: TextPVRenderContext
+
+    var body: some View {
+        Canvas(opaque: true, colorMode: .nonLinear, rendersAsynchronously: true) { context, size in
+            context.fill(
+                Path(CGRect(origin: .zero, size: size)),
+                with: .color(frame.template.palette.backgroundColor)
+            )
+
             for layer in TextPVLayer.allCases {
                 for (index, effect) in frame.template.effects.enumerated()
                 where effect.layer == layer {
@@ -18,6 +36,9 @@ struct TextPVEffectCanvas: View {
                     painter.draw(effect, in: &context, size: size)
                 }
             }
+        } symbols: {
+            TextPVCanvasSymbols(symbols: frame.canvasSymbols)
+                .equatable()
         }
         .accessibilityHidden(true)
     }

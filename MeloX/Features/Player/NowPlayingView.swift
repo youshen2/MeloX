@@ -29,12 +29,13 @@ struct NowPlayingView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                NowPlayingBackground(artworkURL: player.currentSong?.album?.artworkURL)
-
-                if page == .lyrics,
-                   settings.lyricsStyle.usesMonochromePlayerBackground {
+                if usesMonochromeLyricsBackground {
                     Color.black
                         .ignoresSafeArea()
+                } else {
+                    NowPlayingBackground(
+                        artworkURL: player.currentSong?.album?.artworkURL
+                    )
                 }
 
                 if let song = player.currentSong {
@@ -184,6 +185,10 @@ struct NowPlayingView: View {
 
     private var usesFullScreenTextPV: Bool {
         page == .lyrics && settings.lyricsStyle == .textPV
+    }
+
+    private var usesMonochromeLyricsBackground: Bool {
+        page == .lyrics && settings.lyricsStyle.usesMonochromePlayerBackground
     }
 
     private var dismissalHandle: some View {

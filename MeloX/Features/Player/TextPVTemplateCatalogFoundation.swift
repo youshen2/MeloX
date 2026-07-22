@@ -139,7 +139,7 @@ extension TextPVTemplateCatalog {
                 "color": "#000000", "alpha": 0.2, "spacing": 3,
             ]),
             TextPVEffect(.filmGrain, layer: .overlay, [
-                "alpha": 0.14, "mono": true, "updateInterval": 2,
+                "alpha": 0.14, "mono": true, "frameVariants": 1,
             ]),
             TextPVEffect(.dataMonitors, layer: .decoration, [
                 "count": 4, "borderColor": "#ffffff", "fillColor": "#000000",
@@ -214,7 +214,7 @@ extension TextPVTemplateCatalog {
                 "colorBottom": "#001020", "alpha": 0.5, "mode": "linear",
             ]),
             TextPVEffect(.fallingText, layer: .decoration, [
-                "color": "$accent", "count": 35, "minSize": 24, "maxSize": 68,
+                "color": "$accent", "count": 24, "minSize": 24, "maxSize": 62,
                 "fontFamily": "Noto Serif JP",
             ]),
             TextPVEffect(.chromaticAberration, layer: .overlay, [

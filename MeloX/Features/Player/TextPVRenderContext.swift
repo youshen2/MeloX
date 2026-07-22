@@ -17,6 +17,7 @@ struct TextPVRenderContext {
     let motionIntensity: CGFloat
     let fontScale: CGFloat
     let seed: UInt64
+    let canvasSymbols: [TextPVCanvasTextSymbol]
     var motionTargets: [CGRect] = []
 
     var animatedTime: CGFloat { time * animationSpeed }

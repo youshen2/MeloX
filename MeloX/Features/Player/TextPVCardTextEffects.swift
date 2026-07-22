@@ -52,8 +52,10 @@ extension TextPVEffectPainter {
             let ease = 1 - pow(1 - progress, 3)
             let overshoot = progress < 1 ? 1 + sin(progress * .pi) * 0.05 : 1
             let sizeFactor = 1 + sin(CGFloat(index) * 2.7 + 0.5) * sizeVariance
-            let fontSize = baseFontSize * sizeFactor * ease * overshoot
-            let cardSize = (baseFontSize * sizeFactor + cardPadding * 2) * ease * overshoot
+            let textScale = ease * overshoot
+            guard textScale > 0 else { continue }
+            let fontSize = baseFontSize * sizeFactor * textScale
+            let cardSize = (baseFontSize * sizeFactor + cardPadding * 2) * textScale
             let drift = frame.motionIntensity * 2
             let animatedCenter = CGPoint(
                 x: target.x + sin(frame.time * 0.3 + CGFloat(index) * delayStep * 10) * drift,
@@ -82,15 +84,30 @@ extension TextPVEffectPainter {
                 )),
                 with: .color(cardColor.opacity(min(ease * 1.2, 1)))
             )
-            drawText(
-                String(character),
-                in: &context,
-                at: animatedCenter,
-                color: textColor,
-                size: fontSize,
-                family: family,
-                opacity: min(ease * 1.2, 1)
+            let symbolID = TextPVCanvasSymbolID(
+                effectIndex: effectIndex,
+                itemIndex: index
             )
+            if let symbol = context.resolveSymbol(id: symbolID) {
+                var symbolContext = context
+                symbolContext.translateBy(
+                    x: animatedCenter.x,
+                    y: animatedCenter.y
+                )
+                symbolContext.scaleBy(x: textScale, y: textScale)
+                symbolContext.opacity = Double(min(ease * 1.2, 1))
+                symbolContext.draw(symbol, at: .zero, anchor: .center)
+            } else {
+                drawText(
+                    String(character),
+                    in: &context,
+                    at: animatedCenter,
+                    color: textColor,
+                    size: fontSize,
+                    family: family,
+                    opacity: min(ease * 1.2, 1)
+                )
+            }
         }
     }
 
@@ -162,17 +179,29 @@ extension TextPVEffectPainter {
                     * frame.animationSpeed * frame.motionIntensity
             let flip = cos(frame.time * (1.5 + random(index * 8 + 6) * 3)
                 + random(index * 8 + 7) * 2 * .pi)
-            drawText(
-                String(pool[Int(random(index) * CGFloat(pool.count - 1))]),
-                in: &context,
-                at: CGPoint(x: random(index * 8) * size.width, y: y),
-                color: fill,
-                size: fontSize * max(abs(flip), 0.1),
-                family: family,
-                rotation: rotation,
-                strokeColor: .black,
-                strokeWidth: max(2, fontSize * 0.06)
+            let position = CGPoint(x: random(index * 8) * size.width, y: y)
+            let symbolID = TextPVCanvasSymbolID(
+                effectIndex: effectIndex,
+                itemIndex: index
             )
+
+            if let symbol = context.resolveSymbol(id: symbolID) {
+                var symbolContext = context
+                symbolContext.translateBy(x: position.x, y: position.y)
+                symbolContext.rotate(by: .radians(Double(rotation)))
+                symbolContext.scaleBy(x: max(abs(flip), 0.1), y: 1)
+                symbolContext.draw(symbol, at: .zero, anchor: .center)
+            } else {
+                drawText(
+                    String(pool[Int(random(index) * CGFloat(pool.count - 1))]),
+                    in: &context,
+                    at: position,
+                    color: fill,
+                    size: fontSize * max(abs(flip), 0.1),
+                    family: family,
+                    rotation: rotation
+                )
+            }
         }
     }
 

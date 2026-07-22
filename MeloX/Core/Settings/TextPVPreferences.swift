@@ -107,6 +107,15 @@ enum TextPVStyle: String, CaseIterable, Identifiable {
         default: 2
         }
     }
+
+    var minimumRenderInterval: TimeInterval {
+        switch self {
+        case .rainCity, .hystericNight, .calmVillain, .crimeScene, .haruhikage:
+            1.0 / 30.0
+        default:
+            1.0 / 60.0
+        }
+    }
 }
 
 @MainActor

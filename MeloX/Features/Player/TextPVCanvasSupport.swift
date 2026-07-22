@@ -25,6 +25,23 @@ enum TextPVTextResources {
     }
 }
 
+enum TextPVFontFactory {
+    static func font(
+        size: CGFloat,
+        family: String = "",
+        weight: Font.Weight = .bold,
+        monospaced: Bool = false
+    ) -> Font {
+        if monospaced || TextPVTextResources.monospacedFamilies.contains(family) {
+            return .system(size: size, weight: weight, design: .monospaced)
+        }
+        if TextPVTextResources.serifFamilies.contains(family) {
+            return .custom(LyricsTypography.heavySerifFontName, size: size)
+        }
+        return .system(size: size, weight: weight, design: .rounded)
+    }
+}
+
 extension TextPVEffectPainter {
     func color(
         _ key: String,
@@ -101,13 +118,12 @@ extension TextPVEffectPainter {
         monospaced: Bool = false
     ) -> Font {
         let scaledSize = max(size * frame.fontScale, 6)
-        if monospaced || TextPVTextResources.monospacedFamilies.contains(family) {
-            return .system(size: scaledSize, weight: weight, design: .monospaced)
-        }
-        if TextPVTextResources.serifFamilies.contains(family) {
-            return .custom(LyricsTypography.heavySerifFontName, size: scaledSize)
-        }
-        return .system(size: scaledSize, weight: weight, design: .rounded)
+        return TextPVFontFactory.font(
+            size: scaledSize,
+            family: family,
+            weight: weight,
+            monospaced: monospaced
+        )
     }
 
     func drawText(

@@ -51,7 +51,10 @@ struct TextPVLyricsView: View {
     }
 
     private var textPVMinimumInterval: TimeInterval {
-        max(effectiveLyricsRefreshRate.minimumInterval, 1.0 / 60.0)
+        max(
+            effectiveLyricsRefreshRate.minimumInterval,
+            settings.textPV.style.minimumRenderInterval
+        )
     }
 
     private func stageFrame(
@@ -98,19 +101,28 @@ struct TextPVLyricsView: View {
         }
         let template = TextPVTemplate.resolve(style: settings.textPV.style)
         let normalizedText = LyricsTypography.normalizedDisplayText(line.text)
+        let visibleCharacters = Array(
+            normalizedText.lazy.filter { !$0.isWhitespace }
+        )
+        let seed = TextPVSeed.value(
+            line.id,
+            previousText,
+            template.style.rawValue
+        )
         return TextPVFrameSnapshot(
             line: line,
             previousText: previousText,
             normalizedText: normalizedText,
             normalizedCharacters: Array(normalizedText),
-            visibleCharacters: normalizedText.filter { !$0.isWhitespace },
+            visibleCharacters: visibleCharacters,
             previousCharacters: previousText.filter { !$0.isWhitespace },
             template: template,
             scheduledDuration: scheduledDuration,
-            seed: TextPVSeed.value(
-                line.id,
-                previousText,
-                template.style.rawValue
+            seed: seed,
+            canvasSymbols: TextPVCanvasSymbolFactory.makeSymbols(
+                template: template,
+                visibleCharacters: visibleCharacters,
+                seed: seed
             )
         )
     }
@@ -166,6 +178,7 @@ private struct TextPVFrameSnapshot {
     let template: TextPVTemplate
     let scheduledDuration: TimeInterval
     let seed: UInt64
+    let canvasSymbols: [TextPVCanvasTextSymbol]
 
     var identity: TextPVFrameIdentity {
         TextPVFrameIdentity(lineID: line.id, style: template.style)
@@ -193,7 +206,8 @@ private struct TextPVFrameSnapshot {
             animationSpeed: animationSpeed,
             motionIntensity: motionIntensity,
             fontScale: 1,
-            seed: seed
+            seed: seed,
+            canvasSymbols: canvasSymbols
         )
     }
 }

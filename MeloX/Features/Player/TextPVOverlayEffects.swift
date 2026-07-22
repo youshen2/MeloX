@@ -74,12 +74,14 @@ extension TextPVEffectPainter {
         let alpha = config.number("alpha", default: 0.08)
         let interval = max(config.integer("updateInterval", default: 2), 1)
         let frameBucket = Int(frame.time * 60) / interval
-        let dynamicSeed = seed &+ UInt64(truncatingIfNeeded: frameBucket)
-        let count = max(Int(size.width * size.height / 140), 120)
+        let variantCount = max(config.integer("frameVariants", default: 4), 1)
+        let frameVariant = frameBucket % variantCount
+        let dynamicSeed = seed &+ UInt64(truncatingIfNeeded: frameVariant)
+        let count = min(max(Int(size.width * size.height / 260), 120), 1_800)
         let paths = cachedPathPair(
             "filmGrain",
             size: size,
-            discriminator: "\(frameBucket):\(count)",
+            discriminator: "\(frameVariant):\(count)",
             includesSeed: true
         ) {
             var light = Path()
