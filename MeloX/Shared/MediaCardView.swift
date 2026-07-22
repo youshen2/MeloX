@@ -9,6 +9,8 @@ struct MediaCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ArtworkImage(url: artworkURL, cornerRadius: circular ? 1_000 : 10)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fit)
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(2)
@@ -20,6 +22,7 @@ struct MediaCardView: View {
                     .lineLimit(1)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }
