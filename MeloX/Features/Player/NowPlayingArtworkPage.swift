@@ -5,6 +5,7 @@ struct NowPlayingArtworkPage: View {
     @Environment(AppSettings.self) private var settings
 
     let song: Song
+    let artworkNamespace: Namespace.ID
     let onShowDetails: () -> Void
 
     var body: some View {
@@ -17,7 +18,12 @@ struct NowPlayingArtworkPage: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 8)
 
-                ArtworkImage(url: song.album?.artworkURL, cornerRadius: 12)
+                ArtworkImage(url: song.album?.artworkURL, cornerRadius: 10)
+                    .matchedGeometryEffect(
+                        id: song.id,
+                        in: artworkNamespace,
+                        properties: .frame
+                    )
                     .frame(width: artworkSize, height: artworkSize)
                     .scaleEffect(player.isPlaying || !settings.shrinksPausedArtwork ? 1 : 0.9)
                     .shadow(color: .black.opacity(0.24), radius: 22, y: 12)

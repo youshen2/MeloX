@@ -18,6 +18,7 @@ struct NowPlayingView: View {
     @State private var lyricError: String?
     @State private var highlightedLyricID: LyricLine.ID?
     @State private var showsAudioOutputHelp = false
+    @Namespace private var pageArtworkNamespace
 
     init(initialPage: NowPlayingPage = .artwork) {
         _page = State(initialValue: initialPage)
@@ -36,6 +37,7 @@ struct NowPlayingView: View {
                             lyrics: lyrics,
                             lyricError: lyricError,
                             highlightedLyricID: highlightedLyricID,
+                            artworkNamespace: pageArtworkNamespace,
                             onDismiss: { dismiss() },
                             onShowAudioOutputHelp: {
                                 showsAudioOutputHelp = true
@@ -113,27 +115,30 @@ struct NowPlayingView: View {
     }
 
     private func pageContent(for song: Song) -> some View {
-        Group {
+        ZStack {
             switch page {
             case .artwork:
                 NowPlayingArtworkPage(
                     song: song,
+                    artworkNamespace: pageArtworkNamespace,
                     onShowDetails: showDetails
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                .transition(.opacity)
             case .details:
                 NowPlayingSongDetailsPage(
                     song: song,
                     showsArtworkToggle: true,
+                    artworkNamespace: pageArtworkNamespace,
                     onShowArtwork: showArtwork
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                .transition(.opacity)
             case .lyrics:
                 NowPlayingLyricsPage(
                     song: song,
                     lyrics: lyrics,
                     errorMessage: lyricError,
                     highlightedLyricID: highlightedLyricID,
+                    artworkNamespace: pageArtworkNamespace,
                     onShowDetails: showDetails
                 )
                 .transition(.opacity)

@@ -11,6 +11,7 @@ struct NowPlayingLandscapeView: View {
     let lyrics: [LyricLine]
     let lyricError: String?
     let highlightedLyricID: LyricLine.ID?
+    let artworkNamespace: Namespace.ID
     let onDismiss: () -> Void
     let onShowAudioOutputHelp: () -> Void
 
@@ -170,6 +171,7 @@ struct NowPlayingLandscapeView: View {
                 NowPlayingSongDetailsPage(
                     song: song,
                     showsArtworkToggle: false,
+                    artworkNamespace: artworkNamespace,
                     onShowArtwork: toggleArtworkDetails
                 )
                 .transition(.opacity)
@@ -180,6 +182,7 @@ struct NowPlayingLandscapeView: View {
                     errorMessage: lyricError,
                     highlightedLyricID: highlightedLyricID,
                     presentation: .landscape,
+                    artworkNamespace: artworkNamespace,
                     onToggleInterface: toggleLyricsControls,
                     onShowDetails: { page = .details }
                 )

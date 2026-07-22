@@ -15,6 +15,7 @@ struct NowPlayingLyricsPage: View {
     let errorMessage: String?
     let highlightedLyricID: LyricLine.ID?
     let presentation: NowPlayingLyricsPresentation
+    let artworkNamespace: Namespace.ID
     let onToggleInterface: (() -> Void)?
     let onShowDetails: (() -> Void)?
 
@@ -34,6 +35,7 @@ struct NowPlayingLyricsPage: View {
         errorMessage: String?,
         highlightedLyricID: LyricLine.ID?,
         presentation: NowPlayingLyricsPresentation = .portrait,
+        artworkNamespace: Namespace.ID,
         onToggleInterface: (() -> Void)? = nil,
         onShowDetails: (() -> Void)? = nil
     ) {
@@ -42,6 +44,7 @@ struct NowPlayingLyricsPage: View {
         self.errorMessage = errorMessage
         self.highlightedLyricID = highlightedLyricID
         self.presentation = presentation
+        self.artworkNamespace = artworkNamespace
         self.onToggleInterface = onToggleInterface
         self.onShowDetails = onShowDetails
         _scrollPositionID = State(initialValue: highlightedLyricID)
@@ -63,7 +66,12 @@ struct NowPlayingLyricsPage: View {
 
     private var songHeader: some View {
         HStack(spacing: 12) {
-            ArtworkImage(url: song.album?.artworkURL, cornerRadius: 8)
+            ArtworkImage(url: song.album?.artworkURL, cornerRadius: 10)
+                .matchedGeometryEffect(
+                    id: song.id,
+                    in: artworkNamespace,
+                    properties: .frame
+                )
                 .frame(width: 68, height: 68)
 
             VStack(alignment: .leading, spacing: 2) {

@@ -6,6 +6,7 @@ struct NowPlayingSongDetailsPage: View {
 
     let song: Song
     let showsArtworkToggle: Bool
+    let artworkNamespace: Namespace.ID
     let onShowArtwork: () -> Void
 
     @State private var loadedSong: Song?
@@ -50,6 +51,11 @@ struct NowPlayingSongDetailsPage: View {
         HStack(alignment: .top, spacing: 14) {
             Button(action: onShowArtwork) {
                 ArtworkImage(url: displayedSong.album?.artworkURL, cornerRadius: 10)
+                    .matchedGeometryEffect(
+                        id: song.id,
+                        in: artworkNamespace,
+                        properties: .frame
+                    )
                     .frame(width: 82, height: 82)
                     .contentShape(.rect)
             }
