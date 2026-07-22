@@ -28,7 +28,11 @@ enum TimedLyricTextBuilder {
             let fragment = Text(verbatim: character.text).customAttribute(
                 LyricTimingTextAttribute(
                     startTime: character.startTime,
-                    endTime: character.endTime
+                    endTime: character.endTime,
+                    syllableStartTime: character.syllableStartTime,
+                    syllableEndTime: character.syllableEndTime,
+                    characterIndex: character.characterIndex,
+                    characterCount: character.characterCount
                 )
             )
             return Text("\(text)\(fragment)")
@@ -57,7 +61,11 @@ enum TimedLyricTextBuilder {
                 return TimedCharacter(
                     text: String(entry.element),
                     startTime: startTime,
-                    endTime: endTime
+                    endTime: endTime,
+                    syllableStartTime: syllable.startTime,
+                    syllableEndTime: syllable.endTime,
+                    characterIndex: entry.offset,
+                    characterCount: characters.count
                 )
             }
         }
@@ -169,5 +177,9 @@ private extension TimedLyricTextBuilder {
         let text: String
         let startTime: TimeInterval
         let endTime: TimeInterval
+        let syllableStartTime: TimeInterval
+        let syllableEndTime: TimeInterval
+        let characterIndex: Int
+        let characterCount: Int
     }
 }

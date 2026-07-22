@@ -165,7 +165,9 @@ struct SynchronizedLyricText: View {
                                 glowOpacity: glowOpacity,
                                 unplayedOpacity: 0.3,
                                 maximumUnplayedBlurRadius: maximumUnplayedBlurRadius,
-                                playedRise: playedRise
+                                playedRise: playedRise,
+                                maximumLongSyllableScale: maximumLongSyllableScale,
+                                longSyllableExpansionPadding: longSyllableExpansionPadding
                             ),
                             layoutConfiguration: .init(
                                 width: timedLayoutWidth,
@@ -256,6 +258,14 @@ struct SynchronizedLyricText: View {
     private var playedRise: CGFloat {
         guard !accessibilityReduceMotion else { return 0 }
         return min(max(fontSize * 0.1, 1.5), 6)
+    }
+
+    private var maximumLongSyllableScale: CGFloat {
+        accessibilityReduceMotion ? 1 : 1.08
+    }
+
+    private var longSyllableExpansionPadding: CGFloat {
+        fontSize * (maximumLongSyllableScale - 1)
     }
 
     private var timedLayoutWidth: CGFloat? {
