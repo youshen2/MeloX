@@ -110,6 +110,18 @@ struct PlayerSettingsView: View {
             }
 
             Section {
+                Picker("刷新频率", selection: $settings.lyricsRefreshRate) {
+                    ForEach(LyricsRefreshRate.allCases) { refreshRate in
+                        Text(refreshRate.title).tag(refreshRate)
+                    }
+                }
+            } header: {
+                Text("歌词性能")
+            } footer: {
+                Text("默认使用 60 FPS，并应用到所有歌词页。较高刷新频率会增加耗电；系统低电量模式期间会自动降至 30 FPS，退出后恢复所选频率。")
+            }
+
+            Section {
                 valueSlider(
                     title: "每行切换延迟",
                     value: $settings.lyricsFocusCascadeDelay,

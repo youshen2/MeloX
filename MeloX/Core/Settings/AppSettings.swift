@@ -55,6 +55,7 @@ final class AppSettings {
         static let lyricsFocusCascadeDelay = "lyricsFocusCascadeDelay"
         static let lyricsFocusTransitionLeadTime = "lyricsFocusTransitionLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
+        static let lyricsRefreshRate = "lyricsRefreshRate"
         static let lyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
@@ -172,6 +173,10 @@ final class AppSettings {
         didSet { defaults.set(lyricsAdvanceTime, forKey: Key.lyricsAdvanceTime) }
     }
 
+    var lyricsRefreshRate: LyricsRefreshRate {
+        didSet { defaults.set(lyricsRefreshRate.rawValue, forKey: Key.lyricsRefreshRate) }
+    }
+
     var lyricsKeepsScreenAwake: Bool {
         didSet { defaults.set(lyricsKeepsScreenAwake, forKey: Key.lyricsKeepsScreenAwake) }
     }
@@ -248,6 +253,9 @@ final class AppSettings {
             Self.lyricsFocusTransitionLeadTimeRange.upperBound
         )
         lyricsAdvanceTime = defaults.object(forKey: Key.lyricsAdvanceTime) as? Double ?? 0.2
+        lyricsRefreshRate = LyricsRefreshRate(
+            rawValue: defaults.object(forKey: Key.lyricsRefreshRate) as? Int ?? 0
+        ) ?? .defaultValue
         lyricsKeepsScreenAwake = defaults.object(forKey: Key.lyricsKeepsScreenAwake) as? Bool
             ?? true
         rememberNowPlayingPage = defaults.object(forKey: Key.rememberNowPlayingPage) as? Bool ?? false
@@ -283,6 +291,7 @@ final class AppSettings {
         lyricsFocusCascadeDelay = Self.defaultLyricsFocusCascadeDelay
         lyricsFocusTransitionLeadTime = Self.defaultLyricsFocusTransitionLeadTime
         lyricsAdvanceTime = 0.2
+        lyricsRefreshRate = .defaultValue
         lyricsKeepsScreenAwake = true
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"

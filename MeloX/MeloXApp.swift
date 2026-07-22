@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 @main
@@ -7,6 +8,7 @@ struct MeloXApp: App {
     @State private var library: LibraryStore
     @State private var player: PlayerStore
     @State private var screenAwakeCoordinator: ScreenAwakeCoordinator
+    @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     init() {
         let settings = AppSettings()
@@ -27,7 +29,19 @@ struct MeloXApp: App {
                 .environment(library)
                 .environment(player)
                 .environment(screenAwakeCoordinator)
+                .environment(\.effectiveLyricsRefreshRate, effectiveLyricsRefreshRate)
                 .tint(.red)
+                .onReceive(
+                    NotificationCenter.default.publisher(
+                        for: .NSProcessInfoPowerStateDidChange
+                    )
+                ) { _ in
+                    isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+                }
         }
+    }
+
+    private var effectiveLyricsRefreshRate: LyricsRefreshRate {
+        isLowPowerModeEnabled ? .lowPowerValue : settings.lyricsRefreshRate
     }
 }

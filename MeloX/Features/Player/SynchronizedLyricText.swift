@@ -28,6 +28,7 @@ enum SynchronizedLyricTextAlignment: Equatable {
 
 struct SynchronizedLyricText: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.effectiveLyricsRefreshRate) private var effectiveLyricsRefreshRate
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
 
@@ -131,7 +132,7 @@ struct SynchronizedLyricText: View {
         if usesTimedLyrics {
             TimelineView(
                 .animation(
-                    minimumInterval: 1.0 / 30.0,
+                    minimumInterval: effectiveLyricsRefreshRate.minimumInterval,
                     paused: !player.isPlaying
                 )
             ) { context in
