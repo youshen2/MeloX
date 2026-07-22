@@ -319,6 +319,16 @@ struct NowPlayingLyricsPage: View {
         return .easeInOut(duration: max(movementDuration, 0.2))
     }
 
+    private var lyricsFocusTransitionLeadTime: TimeInterval {
+        min(
+            max(
+                settings.lyricsFocusTransitionLeadTime,
+                AppSettings.lyricsFocusTransitionLeadTimeRange.lowerBound
+            ),
+            AppSettings.lyricsFocusTransitionLeadTimeRange.upperBound
+        )
+    }
+
     private func remainingFocusDuration(
         for highlightedLyricID: LyricLine.ID
     ) -> TimeInterval? {
@@ -383,6 +393,7 @@ struct NowPlayingLyricsPage: View {
             for: highlightedLyricID,
             in: lyrics
         )
+        let focusTransitionLeadTime = lyricsFocusTransitionLeadTime
         guard initialVisibleIDs.count > 1 else {
             await moveFocusWithoutCascade(to: highlightedLyricID)
             return
@@ -462,6 +473,7 @@ struct NowPlayingLyricsPage: View {
         guard LyricPlaybackTimeline.shouldUseFocusCascade(
             visibleLineCount: orderedMovingIDs.count,
             preferredDelayPerLine: settings.lyricsFocusCascadeDelay,
+            focusTransitionLeadTime: focusTransitionLeadTime,
             animationDuration: animationDuration,
             remainingDuration: remainingFocusDuration(
                 for: highlightedLyricID
@@ -475,6 +487,7 @@ struct NowPlayingLyricsPage: View {
         await animatePreparedCascade(
             orderedMovingIDs,
             to: highlightedLyricID,
+            focusTransitionLeadTime: focusTransitionLeadTime,
             animationDuration: animationDuration
         )
     }
@@ -482,8 +495,25 @@ struct NowPlayingLyricsPage: View {
     private func animatePreparedCascade(
         _ orderedMovingIDs: [LyricLine.ID],
         to highlightedLyricID: LyricLine.ID,
+        focusTransitionLeadTime: TimeInterval,
         animationDuration: TimeInterval
     ) async {
+        withAnimation(lyricFocusEffectAnimation(for: highlightedLyricID)) {
+            visualHighlightedLyricID = highlightedLyricID
+        }
+        if focusTransitionLeadTime > 0 {
+            do {
+                try await Task.sleep(for: .seconds(focusTransitionLeadTime))
+            } catch {
+                resolveInterruptedMovement(to: highlightedLyricID)
+                return
+            }
+        }
+        guard !Task.isCancelled else {
+            resolveInterruptedMovement(to: highlightedLyricID)
+            return
+        }
+
         var elapsedDelay: TimeInterval = 0
         for (order, id) in orderedMovingIDs.enumerated() {
             let targetDelay = LyricPlaybackTimeline.focusCascadeDelay(
@@ -508,9 +538,6 @@ struct NowPlayingLyricsPage: View {
             }
 
             withAnimation(.smooth(duration: animationDuration)) {
-                if order == 0 {
-                    visualHighlightedLyricID = highlightedLyricID
-                }
                 lyricMovementOffsetByID[id] = 0
             }
             elapsedDelay = targetDelay

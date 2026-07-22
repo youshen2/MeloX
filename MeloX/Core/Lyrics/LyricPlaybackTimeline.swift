@@ -83,6 +83,7 @@ enum LyricPlaybackTimeline {
     static func shouldUseFocusCascade(
         visibleLineCount: Int,
         preferredDelayPerLine: TimeInterval,
+        focusTransitionLeadTime: TimeInterval,
         animationDuration: TimeInterval,
         remainingDuration: TimeInterval?,
         highlightedLyricID: LyricLine.ID?,
@@ -103,7 +104,10 @@ enum LyricPlaybackTimeline {
             in: lyrics
         )
         let schedulingMargin: TimeInterval = 1.0 / 60.0
-        return finalLaunchDelay + animationDuration + schedulingMargin
+        return max(focusTransitionLeadTime, 0)
+            + finalLaunchDelay
+            + animationDuration
+            + schedulingMargin
             < remainingDuration
     }
 

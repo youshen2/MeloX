@@ -26,6 +26,8 @@ enum MusicQuality: String, CaseIterable, Identifiable {
 final class AppSettings {
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
+    static let defaultLyricsFocusTransitionLeadTime = 0.06
+    static let lyricsFocusTransitionLeadTimeRange = 0.0...0.1
 
     private enum Key {
         static let cookie = "musicCookie"
@@ -51,6 +53,7 @@ final class AppSettings {
         static let lyricsFollowDelay = "lyricsFollowDelay"
         static let lyricsFocusPosition = "lyricsFocusPosition"
         static let lyricsFocusCascadeDelay = "lyricsFocusCascadeDelay"
+        static let lyricsFocusTransitionLeadTime = "lyricsFocusTransitionLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
@@ -156,6 +159,15 @@ final class AppSettings {
         }
     }
 
+    var lyricsFocusTransitionLeadTime: Double {
+        didSet {
+            defaults.set(
+                lyricsFocusTransitionLeadTime,
+                forKey: Key.lyricsFocusTransitionLeadTime
+            )
+        }
+    }
+
     var lyricsAdvanceTime: Double {
         didSet { defaults.set(lyricsAdvanceTime, forKey: Key.lyricsAdvanceTime) }
     }
@@ -225,6 +237,16 @@ final class AppSettings {
             ),
             Self.lyricsFocusCascadeDelayRange.upperBound
         )
+        let storedFocusTransitionLeadTime = defaults.object(
+            forKey: Key.lyricsFocusTransitionLeadTime
+        ) as? Double ?? Self.defaultLyricsFocusTransitionLeadTime
+        lyricsFocusTransitionLeadTime = min(
+            max(
+                storedFocusTransitionLeadTime,
+                Self.lyricsFocusTransitionLeadTimeRange.lowerBound
+            ),
+            Self.lyricsFocusTransitionLeadTimeRange.upperBound
+        )
         lyricsAdvanceTime = defaults.object(forKey: Key.lyricsAdvanceTime) as? Double ?? 0.2
         lyricsKeepsScreenAwake = defaults.object(forKey: Key.lyricsKeepsScreenAwake) as? Bool
             ?? true
@@ -259,6 +281,7 @@ final class AppSettings {
         lyricsFollowDelay = 3
         lyricsFocusPosition = 0.34
         lyricsFocusCascadeDelay = Self.defaultLyricsFocusCascadeDelay
+        lyricsFocusTransitionLeadTime = Self.defaultLyricsFocusTransitionLeadTime
         lyricsAdvanceTime = 0.2
         lyricsKeepsScreenAwake = true
         rememberNowPlayingPage = false
