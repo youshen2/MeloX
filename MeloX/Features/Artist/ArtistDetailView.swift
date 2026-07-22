@@ -52,7 +52,7 @@ struct ArtistDetailView: View {
                     Button {
                         Task { await player.playAll(songs) }
                     } label: {
-                        Label("播放热门歌曲", systemImage: "play.fill")
+                        Text("播放热门歌曲")
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(songs.isEmpty)

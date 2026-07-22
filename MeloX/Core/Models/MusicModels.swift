@@ -1,6 +1,6 @@
 import Foundation
 
-private func makeArtworkURL(from source: String?) -> URL? {
+func makeArtworkURL(from source: String?, dimension: Int = 1_024) -> URL? {
     guard var source = source?.trimmingCharacters(in: .whitespacesAndNewlines),
           !source.isEmpty else { return nil }
 
@@ -17,7 +17,9 @@ private func makeArtworkURL(from source: String?) -> URL? {
     // 再追加 param 会让网易云图片服务拒绝处理。路径本身就是原始封面，
     // 统一移除服务端返回的处理链后请求固定尺寸即可。
     components.query = nil
-    components.queryItems = [URLQueryItem(name: "param", value: "1024y1024")]
+    components.queryItems = [
+        URLQueryItem(name: "param", value: "\(dimension)y\(dimension)")
+    ]
     return components.url
 }
 
@@ -29,7 +31,9 @@ struct Artist: Codable, Hashable, Identifiable {
     let aliases: [String]
 
     var artworkURL: URL? {
-        makeArtworkURL(from: picURL ?? avatarURL)
+        // 与参考项目一致，歌手头像优先使用正方形的 img1v1Url。
+        // 部分详情响应里的 picUrl 是横向封面或已经失效的旧地址。
+        makeArtworkURL(from: avatarURL ?? picURL)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -151,6 +155,11 @@ struct Song: Codable, Hashable, Identifiable {
     let trackNumber: Int?
     let disc: String?
     let fee: Int?
+    let aliases: [String]
+    let popularity: Int?
+    let publishTime: Double?
+    let copyright: Int?
+    let musicVideoID: Int?
 
     var artistText: String {
         artists.map(\.name).joined(separator: " / ")
@@ -163,6 +172,10 @@ struct Song: Codable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, ar, artists, al, album, dt, duration, no, cd, fee
+        case aliases = "alia"
+        case popularity = "pop"
+        case publishTime, copyright
+        case musicVideoID = "mv"
     }
 
     init(
@@ -173,7 +186,12 @@ struct Song: Codable, Hashable, Identifiable {
         durationMS: Int = 0,
         trackNumber: Int? = nil,
         disc: String? = nil,
-        fee: Int? = nil
+        fee: Int? = nil,
+        aliases: [String] = [],
+        popularity: Int? = nil,
+        publishTime: Double? = nil,
+        copyright: Int? = nil,
+        musicVideoID: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -183,6 +201,11 @@ struct Song: Codable, Hashable, Identifiable {
         self.trackNumber = trackNumber
         self.disc = disc
         self.fee = fee
+        self.aliases = aliases
+        self.popularity = popularity
+        self.publishTime = publishTime
+        self.copyright = copyright
+        self.musicVideoID = musicVideoID
     }
 
     init(from decoder: Decoder) throws {
@@ -200,6 +223,11 @@ struct Song: Codable, Hashable, Identifiable {
         trackNumber = try container.decodeIfPresent(Int.self, forKey: .no)
         disc = try container.decodeIfPresent(String.self, forKey: .cd)
         fee = try container.decodeIfPresent(Int.self, forKey: .fee)
+        aliases = try container.decodeIfPresent([String].self, forKey: .aliases) ?? []
+        popularity = try container.decodeIfPresent(Int.self, forKey: .popularity)
+        publishTime = try container.decodeIfPresent(Double.self, forKey: .publishTime)
+        copyright = try container.decodeIfPresent(Int.self, forKey: .copyright)
+        musicVideoID = try container.decodeIfPresent(Int.self, forKey: .musicVideoID)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -212,6 +240,11 @@ struct Song: Codable, Hashable, Identifiable {
         try container.encodeIfPresent(trackNumber, forKey: .no)
         try container.encodeIfPresent(disc, forKey: .cd)
         try container.encodeIfPresent(fee, forKey: .fee)
+        try container.encode(aliases, forKey: .aliases)
+        try container.encodeIfPresent(popularity, forKey: .popularity)
+        try container.encodeIfPresent(publishTime, forKey: .publishTime)
+        try container.encodeIfPresent(copyright, forKey: .copyright)
+        try container.encodeIfPresent(musicVideoID, forKey: .musicVideoID)
     }
 }
 

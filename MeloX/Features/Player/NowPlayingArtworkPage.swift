@@ -5,6 +5,7 @@ struct NowPlayingArtworkPage: View {
     @Environment(AppSettings.self) private var settings
 
     let song: Song
+    let onShowDetails: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
@@ -21,6 +22,14 @@ struct NowPlayingArtworkPage: View {
                     .scaleEffect(player.isPlaying || !settings.shrinksPausedArtwork ? 1 : 0.9)
                     .shadow(color: .black.opacity(0.24), radius: 22, y: 12)
                     .animation(.smooth(duration: 0.45), value: player.isPlaying)
+                    .contentShape(.rect)
+                    .onTapGesture(perform: onShowDetails)
+                    .accessibilityElement()
+                    .accessibilityLabel("查看歌曲资料")
+                    .accessibilityHint("轻点切换到歌曲资料")
+                    .accessibilityAction {
+                        onShowDetails()
+                    }
 
                 Spacer(minLength: 22)
 
@@ -37,7 +46,11 @@ struct NowPlayingArtworkPage: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    NowPlayingSongActions(song: song)
+                    NowPlayingSongActions(
+                        song: song,
+                        isShowingDetails: false,
+                        onToggleDetails: onShowDetails
+                    )
                 }
             }
             .padding(.horizontal, 14)
@@ -51,8 +64,10 @@ struct NowPlayingSongActions: View {
     @Environment(LibraryStore.self) private var library
 
     let song: Song
+    let isShowingDetails: Bool
+    let onToggleDetails: () -> Void
 
-    @State private var songForPlaylistSelection: Song?
+    @State private var presentedSheet: NowPlayingSongSheet?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -69,8 +84,21 @@ struct NowPlayingSongActions: View {
             .accessibilityLabel(library.contains(song: song) ? "取消收藏" : "收藏")
 
             Menu {
+                Button(action: onToggleDetails) {
+                    Label(
+                        isShowingDetails ? "返回封面" : "歌曲资料",
+                        systemImage: isShowingDetails ? "music.note" : "info.circle"
+                    )
+                }
+
                 Button {
-                    songForPlaylistSelection = song
+                    presentedSheet = .comments(song)
+                } label: {
+                    Label("评论", systemImage: "bubble.left.and.bubble.right")
+                }
+
+                Button {
+                    presentedSheet = .addToPlaylist(song)
                 } label: {
                     Label("添加到歌单", systemImage: "text.badge.plus")
                 }
@@ -87,10 +115,29 @@ struct NowPlayingSongActions: View {
             }
             .accessibilityLabel("更多")
         }
-        .sheet(item: $songForPlaylistSelection) { selectedSong in
-            AddToPlaylistSheet(song: selectedSong)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+        .sheet(item: $presentedSheet) { sheet in
+            switch sheet {
+            case .comments(let selectedSong):
+                SongCommentsSheet(song: selectedSong)
+            case .addToPlaylist(let selectedSong):
+                AddToPlaylistSheet(song: selectedSong)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+    }
+}
+
+private enum NowPlayingSongSheet: Identifiable {
+    case comments(Song)
+    case addToPlaylist(Song)
+
+    var id: String {
+        switch self {
+        case .comments(let song):
+            "comments-\(song.id)"
+        case .addToPlaylist(let song):
+            "playlist-\(song.id)"
         }
     }
 }

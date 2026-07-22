@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct TrackRowView: View {
+    @Environment(\.openMusicRoute) private var openMusicRoute
+
     let song: Song
     var index: Int?
     var showsArtwork = false
+
+    @State private var commentSong: Song?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -34,7 +38,29 @@ struct TrackRowView: View {
             }
         }
         .contentShape(.rect)
+        .contextMenu {
+            Button {
+                openMusicRoute(.song(song))
+            } label: {
+                Label("歌曲资料", systemImage: "info.circle")
+            }
+
+            Button {
+                commentSong = song
+            } label: {
+                Label("评论", systemImage: "bubble.left.and.bubble.right")
+            }
+        }
+        .sheet(item: $commentSong) { selectedSong in
+            SongCommentsSheet(song: selectedSong)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(song.name)，\(song.artistText)")
+        .accessibilityAction(named: "查看歌曲资料") {
+            openMusicRoute(.song(song))
+        }
+        .accessibilityAction(named: "查看评论") {
+            commentSong = song
+        }
     }
 }

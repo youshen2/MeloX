@@ -9,6 +9,7 @@ enum AppTab: Hashable {
 }
 
 enum MusicRoute: Hashable {
+    case song(Song)
     case playlist(Int)
     case playlistCategory(String)
     case album(Int)
@@ -16,6 +17,29 @@ enum MusicRoute: Hashable {
     case dailySongs
     case newAlbums
     case toplists
+}
+
+struct OpenMusicRouteAction {
+    private let action: (MusicRoute) -> Void
+
+    init(action: @escaping (MusicRoute) -> Void = { _ in }) {
+        self.action = action
+    }
+
+    func callAsFunction(_ route: MusicRoute) {
+        action(route)
+    }
+}
+
+private struct OpenMusicRouteActionKey: EnvironmentKey {
+    static let defaultValue = OpenMusicRouteAction()
+}
+
+extension EnvironmentValues {
+    var openMusicRoute: OpenMusicRouteAction {
+        get { self[OpenMusicRouteActionKey.self] }
+        set { self[OpenMusicRouteActionKey.self] = newValue }
+    }
 }
 
 enum PlayerPresentation: String, Identifiable {
@@ -28,6 +52,8 @@ extension View {
     func musicDestinations() -> some View {
         navigationDestination(for: MusicRoute.self) { route in
             switch route {
+            case .song(let song):
+                SongDetailView(song: song)
             case .playlist(let id):
                 PlaylistDetailView(id: id)
             case .playlistCategory(let category):

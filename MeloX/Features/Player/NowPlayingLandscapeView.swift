@@ -83,6 +83,7 @@ struct NowPlayingLandscapeView: View {
         .frame(height: 28)
         .accessibilityLabel("收起播放器")
         .accessibilityHint("轻点收起，或向下拖动播放器")
+        .gesture(dismissalDragGesture)
     }
 
     private func artwork(side: CGFloat) -> some View {
@@ -91,6 +92,14 @@ struct NowPlayingLandscapeView: View {
             .scaleEffect(player.isPlaying || !settings.shrinksPausedArtwork ? 1 : 0.9)
             .shadow(color: .black.opacity(0.28), radius: 24, y: 12)
             .animation(.smooth(duration: 0.45), value: player.isPlaying)
+            .contentShape(.rect)
+            .onTapGesture(perform: toggleArtworkDetails)
+            .accessibilityElement()
+            .accessibilityLabel(page == .details ? "返回封面" : "查看歌曲资料")
+            .accessibilityHint("轻点切换封面和歌曲资料")
+            .accessibilityAction {
+                toggleArtworkDetails()
+            }
     }
 
     private var rightPanel: some View {
@@ -136,41 +145,54 @@ struct NowPlayingLandscapeView: View {
                 .accessibilityLabel("打开全屏天际歌词")
             }
 
-            NowPlayingSongActions(song: song)
+            NowPlayingSongActions(
+                song: song,
+                isShowingDetails: page == .details,
+                onToggleDetails: toggleArtworkDetails
+            )
         }
         .frame(height: 52)
     }
 
-    @ViewBuilder
     private var pageContent: some View {
-        switch page {
-        case .artwork:
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                NowPlayingProgressControl(song: song)
-                NowPlayingTransportControls()
-                NowPlayingVolumeControl()
-                Spacer(minLength: 0)
-            }
-            .transition(.opacity)
-        case .lyrics:
-            NowPlayingLyricsPage(
-                song: song,
-                lyrics: lyrics,
-                errorMessage: lyricError,
-                highlightedLyricID: highlightedLyricID,
-                presentation: .landscape,
-                onToggleInterface: toggleLyricsControls
-            )
-            .accessibilityAction(
-                named: showsLyricsControls ? "隐藏播放器控制" : "显示播放器控制"
-            ) {
-                toggleLyricsControls()
-            }
-            .transition(.opacity)
-        case .queue:
-            NowPlayingQueuePage()
+        Group {
+            switch page {
+            case .artwork:
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    NowPlayingProgressControl(song: song)
+                    NowPlayingTransportControls()
+                    NowPlayingVolumeControl()
+                    Spacer(minLength: 0)
+                }
                 .transition(.opacity)
+            case .details:
+                NowPlayingSongDetailsPage(
+                    song: song,
+                    showsArtworkToggle: false,
+                    onShowArtwork: toggleArtworkDetails
+                )
+                .transition(.opacity)
+            case .lyrics:
+                NowPlayingLyricsPage(
+                    song: song,
+                    lyrics: lyrics,
+                    errorMessage: lyricError,
+                    highlightedLyricID: highlightedLyricID,
+                    presentation: .landscape,
+                    onToggleInterface: toggleLyricsControls,
+                    onShowDetails: { page = .details }
+                )
+                .accessibilityAction(
+                    named: showsLyricsControls ? "隐藏播放器控制" : "显示播放器控制"
+                ) {
+                    toggleLyricsControls()
+                }
+                .transition(.opacity)
+            case .queue:
+                NowPlayingQueuePage()
+                    .transition(.opacity)
+            }
         }
     }
 
@@ -190,5 +212,22 @@ struct NowPlayingLandscapeView: View {
 
     private func exitSkylineLyrics() {
         showsSkylineLyrics = false
+    }
+
+    private func toggleArtworkDetails() {
+        withAnimation(accessibilityReduceMotion ? nil : .smooth(duration: 0.3)) {
+            page = page == .details ? .artwork : .details
+        }
+    }
+
+    private var dismissalDragGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onEnded { value in
+                guard value.translation.height > 60,
+                      abs(value.translation.height) > abs(value.translation.width) else {
+                    return
+                }
+                onDismiss()
+            }
     }
 }

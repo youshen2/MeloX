@@ -1,7 +1,8 @@
 import SwiftUI
 
-enum NowPlayingPage: String, Equatable {
+enum NowPlayingPage: String, Hashable {
     case artwork
+    case details
     case lyrics
     case queue
 }
@@ -63,7 +64,9 @@ struct NowPlayingView: View {
         }
         .onChange(of: page) { _, newPage in
             guard settings.rememberNowPlayingPage else { return }
-            settings.rememberedNowPlayingPage = newPage.rawValue
+            settings.rememberedNowPlayingPage = (
+                newPage == .details ? NowPlayingPage.artwork : newPage
+            ).rawValue
         }
         .animation(.smooth(duration: 0.4), value: page)
     }
@@ -100,6 +103,7 @@ struct NowPlayingView: View {
             .onTapGesture {
                 dismiss()
             }
+            .gesture(dismissalDragGesture)
             .accessibilityElement()
             .accessibilityLabel("收起播放器")
             .accessibilityHint("轻点收起，或向下拖动播放器")
@@ -108,23 +112,58 @@ struct NowPlayingView: View {
             }
     }
 
-    @ViewBuilder
     private func pageContent(for song: Song) -> some View {
-        switch page {
-        case .artwork:
-            NowPlayingArtworkPage(song: song)
-            .transition(.opacity.combined(with: .scale(scale: 0.97)))
-        case .lyrics:
-            NowPlayingLyricsPage(
-                song: song,
-                lyrics: lyrics,
-                errorMessage: lyricError,
-                highlightedLyricID: highlightedLyricID
-            )
-            .transition(.opacity)
-        case .queue:
-            NowPlayingQueuePage()
+        Group {
+            switch page {
+            case .artwork:
+                NowPlayingArtworkPage(
+                    song: song,
+                    onShowDetails: showDetails
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            case .details:
+                NowPlayingSongDetailsPage(
+                    song: song,
+                    showsArtworkToggle: true,
+                    onShowArtwork: showArtwork
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            case .lyrics:
+                NowPlayingLyricsPage(
+                    song: song,
+                    lyrics: lyrics,
+                    errorMessage: lyricError,
+                    highlightedLyricID: highlightedLyricID,
+                    onShowDetails: showDetails
+                )
                 .transition(.opacity)
+            case .queue:
+                NowPlayingQueuePage()
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    private var dismissalDragGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onEnded { value in
+                guard value.translation.height > 60,
+                      abs(value.translation.height) > abs(value.translation.width) else {
+                    return
+                }
+                dismiss()
+            }
+    }
+
+    private func showDetails() {
+        withAnimation(.smooth(duration: 0.3)) {
+            page = .details
+        }
+    }
+
+    private func showArtwork() {
+        withAnimation(.smooth(duration: 0.3)) {
+            page = .artwork
         }
     }
 

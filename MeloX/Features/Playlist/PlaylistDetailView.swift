@@ -69,7 +69,7 @@ struct PlaylistDetailView: View {
                         Button {
                             Task { await player.playAll(playlist.tracks) }
                         } label: {
-                            Label("播放全部", systemImage: "play.fill")
+                            Text("播放全部")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)

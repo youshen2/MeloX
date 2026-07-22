@@ -159,6 +159,60 @@ final class NeteaseAPI {
         return response.songs
     }
 
+    func songComments(
+        id: Int,
+        offset: Int = 0,
+        limit: Int = 20,
+        beforeTime: Int64 = 0
+    ) async throws -> SongCommentsResponse {
+        let path = "/api/v1/resource/comments/R_SO_4_\(id)"
+        let data: [String: Any] = [
+            "rid": id,
+            "limit": limit,
+            "offset": offset,
+            "beforeTime": beforeTime,
+        ]
+        let response: SongCommentsResponse
+        do {
+            // @neteaseapireborn/api 对该路由使用 weapi。
+            response = try await client.weapi(path, data: data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            // CFNetwork 请求部分网易云 weapi 路由时会得到 HTTP 200 空包；
+            // 保留完全相同的原始路由和参数，仅切换到其支持的 eapi 传输。
+            response = try await client.eapi(path, data: data)
+        }
+        try validate(responseCode: response.code)
+        return response
+    }
+
+    func songCommentReplies(
+        songID: Int,
+        parentCommentID: Int64,
+        time: Int64 = -1,
+        limit: Int = 20
+    ) async throws -> SongCommentFloorResponse {
+        let path = "/api/resource/comment/floor/get"
+        let data: [String: Any] = [
+            "parentCommentId": parentCommentID,
+            "threadId": "R_SO_4_\(songID)",
+            "time": time,
+            "limit": limit,
+        ]
+        let response: SongCommentFloorResponse
+        do {
+            // @neteaseapireborn/api/module/comment_floor.js 使用同一路由和 weapi 参数。
+            response = try await client.weapi(path, data: data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            response = try await client.eapi(path, data: data)
+        }
+        try validate(responseCode: response.code)
+        return response
+    }
+
     func playbackSource(id: Int) async throws -> PlaybackSource {
         do {
             let response: SongURLResponse = try await client.eapi(

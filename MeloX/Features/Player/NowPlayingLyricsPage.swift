@@ -16,6 +16,7 @@ struct NowPlayingLyricsPage: View {
     let highlightedLyricID: LyricLine.ID?
     let presentation: NowPlayingLyricsPresentation
     let onToggleInterface: (() -> Void)?
+    let onShowDetails: (() -> Void)?
 
     @State private var scrollPositionID: LyricLine.ID?
     @State private var isBrowsingLyrics = false
@@ -32,7 +33,8 @@ struct NowPlayingLyricsPage: View {
         errorMessage: String?,
         highlightedLyricID: LyricLine.ID?,
         presentation: NowPlayingLyricsPresentation = .portrait,
-        onToggleInterface: (() -> Void)? = nil
+        onToggleInterface: (() -> Void)? = nil,
+        onShowDetails: (() -> Void)? = nil
     ) {
         self.song = song
         self.lyrics = lyrics
@@ -40,6 +42,7 @@ struct NowPlayingLyricsPage: View {
         self.highlightedLyricID = highlightedLyricID
         self.presentation = presentation
         self.onToggleInterface = onToggleInterface
+        self.onShowDetails = onShowDetails
         _scrollPositionID = State(initialValue: highlightedLyricID)
         _visualHighlightedLyricID = State(initialValue: highlightedLyricID)
         _visualCascadeFocusLyricID = State(initialValue: highlightedLyricID)
@@ -74,7 +77,11 @@ struct NowPlayingLyricsPage: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            NowPlayingSongActions(song: song)
+            NowPlayingSongActions(
+                song: song,
+                isShowingDetails: false,
+                onToggleDetails: { onShowDetails?() }
+            )
         }
     }
 
