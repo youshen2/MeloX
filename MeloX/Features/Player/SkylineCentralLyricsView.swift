@@ -37,7 +37,7 @@ struct SkylineCentralLyricsView: View {
                     fontSize: currentLyricFontSize,
                     alignment: .center,
                     fontScale: fontScale,
-                    primaryColor: accentColor,
+                    primaryColor: currentLyricColor,
                     showsTranslation: false,
                     layoutWidth: width,
                     playbackScaleRange: 1...max(maximumPlaybackScale, 1),
@@ -155,6 +155,14 @@ struct SkylineCentralLyricsView: View {
         min(
             max(nextLyricFontSize / max(currentLyricFontSize, 1), 0.35),
             0.95
+        )
+    }
+
+    private var currentLyricColor: Color {
+        .white.mix(
+            with: accentColor,
+            by: currentLyricReveal,
+            in: .perceptual
         )
     }
 
