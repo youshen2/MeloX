@@ -183,11 +183,13 @@ struct NowPlayingPageSelector: View {
 
             Menu {
                 Picker("歌词样式", selection: lyricsStyleBinding) {
-                    ForEach(LyricsStyle.allCases) { style in
+                    ForEach([LyricsStyle.appleMusic, .eva]) { style in
                         Label(style.title, systemImage: style.systemImage)
                             .tag(style)
                     }
                 }
+
+                TextPVStyleMenu(page: $page)
             } label: {
                 Image(systemName: "textformat.size")
                     .font(.title3)

@@ -117,11 +117,11 @@ struct SkylineAmbientLyricsView: View {
             let randomX = CGFloat.random(in: 0...1, using: &randomGenerator)
             let randomY = CGFloat.random(in: 0...1, using: &randomGenerator)
             let scaleVariation = 0.82
-                + randomUnit(seed: seed ^ 0xBF58476D1CE4E5B9) * 0.36
+                + DeterministicRandom.unit(seed ^ 0xBF58476D1CE4E5B9) * 0.36
             let opacityVariation = 0.15
-                + Double(randomUnit(seed: seed ^ 0xD6E8FEB86659FD93)) * 0.09
+                + Double(DeterministicRandom.unit(seed ^ 0xD6E8FEB86659FD93)) * 0.09
             let signedRotation = Double(
-                randomUnit(seed: seed ^ 0xA0761D6478BD642F)
+                DeterministicRandom.unit(seed ^ 0xA0761D6478BD642F)
             ) * 2 - 1
             let driftDirectionX: CGFloat = randomX < 0.5 ? 1 : -1
             let driftDirectionY: CGFloat = randomY < 0.5 ? -1 : 1
@@ -134,8 +134,10 @@ struct SkylineAmbientLyricsView: View {
                 baseScale: scaleVariation,
                 baseOpacity: opacityVariation,
                 rotation: signedRotation * maximumTilt,
-                driftX: driftDirectionX * (6 + randomUnit(seed: seed ^ 0xE7037ED1A0B428DB) * 12),
-                driftY: driftDirectionY * (2 + randomUnit(seed: seed ^ 0x8EBC6AF09C88C6E3) * 4),
+                driftX: driftDirectionX
+                    * (6 + DeterministicRandom.unit(seed ^ 0xE7037ED1A0B428DB) * 12),
+                driftY: driftDirectionY
+                    * (2 + DeterministicRandom.unit(seed ^ 0x8EBC6AF09C88C6E3) * 4),
                 growthStage: 0
             )
         }
@@ -183,15 +185,6 @@ struct SkylineAmbientLyricsView: View {
         }
     }
 
-    private func randomUnit(seed: UInt64) -> CGFloat {
-        var value = seed
-        value ^= value >> 30
-        value &*= 0xBF58476D1CE4E5B9
-        value ^= value >> 27
-        value &*= 0x94D049BB133111EB
-        value ^= value >> 31
-        return CGFloat(value % 10_000) / 10_000
-    }
 }
 
 private struct SkylineAmbientLyricText: View {

@@ -71,6 +71,14 @@ struct PlayerSettingsView: View {
                     }
                 }
 
+                if settings.lyricsStyle == .textPV {
+                    NavigationLink {
+                        TextPVSettingsView()
+                    } label: {
+                        LabeledContent("文字PV设置", value: settings.textPV.style.title)
+                    }
+                }
+
                 valueSlider(
                     title: "字体大小",
                     value: $settings.lyricsFontSize,
@@ -139,19 +147,10 @@ struct PlayerSettingsView: View {
                     )
                 }
 
-                if settings.lyricsStyle == .textPV1 {
-                    valueSlider(
-                        title: "PV 动效强度",
-                        value: $settings.textPV1MotionIntensity,
-                        range: AppSettings.textPV1MotionIntensityRange,
-                        step: 0.1,
-                        valueText: "\(Int((settings.textPV1MotionIntensity * 100).rounded()))%"
-                    )
-                }
             } header: {
                 Text("歌词外观")
             } footer: {
-                Text("\(settings.lyricsStyle.title)：\(settings.lyricsStyle.description)。播放器底部也可以快速切换；所有样式都会沿用字体与翻译设置，逐字动效仅用于 Apple Music 样式。逐句模糊加强只调整随焦点距离递增的模糊，100% 为原始强度；默认状态与隐藏 UI 后可以分别设置。文字PV1 每两句更换一次构图；同构图换词仅做轻量回弹，高潮段使用猛烈旋转重击转场，停留阶段保持静止。系统减少动态效果开启时自动停用强动效。")
+                Text("\(settings.lyricsStyle.title)：\(settings.lyricsStyle.description)。播放器底部也可以快速切换；文字PV的具体风格与编排参数位于其子设置中。所有样式都会沿用字体与翻译设置，逐字动效仅用于 Apple Music 样式。逐句模糊加强只调整随焦点距离递增的模糊，100% 为原始强度；默认状态与隐藏 UI 后可以分别设置。")
             }
 
             Section {

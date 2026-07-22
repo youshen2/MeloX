@@ -200,7 +200,7 @@ private struct EVAFooterLyric: View {
         Text(verbatim: text)
             .font(
                 .custom(
-                    EVATheme.fontName,
+                    LyricsTypography.heavySerifFontName,
                     fixedSize: isTranslation ? 24 : 27
                 )
             )

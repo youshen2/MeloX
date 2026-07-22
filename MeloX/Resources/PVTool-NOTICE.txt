@@ -1,0 +1,22 @@
+PV Tool
+Copyright (c) 2026 DanteAlighieri13210914
+
+This software is licensed under a Non-Commercial License.
+A copy of the license is included in the LICENSE file.
+
+For commercial licensing inquiries, see COMMERCIAL.md or contact the author.
+
+---
+
+This project uses the following open-source libraries:
+
+- PixiJS (https://pixijs.com/) — MIT License
+- Vite (https://vite.dev/) — MIT License
+- TypeScript (https://www.typescriptlang.org/) — Apache License 2.0
+- GSAP (https://gsap.com/) — see GSAP license terms
+
+---
+
+All original source code, visual effect implementations, templates, and
+documentation in this repository are the intellectual property of
+DanteAlighieri13210914 unless otherwise noted.

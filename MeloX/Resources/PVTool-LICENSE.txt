@@ -1,0 +1,87 @@
+PV Tool — Non-Commercial License
+
+Copyright (c) 2026 DanteAlighieri13210914. All rights reserved.
+
+
+1. DEFINITIONS
+
+"Software" refers to PV Tool and all associated source code, assets,
+templates, effects, and documentation in this repository.
+
+"Commercial Use" means any use of the Software intended for or directed
+toward commercial advantage or monetary compensation. This includes,
+without limitation:
+  (a) use in or as part of a product or service that is sold, licensed,
+      or otherwise made available for a fee;
+  (b) use in a Software-as-a-Service (SaaS), Platform-as-a-Service (PaaS),
+      or any hosted/managed service offering;
+  (c) use to provide paid services to third parties, including but not
+      limited to video production services, live-streaming services,
+      or content creation services offered for compensation;
+  (d) embedding, bundling, or integrating the Software (in whole or in
+      part) into any commercial product, application, or system;
+  (e) use within an organization that generates revenue from activities
+      directly facilitated by the Software.
+
+
+2. GRANT OF LICENSE
+
+Subject to the terms of this License, the copyright holder grants you a
+non-exclusive, non-transferable, revocable license to use, copy, and
+modify the Software solely for NON-COMMERCIAL purposes, including:
+  - Personal use and experimentation
+  - Educational and academic research
+  - Non-commercial community projects
+  - Creating personal content (e.g. music videos, visual art) that is
+    published freely and not behind a paywall
+
+
+3. RESTRICTIONS
+
+You may NOT, without prior written permission from the copyright holder:
+  (a) Use the Software for any Commercial Use as defined in Section 1;
+  (b) Offer the Software, or any derivative work, as a service to third
+      parties, whether for free on behalf of a commercial entity or for
+      a fee;
+  (c) Embed, bundle, or integrate the Software into any commercial
+      product, plugin, application, or platform;
+  (d) Sublicense, sell, resell, lease, or otherwise transfer the
+      Software or any rights therein to any third party for commercial
+      purposes;
+  (e) Remove or alter any copyright notices, license texts, or
+      attribution notices contained in the Software.
+
+
+4. TERMINATION
+
+Any violation of the terms of this License will result in AUTOMATIC and
+IMMEDIATE termination of all rights granted hereunder, without notice.
+Upon termination, you must immediately cease all use of the Software
+and destroy all copies in your possession.
+
+The copyright holder reserves the right to pursue any and all legal
+remedies available under applicable law.
+
+
+5. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
+6. GOVERNING LAW
+
+This License shall be governed by and construed in accordance with the
+laws of the People's Republic of China, without regard to its conflict
+of law provisions.
+
+
+7. CONTACT
+
+For commercial licensing inquiries, contact:
+  GitHub: @DanteAlighieri13210914

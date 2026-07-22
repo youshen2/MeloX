@@ -95,11 +95,13 @@ private struct EVAHorizontalTitleText: View {
     }
 
     private var isLatin: Bool {
-        EVATheme.isPredominantlyLatin(block.text)
+        LyricsTypography.isPredominantlyLatin(block.text)
     }
 
     private var fontName: String {
-        isLatin ? EVATheme.latinFontName : EVATheme.fontName
+        isLatin
+            ? LyricsTypography.latinSerifFontName
+            : LyricsTypography.heavySerifFontName
     }
 }
 
@@ -119,7 +121,12 @@ private struct EVAVerticalTitleText: View {
         VStack(spacing: -fontSize * 0.13) {
             ForEach(Array(characters.enumerated()), id: \.offset) { _, character in
                 Text(verbatim: String(character))
-                    .font(.custom(EVATheme.fontName, fixedSize: fontSize))
+                    .font(
+                        .custom(
+                            LyricsTypography.heavySerifFontName,
+                            fixedSize: fontSize
+                        )
+                    )
                     .foregroundStyle(EVATheme.warmWhite)
                     .frame(width: fontSize, height: fontSize)
             }
@@ -133,22 +140,8 @@ private struct EVAVerticalTitleText: View {
 }
 
 enum EVATheme {
-    static let fontName = "SourceHanSerifCN-Heavy"
-    static let latinFontName = "TimesNewRomanPS-BoldMT"
     static let warmWhite = Color(red: 1, green: 0.98, blue: 0.91)
     static let glow = Color(red: 0.88, green: 0.57, blue: 0.12)
-
-    static func isPredominantlyLatin(_ text: String) -> Bool {
-        let visibleScalars = text.unicodeScalars.filter {
-            !CharacterSet.whitespacesAndNewlines.contains($0)
-                && !CharacterSet.punctuationCharacters.contains($0)
-        }
-        guard !visibleScalars.isEmpty else { return false }
-        let latinScalars = visibleScalars.filter {
-            $0.isASCII && CharacterSet.letters.contains($0)
-        }
-        return Double(latinScalars.count) / Double(visibleScalars.count) >= 0.7
-    }
 }
 
 private extension EVALyricTextBlock {

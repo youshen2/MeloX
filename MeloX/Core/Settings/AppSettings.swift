@@ -40,9 +40,6 @@ final class AppSettings {
     static let defaultLyricsFocusCascadeBounceEnabled = true
     static let defaultLyricsFocusColorLeadTime = 0.06
     static let lyricsFocusColorLeadTimeRange = 0.0...0.1
-    static let defaultTextPV1MotionIntensity = 1.0
-    static let textPV1MotionIntensityRange = 0.5...1.5
-
     private enum Key {
         static let cookie = "musicCookie"
         static let quality = "musicQuality"
@@ -75,7 +72,6 @@ final class AppSettings {
         static let lyricsFocusColorLeadTime = "lyricsFocusColorLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsRefreshRate = "lyricsRefreshRate"
-        static let textPV1MotionIntensity = "textPV1MotionIntensity"
         static let playerScreenAwakeMode = "playerScreenAwakeMode"
         static let legacyLyricsKeepsScreenAwake = "lyricsKeepsScreenAwake"
         static let rememberNowPlayingPage = "rememberNowPlayingPage"
@@ -233,15 +229,6 @@ final class AppSettings {
         didSet { defaults.set(lyricsRefreshRate.rawValue, forKey: Key.lyricsRefreshRate) }
     }
 
-    var textPV1MotionIntensity: Double {
-        didSet {
-            defaults.set(
-                textPV1MotionIntensity,
-                forKey: Key.textPV1MotionIntensity
-            )
-        }
-    }
-
     var playerScreenAwakeMode: PlayerScreenAwakeMode {
         didSet {
             defaults.set(
@@ -273,6 +260,7 @@ final class AppSettings {
     }
 
     let skylineLyrics: SkylineLyricsPreferences
+    let textPV: TextPVPreferences
 
     @ObservationIgnored
     private let defaults: UserDefaults
@@ -280,6 +268,7 @@ final class AppSettings {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         skylineLyrics = SkylineLyricsPreferences(defaults: defaults)
+        textPV = TextPVPreferences(defaults: defaults)
         cookie = defaults.string(forKey: Key.cookie) ?? ""
         quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high
         musicArea = defaults.string(forKey: Key.area) ?? "ALL"
@@ -288,9 +277,12 @@ final class AppSettings {
         playerBackgroundSaturation = defaults.object(forKey: Key.playerBackgroundSaturation) as? Double ?? 0.82
         shrinksPausedArtwork = defaults.object(forKey: Key.shrinksPausedArtwork) as? Bool ?? true
         let storedLyricsStyle = defaults.string(forKey: Key.lyricsStyle) ?? ""
-        lyricsStyle = storedLyricsStyle == "spotlight"
-            ? .eva
-            : LyricsStyle(rawValue: storedLyricsStyle) ?? .appleMusic
+        switch storedLyricsStyle {
+        case "spotlight":
+            lyricsStyle = .eva
+        default:
+            lyricsStyle = LyricsStyle(rawValue: storedLyricsStyle) ?? .appleMusic
+        }
         lyricsFontSize = defaults.object(forKey: Key.lyricsFontSize) as? Double
             ?? Self.defaultLyricsFontSize
         let storedCurrentLineScale = defaults.object(
@@ -376,16 +368,6 @@ final class AppSettings {
         lyricsRefreshRate = LyricsRefreshRate(
             rawValue: defaults.object(forKey: Key.lyricsRefreshRate) as? Int ?? 0
         ) ?? .defaultValue
-        let storedTextPV1MotionIntensity = defaults.object(
-            forKey: Key.textPV1MotionIntensity
-        ) as? Double ?? Self.defaultTextPV1MotionIntensity
-        textPV1MotionIntensity = min(
-            max(
-                storedTextPV1MotionIntensity,
-                Self.textPV1MotionIntensityRange.lowerBound
-            ),
-            Self.textPV1MotionIntensityRange.upperBound
-        )
         if let storedScreenAwakeMode = defaults.string(
             forKey: Key.playerScreenAwakeMode
         ), let screenAwakeMode = PlayerScreenAwakeMode(
@@ -439,7 +421,7 @@ final class AppSettings {
         lyricsFocusColorLeadTime = Self.defaultLyricsFocusColorLeadTime
         lyricsAdvanceTime = 0.2
         lyricsRefreshRate = .defaultValue
-        textPV1MotionIntensity = Self.defaultTextPV1MotionIntensity
+        textPV.reset()
         playerScreenAwakeMode = .lyrics
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"

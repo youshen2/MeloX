@@ -111,7 +111,7 @@ struct AboutView: View {
             } header: {
                 Text("特别鸣谢")
             } footer: {
-                Text("感谢以上开源项目为 MeloX 的歌词解析、逐字渲染和网易云播放器实现提供方法参考。")
+                Text("感谢以上项目为 MeloX 的歌词解析、逐字渲染、文字PV视觉编排和网易云播放器实现提供方法参考。")
             }
 
             Section("声明") {
@@ -199,6 +199,11 @@ struct AboutView: View {
             name: "qier222/YesPlayMusic",
             contribution: "网易云接口与播放器实现参考",
             url: URL(string: "https://github.com/qier222/YesPlayMusic")!
+        ),
+        AcknowledgedProject(
+            name: "DanteAlighieri13210914/pv-tool",
+            contribution: "文字PV模板与效果的原始实现 · Non-Commercial License",
+            url: URL(string: "https://github.com/DanteAlighieri13210914/pv-tool")!
         ),
     ]
 }
