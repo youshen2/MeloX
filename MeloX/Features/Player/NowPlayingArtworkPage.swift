@@ -68,6 +68,7 @@ struct NowPlayingArtworkPage: View {
 
 struct NowPlayingSongActions: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(DownloadStore.self) private var downloads
 
     let song: Song
     let isShowingDetails: Bool
@@ -90,6 +91,30 @@ struct NowPlayingSongActions: View {
             .accessibilityLabel(library.contains(song: song) ? "取消收藏" : "收藏")
 
             Menu {
+                if downloads.isDownloading(songID: song.id) {
+                    Button {
+                        downloads.cancel(songID: song.id)
+                    } label: {
+                        Label("取消下载", systemImage: "xmark.circle")
+                    }
+                } else if downloads.contains(songID: song.id) {
+                    Button(role: .destructive) {
+                        downloads.remove(songID: song.id)
+                    } label: {
+                        Label("删除下载", systemImage: "trash")
+                    }
+                } else {
+                    Menu {
+                        ForEach(MusicQuality.allCases) { quality in
+                            Button(quality.title) {
+                                downloads.start(song, quality: quality)
+                            }
+                        }
+                    } label: {
+                        Label("下载歌曲", systemImage: "arrow.down.circle")
+                    }
+                }
+
                 Button(action: onToggleDetails) {
                     Label(
                         isShowingDetails ? "返回封面" : "歌曲资料",

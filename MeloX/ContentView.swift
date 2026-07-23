@@ -4,6 +4,7 @@ struct ContentView: View {
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryStore.self) private var library
+    @Environment(DownloadStore.self) private var downloads
 
     @State private var selectedTab: AppTab = .home
     @State private var homePath = NavigationPath()
@@ -82,6 +83,23 @@ struct ContentView: View {
                 }
             } message: {
                 Text(player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
+            }
+            .alert(
+                "下载操作失败",
+                isPresented: Binding(
+                    get: { downloads.errorMessage != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            downloads.clearError()
+                        }
+                    }
+                )
+            ) {
+                Button("好", role: .cancel) {
+                    downloads.clearError()
+                }
+            } message: {
+                Text(downloads.errorMessage ?? "无法完成下载操作。")
             }
             .appLaunchExperience()
     }

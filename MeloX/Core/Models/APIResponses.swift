@@ -29,6 +29,10 @@ struct SongURLResponse: Decodable {
     let data: [SongURL]
 }
 
+struct SongDownloadURLResponse: Decodable {
+    let data: SongURL?
+}
+
 struct SongURL: Decodable {
     let id: Int
     let url: String?

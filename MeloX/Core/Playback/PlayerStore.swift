@@ -30,6 +30,9 @@ final class PlayerStore {
     private let settings: AppSettings
 
     @ObservationIgnored
+    private let downloads: DownloadStore
+
+    @ObservationIgnored
     private let engine: AudioPlaybackEngine
 
     @ObservationIgnored
@@ -65,14 +68,22 @@ final class PlayerStore {
     @ObservationIgnored
     private var hasRecordedCurrentStart = false
 
+    @ObservationIgnored
+    private var isUsingDownloadedSource = false
+
+    @ObservationIgnored
+    private var currentLoadShouldAutoplay = false
+
     init(
         api: NeteaseAPI,
         settings: AppSettings,
+        downloads: DownloadStore,
         persistence: PlaybackPersistence? = nil,
         onPlaybackRecorded: @escaping (Song) -> Void = { _ in }
     ) {
         self.api = api
         self.settings = settings
+        self.downloads = downloads
         self.persistence = persistence ?? PlaybackPersistence()
         historyRecorder = PlaybackHistoryRecorder(
             api: api,
@@ -271,6 +282,8 @@ final class PlayerStore {
         isResolvingSource = true
         isLoading = true
         isPlaying = false
+        isUsingDownloadedSource = false
+        currentLoadShouldAutoplay = autoplay
         playbackIssue = nil
         engine.unload()
         nowPlayingSession.setSong(
@@ -283,7 +296,13 @@ final class PlayerStore {
         persistSnapshot()
 
         do {
-            let source = try await api.playbackSource(id: song.id)
+            let source: PlaybackSource
+            if let downloadedSource = downloads.localPlaybackSource(songID: song.id) {
+                source = downloadedSource
+                isUsingDownloadedSource = true
+            } else {
+                source = try await api.playbackSource(id: song.id)
+            }
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
             engine.load(source, startAt: startAt, autoplay: autoplay)
@@ -312,6 +331,21 @@ final class PlayerStore {
     }
 
     private func handleEngineFailure(_ error: Error) async {
+        if let playbackError = error as? AudioPlaybackError,
+           case .itemFailed = playbackError,
+           isUsingDownloadedSource,
+           let song = currentSong {
+            let resumePosition = progress
+            let shouldAutoplay = currentLoadShouldAutoplay
+            isUsingDownloadedSource = false
+            downloads.discardInvalidDownload(songID: song.id)
+            await loadCurrentSong(
+                autoplay: shouldAutoplay,
+                startAt: resumePosition
+            )
+            return
+        }
+
         if let song = currentSong {
             playbackIssue = PlaybackIssue(song: song, error: error)
         }
@@ -451,6 +485,7 @@ final class PlayerStore {
             song: currentSong,
             sourceID: historySourceID
         )
+        downloads.recordPlayback(currentSong)
     }
 
     private func persistSnapshot() {

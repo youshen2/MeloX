@@ -4,6 +4,7 @@ struct SongDetailView: View {
     @Environment(NeteaseAPI.self) private var api
     @Environment(PlayerStore.self) private var player
     @Environment(LibraryStore.self) private var library
+    @Environment(DownloadStore.self) private var downloads
 
     @State private var song: Song
     @State private var commentSong: Song?
@@ -21,7 +22,38 @@ struct SongDetailView: View {
         .navigationTitle("歌曲详情")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Menu {
+                    if downloads.isDownloading(songID: song.id) {
+                        Button {
+                            downloads.cancel(songID: song.id)
+                        } label: {
+                            Label("取消下载", systemImage: "xmark.circle")
+                        }
+                    } else if downloads.contains(songID: song.id) {
+                        Button(role: .destructive) {
+                            downloads.remove(songID: song.id)
+                        } label: {
+                            Label("删除下载", systemImage: "trash")
+                        }
+                    } else {
+                        Section("选择下载音质") {
+                            ForEach(MusicQuality.allCases) { quality in
+                                Button(quality.title) {
+                                    downloads.start(song, quality: quality)
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Image(
+                        systemName: downloads.contains(songID: song.id)
+                            ? "arrow.down.circle.fill"
+                            : "arrow.down.circle"
+                    )
+                }
+                .accessibilityLabel(downloads.contains(songID: song.id) ? "已下载" : "下载")
+
                 Button {
                     commentSong = song
                 } label: {

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1D0AD000000000000000001 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = A1D0AD000000000000000003 /* GRDB */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		6DB1D882300F5FA000FB3AEE /* MeloX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeloX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1D0AD000000000000000001 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = MeloX;
 			packageProductDependencies = (
+				A1D0AD000000000000000003 /* GRDB */,
 			);
 			productName = MeloX;
 			productReference = 6DB1D882300F5FA000FB3AEE /* MeloX.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = 6DB1D879300F5FA000FB3AEE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A1D0AD000000000000000002 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6DB1D883300F5FA000FB3AEE /* Products */;
 			projectDirPath = "";
@@ -347,6 +356,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1D0AD000000000000000002 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1D0AD000000000000000003 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1D0AD000000000000000002 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6DB1D87A300F5FA000FB3AEE /* Project object */;
 }

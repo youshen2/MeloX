@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(DownloadStore.self) private var downloads
+
     var body: some View {
         Form {
             Section {
@@ -20,6 +22,17 @@ struct SettingsView: View {
                     ContentSettingsView()
                 } label: {
                     Label("内容", systemImage: "rectangle.stack")
+                }
+
+                NavigationLink {
+                    DownloadsView()
+                } label: {
+                    HStack {
+                        Label("下载管理", systemImage: "arrow.down.circle")
+                        Spacer()
+                        Text(downloads.totalByteCount.formatted(.byteCount(style: .file)))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 

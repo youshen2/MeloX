@@ -43,6 +43,7 @@ private struct PlaylistTrackRow: View {
     @Environment(\.openMusicRoute) private var openMusicRoute
     @Environment(PlayerStore.self) private var player
     @Environment(LibraryStore.self) private var library
+    @Environment(DownloadStore.self) private var downloads
 
     @State private var presentedSheet: PlaylistSongSheet?
 
@@ -74,7 +75,42 @@ private struct PlaylistTrackRow: View {
             }
             .buttonStyle(.plain)
 
+            if downloads.isDownloading(songID: song.id) {
+                ProgressView()
+                    .controlSize(.mini)
+                    .accessibilityLabel("正在下载")
+            } else if downloads.contains(songID: song.id) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("已下载")
+            }
+
             Menu {
+                if downloads.isDownloading(songID: song.id) {
+                    Button {
+                        downloads.cancel(songID: song.id)
+                    } label: {
+                        Label("取消下载", systemImage: "xmark.circle")
+                    }
+                } else if downloads.contains(songID: song.id) {
+                    Button(role: .destructive) {
+                        downloads.remove(songID: song.id)
+                    } label: {
+                        Label("删除下载", systemImage: "trash")
+                    }
+                } else {
+                    Menu {
+                        ForEach(MusicQuality.allCases) { quality in
+                            Button(quality.title) {
+                                downloads.start(song, quality: quality)
+                            }
+                        }
+                    } label: {
+                        Label("下载歌曲", systemImage: "arrow.down.circle")
+                    }
+                }
+
                 Button {
                     openMusicRoute(.song(song))
                 } label: {

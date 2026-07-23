@@ -229,10 +229,17 @@ final class NeteaseAPI {
     }
 
     func playbackSource(id: Int) async throws -> PlaybackSource {
+        try await playbackSource(
+            id: id,
+            bitrate: Int(settings.quality.bitrate) ?? 320_000
+        )
+    }
+
+    private func playbackSource(id: Int, bitrate: Int) async throws -> PlaybackSource {
         do {
             let response: SongURLResponse = try await client.eapi(
                 "/api/song/enhance/player/url",
-                data: ["ids": "[\"\(id)\"]", "br": Int(settings.quality.bitrate) ?? 320_000]
+                data: ["ids": "[\"\(id)\"]", "br": bitrate]
             )
             guard let source = response.data.first(where: { $0.id == id }) else {
                 throw APIError.noPlayableSource
@@ -250,6 +257,35 @@ final class NeteaseAPI {
                 throw error
             }
             return PlaybackSource(url: url, bitrate: nil, format: "mp3")
+        }
+    }
+
+    func downloadSource(id: Int, quality: MusicQuality) async throws -> PlaybackSource {
+        do {
+            // Mirrors @neteaseapireborn/api/module/song_download_url.js.
+            let response: SongDownloadURLResponse = try await client.eapi(
+                "/api/song/enhance/download/url",
+                data: ["id": id, "br": quality.downloadBitrate]
+            )
+            guard let source = response.data,
+                  source.id == id,
+                  source.freeTrialInfo == nil,
+                  let string = source.url,
+                  let url = securePlaybackURL(from: string) else {
+                throw APIError.noPlayableSource
+            }
+            return PlaybackSource(
+                url: url,
+                bitrate: source.bitrate,
+                format: source.format
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // The dedicated download route can require account privileges.
+            // The reference player caches the original player URL as its
+            // compatibility path, so preserve that behavior here as well.
+            return try await playbackSource(id: id, bitrate: quality.downloadBitrate)
         }
     }
 

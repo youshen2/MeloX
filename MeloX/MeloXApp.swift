@@ -7,6 +7,7 @@ struct MeloXApp: App {
     @State private var api: NeteaseAPI
     @State private var library: LibraryStore
     @State private var cloud: CloudMusicStore
+    @State private var downloads: DownloadStore
     @State private var player: PlayerStore
     @State private var screenAwakeCoordinator: ScreenAwakeCoordinator
     @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -16,14 +17,17 @@ struct MeloXApp: App {
         let api = NeteaseAPI(settings: settings)
         let library = LibraryStore(api: api, settings: settings)
         let cloud = CloudMusicStore(api: api, settings: settings)
+        let downloads = DownloadStore(api: api, settings: settings)
         _settings = State(initialValue: settings)
         _api = State(initialValue: api)
         _library = State(initialValue: library)
         _cloud = State(initialValue: cloud)
+        _downloads = State(initialValue: downloads)
         _player = State(
             initialValue: PlayerStore(
                 api: api,
                 settings: settings,
+                downloads: downloads,
                 onPlaybackRecorded: { song in
                     library.recordRecentlyPlayed(song)
                 }
@@ -39,6 +43,7 @@ struct MeloXApp: App {
                 .environment(api)
                 .environment(library)
                 .environment(cloud)
+                .environment(downloads)
                 .environment(player)
                 .environment(screenAwakeCoordinator)
                 .environment(\.effectiveLyricsRefreshRate, effectiveLyricsRefreshRate)

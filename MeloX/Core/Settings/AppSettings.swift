@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-enum MusicQuality: String, CaseIterable, Identifiable {
+enum MusicQuality: String, CaseIterable, Identifiable, Codable {
     case standard = "128000"
     case high = "320000"
     case lossless = "flac"
@@ -19,11 +19,20 @@ enum MusicQuality: String, CaseIterable, Identifiable {
     var bitrate: String {
         self == .lossless ? "350000" : rawValue
     }
+
+    var downloadBitrate: Int {
+        switch self {
+        case .standard: 128_000
+        case .high: 320_000
+        case .lossless: 999_000
+        }
+    }
 }
 
 @MainActor
 @Observable
 final class AppSettings {
+    static let automaticCachePlaybackThresholdOptions = [3, 5, 10, 20]
     static let defaultLyricsFontSize = 25.0
     static let defaultLyricsCurrentLineScale = 1.2
     static let defaultLyricsLineSpacing = 27.0
@@ -79,6 +88,9 @@ final class AppSettings {
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
+        static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
+        static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
+        static let automaticCacheQuality = "automaticCacheQuality"
     }
 
     var hasCompletedOnboarding: Bool {
@@ -269,6 +281,33 @@ final class AppSettings {
         didSet { defaults.set(checksUpdatesOnLaunch, forKey: Key.checksUpdatesOnLaunch) }
     }
 
+    var automaticallyCachesFrequentlyPlayedSongs: Bool {
+        didSet {
+            defaults.set(
+                automaticallyCachesFrequentlyPlayedSongs,
+                forKey: Key.automaticallyCachesFrequentlyPlayedSongs
+            )
+        }
+    }
+
+    var automaticCachePlaybackThreshold: Int {
+        didSet {
+            defaults.set(
+                automaticCachePlaybackThreshold,
+                forKey: Key.automaticCachePlaybackThreshold
+            )
+        }
+    }
+
+    var automaticCacheQuality: MusicQuality {
+        didSet {
+            defaults.set(
+                automaticCacheQuality.rawValue,
+                forKey: Key.automaticCacheQuality
+            )
+        }
+    }
+
     let skylineLyrics: SkylineLyricsPreferences
     let textPV: TextPVPreferences
 
@@ -399,6 +438,18 @@ final class AppSettings {
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
         checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
+        automaticallyCachesFrequentlyPlayedSongs = defaults.object(
+            forKey: Key.automaticallyCachesFrequentlyPlayedSongs
+        ) as? Bool ?? false
+        let storedAutomaticCacheThreshold = defaults.integer(
+            forKey: Key.automaticCachePlaybackThreshold
+        )
+        automaticCachePlaybackThreshold = Self.automaticCachePlaybackThresholdOptions.contains(
+            storedAutomaticCacheThreshold
+        ) ? storedAutomaticCacheThreshold : 5
+        automaticCacheQuality = MusicQuality(
+            rawValue: defaults.string(forKey: Key.automaticCacheQuality) ?? ""
+        ) ?? .high
     }
 
     func clearAccount() {

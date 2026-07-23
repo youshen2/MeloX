@@ -3,6 +3,7 @@ import SwiftUI
 private enum LibrarySection: String, CaseIterable, Identifiable {
     case songs = "歌曲"
     case playlists = "歌单"
+    case downloads = "下载"
     case cloud = "云盘"
     case history = "历史"
 
@@ -13,27 +14,30 @@ struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
+    @Environment(DownloadStore.self) private var downloads
 
     @State private var section: LibrarySection = .songs
     @State private var showsLogin = false
 
     var body: some View {
-        Group {
-            if !library.isLoggedIn {
-                ContentUnavailableView {
-                    Label("需要登录", systemImage: "person.crop.circle.badge.exclamationmark")
-                } description: {
-                    Text("登录网易云音乐后，才能读取你的收藏歌曲、歌单、音乐云盘和播放记录。")
-                } actions: {
-                    Button("登录网易云音乐") {
-                        showsLogin = true
-                    }
-                    .buttonStyle(.borderedProminent)
+        VStack(spacing: 0) {
+            Picker("音乐库分类", selection: $section) {
+                ForEach(LibrarySection.allCases) { item in
+                    Text(item.rawValue).tag(item)
                 }
+            }
+            .pickerStyle(.segmented)
+            .padding()
+
+            if section == .downloads {
+                downloadedSongList
+            } else if !library.isLoggedIn {
+                loginUnavailableView
             } else {
                 libraryContent
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("音乐库")
         .sheet(isPresented: $showsLogin) {
             NavigationStack {
@@ -62,6 +66,19 @@ struct LibraryView: View {
         }
     }
 
+    private var loginUnavailableView: some View {
+        ContentUnavailableView {
+            Label("需要登录", systemImage: "person.crop.circle.badge.exclamationmark")
+        } description: {
+            Text("登录后可读取收藏歌曲、歌单、音乐云盘和播放记录；已下载歌曲无需登录。")
+        } actions: {
+            Button("登录网易云音乐") {
+                showsLogin = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
     @ViewBuilder
     private var libraryContent: some View {
         switch library.phase {
@@ -72,31 +89,105 @@ struct LibraryView: View {
                 Task { await library.refresh(force: true) }
             }
         default:
-            VStack(spacing: 0) {
-                Picker("音乐库分类", selection: $section) {
-                    ForEach(LibrarySection.allCases) { item in
-                        Text(item.rawValue).tag(item)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding()
+            switch section {
+            case .songs:
+                songList(library.favoriteSongs, emptyTitle: "还没有收藏歌曲")
+            case .playlists:
+                playlistList
+            case .downloads:
+                downloadedSongList
+            case .cloud:
+                CloudMusicView()
+            case .history:
+                songList(
+                    library.recentSongs,
+                    emptyTitle: "还没有播放记录"
+                )
+            }
+        }
+    }
 
-                switch section {
-                case .songs:
-                    songList(library.favoriteSongs, emptyTitle: "还没有收藏歌曲")
-                case .playlists:
-                    playlistList
-                case .cloud:
-                    CloudMusicView()
-                case .history:
-                    songList(
-                        library.recentSongs,
-                        emptyTitle: "还没有播放记录"
-                    )
+    private var downloadedSongList: some View {
+        List {
+            NavigationLink {
+                DownloadsView()
+            } label: {
+                HStack {
+                    Label("下载管理", systemImage: "arrow.down.circle")
+                    Spacer()
+                    Text(downloadManagementValue)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            if !activeDownloadSongs.isEmpty {
+                Section("正在下载") {
+                    ForEach(activeDownloadSongs) { song in
+                        TrackRowView(song: song, showsArtwork: true)
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                downloads.cancel(songID: song.id)
+                            } label: {
+                                Label("取消", systemImage: "xmark")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !downloads.downloadedSongs.isEmpty {
+                Button {
+                    Task { await player.playAll(downloads.downloadedSongs) }
+                } label: {
+                    Label("播放全部", systemImage: "play.fill")
+                }
+            }
+
+            ForEach(downloads.downloads) { download in
+                Button {
+                    Task {
+                        await player.play(
+                            download.song,
+                            in: downloads.downloadedSongs
+                        )
+                    }
+                } label: {
+                    TrackRowView(song: download.song, showsArtwork: true)
+                }
+                .buttonStyle(.plain)
+                .swipeActions {
+                    Button(role: .destructive) {
+                        downloads.remove(songID: download.id)
+                    } label: {
+                        Label("删除下载", systemImage: "trash")
+                    }
+                }
+            }
+
+            if downloads.downloads.isEmpty && activeDownloadSongs.isEmpty {
+                ContentUnavailableView(
+                    "还没有下载歌曲",
+                    systemImage: "arrow.down.circle",
+                    description: Text("在歌曲的更多操作菜单中选择“下载歌曲”。")
+                )
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
+            }
         }
+        .listStyle(.plain)
+    }
+
+    private var activeDownloadSongs: [Song] {
+        downloads.activeSongs.values.sorted {
+            $0.name.localizedCompare($1.name) == .orderedAscending
+        }
+    }
+
+    private var downloadManagementValue: String {
+        if !downloads.activeDownloads.isEmpty {
+            return "\(downloads.activeDownloads.count) 项进行中"
+        }
+        return downloads.totalByteCount.formatted(.byteCount(style: .file))
     }
 
     private func songList(_ songs: [Song], emptyTitle: String) -> some View {
