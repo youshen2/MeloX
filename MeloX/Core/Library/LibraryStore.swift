@@ -5,6 +5,7 @@ import Observation
 @Observable
 final class LibraryStore {
     private(set) var profile: AccountProfile?
+    private(set) var accountDetail: AccountDetail?
     private(set) var favoriteSongs: [Song] = []
     private(set) var favoritePlaylists: [Playlist] = []
     private(set) var recentSongs: [Song] = []
@@ -86,6 +87,19 @@ final class LibraryStore {
             loadedCookie = cookie
 
             var partialFailures: [String] = []
+            do {
+                let loadedAccountDetail = try await api.userDetail(
+                    userID: loadedProfile.id
+                )
+                accountDetail = loadedAccountDetail
+                profile = loadedAccountDetail.profile
+            } catch is CancellationError {
+                return
+            } catch {
+                // The account endpoint still provides enough identity data
+                // for the settings row when extended profile details fail.
+            }
+
             var loadedPlaylists: [Playlist] = []
             do {
                 loadedPlaylists = try await api.userPlaylists(userID: loadedProfile.id)
@@ -220,6 +234,7 @@ final class LibraryStore {
 
     private func clearRemoteContent() {
         profile = nil
+        accountDetail = nil
         favoriteSongs = []
         favoritePlaylists = []
         recentSongs = []

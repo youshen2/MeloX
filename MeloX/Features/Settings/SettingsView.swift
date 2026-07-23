@@ -1,21 +1,22 @@
 import SwiftUI
 
+enum SettingsRoute: Hashable {
+    case accountHome
+}
+
 struct SettingsView: View {
     @Environment(DownloadStore.self) private var downloads
+    @Environment(LibraryStore.self) private var library
 
     var body: some View {
         Form {
+            SettingsAccountSection()
+
             Section {
                 NavigationLink {
                     GeneralSettingsView()
                 } label: {
                     Label("通用", systemImage: "slider.horizontal.3")
-                }
-
-                NavigationLink {
-                    AccountSettingsView()
-                } label: {
-                    Label("账号", systemImage: "person.crop.circle")
                 }
 
                 NavigationLink {
@@ -51,5 +52,22 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("设置")
+        .navigationDestination(for: SettingsRoute.self) { route in
+            switch route {
+            case .accountHome:
+                if let profile = library.profile {
+                    AccountHomeView(
+                        initialProfile: profile,
+                        initialDetail: library.accountDetail,
+                        initialPlaylists: library.favoritePlaylists
+                    )
+                } else {
+                    ContentUnavailableView(
+                        "账号信息不可用",
+                        systemImage: "person.crop.circle.badge.exclamationmark"
+                    )
+                }
+            }
+        }
     }
 }

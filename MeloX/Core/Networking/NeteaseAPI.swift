@@ -371,6 +371,36 @@ final class NeteaseAPI {
         }
     }
 
+    func userDetail(userID: Int) async throws -> AccountDetail {
+        let response: AccountDetailResponse
+        do {
+            // Mirrors @neteaseapireborn/api/module/user_detail.js.
+            response = try await client.weapi(
+                "/api/v1/user/detail/\(userID)"
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            // Mirrors user_detail_new.js when the original weapi transport
+            // yields an HTTP 200 empty response through CFNetwork.
+            response = try await client.eapi(
+                "/api/w/v1/user/detail/\(userID)",
+                data: ["all": "true", "userId": userID],
+                authenticated: true
+            )
+        }
+        try validate(responseCode: response.code, message: response.message)
+        guard let profile = response.profile else {
+            throw APIError.invalidResponse
+        }
+        return AccountDetail(
+            profile: profile,
+            level: response.level ?? 0,
+            listenSongs: response.listenSongs ?? 0,
+            createDays: response.createDays
+        )
+    }
+
     func likedSongs(userID: Int, likedPlaylistID: Int? = nil) async throws -> [Song] {
         if let likedPlaylistID {
             do {

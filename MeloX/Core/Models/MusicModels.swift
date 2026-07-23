@@ -269,22 +269,6 @@ struct UserSummary: Codable, Hashable {
     }
 }
 
-struct AccountProfile: Decodable, Hashable, Identifiable {
-    let id: Int
-    let nickname: String
-    let avatarURLString: String?
-
-    var artworkURL: URL? {
-        makeArtworkURL(from: avatarURLString)
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case id = "userId"
-        case nickname
-        case avatarURLString = "avatarUrl"
-    }
-}
-
 struct TrackReference: Codable, Hashable {
     let id: Int
 }
