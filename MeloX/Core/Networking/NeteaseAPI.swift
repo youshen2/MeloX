@@ -106,25 +106,39 @@ final class NeteaseAPI {
         }
     }
 
-    func playlist(id: Int) async throws -> Playlist {
+    func playlist(
+        id: Int,
+        trackLimit: Int = 100
+    ) async throws -> Playlist {
+        let requestedTrackCount = min(max(trackLimit, 0), 100)
         let response: PlaylistDetailResponse = try await client.eapi(
             "/api/v6/playlist/detail",
-            data: ["id": id, "n": 100_000, "s": 8]
+            data: ["id": id, "n": requestedTrackCount, "s": 8]
         )
         var playlist = response.playlist
-        guard !playlist.trackIDs.isEmpty, playlist.tracks.count < playlist.trackIDs.count else {
+        guard !playlist.trackIDs.isEmpty else {
+            if playlist.tracks.count > requestedTrackCount {
+                playlist.tracks = Array(
+                    playlist.tracks.prefix(requestedTrackCount)
+                )
+            }
             return playlist
         }
 
-        var detailsByID = Dictionary(uniqueKeysWithValues: playlist.tracks.map { ($0.id, $0) })
-        let missingIDs = playlist.trackIDs.map(\.id).filter { detailsByID[$0] == nil }
-        for chunk in missingIDs.chunked(maxSize: 100) {
-            let songs = try await songDetails(ids: chunk)
-            for song in songs {
+        let pageIDs = playlist.trackIDs
+            .prefix(requestedTrackCount)
+            .map(\.id)
+        var detailsByID: [Int: Song] = [:]
+        for song in playlist.tracks {
+            detailsByID[song.id] = song
+        }
+        let missingIDs = pageIDs.filter { detailsByID[$0] == nil }
+        if !missingIDs.isEmpty {
+            for song in try await songDetails(ids: missingIDs) {
                 detailsByID[song.id] = song
             }
         }
-        playlist.tracks = playlist.trackIDs.compactMap { detailsByID[$0.id] }
+        playlist.tracks = pageIDs.compactMap { detailsByID[$0] }
         return playlist
     }
 
@@ -184,6 +198,34 @@ final class NeteaseAPI {
             )
         }
         return response.songs
+    }
+
+    func songDetailsPage(
+        ids: [Int],
+        offset: Int,
+        limit: Int = 100
+    ) async throws -> SongCollectionPage {
+        let start = min(max(offset, 0), ids.count)
+        let end = min(start + min(max(limit, 1), 100), ids.count)
+        let pageIDs = Array(ids[start..<end])
+        guard !pageIDs.isEmpty else {
+            return SongCollectionPage(
+                songs: [],
+                nextOffset: end,
+                totalCount: ids.count
+            )
+        }
+
+        let details = try await songDetails(ids: pageIDs)
+        var detailsByID: [Int: Song] = [:]
+        for song in details {
+            detailsByID[song.id] = song
+        }
+        return SongCollectionPage(
+            songs: pageIDs.compactMap { detailsByID[$0] },
+            nextOffset: end,
+            totalCount: ids.count
+        )
     }
 
     func songComments(
@@ -413,12 +455,21 @@ final class NeteaseAPI {
         )
     }
 
-    func likedSongs(userID: Int, likedPlaylistID: Int? = nil) async throws -> [Song] {
+    func likedSongIDs(
+        userID: Int,
+        likedPlaylistID: Int? = nil
+    ) async throws -> [Int] {
         if let likedPlaylistID {
             do {
-                let likedPlaylist = try await playlist(id: likedPlaylistID)
-                if !likedPlaylist.tracks.isEmpty || likedPlaylist.trackCount == 0 {
-                    return likedPlaylist.tracks
+                // Only request playlist metadata and ordered track IDs here.
+                // Song details are fetched page by page by LibraryStore.
+                let likedPlaylist = try await playlist(
+                    id: likedPlaylistID,
+                    trackLimit: 0
+                )
+                if !likedPlaylist.trackIDs.isEmpty
+                    || likedPlaylist.trackCount == 0 {
+                    return likedPlaylist.trackIDs.map(\.id)
                 }
             } catch is CancellationError {
                 throw CancellationError()
@@ -435,17 +486,7 @@ final class NeteaseAPI {
             authenticated: true
         )
         try validate(responseCode: response.code)
-
-        var songs: [Song] = []
-        for ids in response.ids.chunked(maxSize: 100) {
-            songs.append(contentsOf: try await songDetails(ids: ids))
-        }
-        let positions = Dictionary(
-            uniqueKeysWithValues: response.ids.enumerated().map { ($0.element, $0.offset) }
-        )
-        return songs.sorted {
-            positions[$0.id, default: .max] < positions[$1.id, default: .max]
-        }
+        return response.ids
     }
 
     func userPlaylists(userID: Int, limit: Int = 2_000) async throws -> [Playlist] {
@@ -746,14 +787,5 @@ final class NeteaseAPI {
             components.scheme = "https"
         }
         return components.url
-    }
-}
-
-private extension Array {
-    func chunked(maxSize: Int) -> [[Element]] {
-        guard maxSize > 0 else { return [] }
-        return stride(from: 0, to: count, by: maxSize).map { start in
-            Array(self[start..<Swift.min(start + maxSize, count)])
-        }
     }
 }

@@ -16,6 +16,11 @@ struct PlaylistDetailView: View {
     @State private var artworkPalette: ArtworkDetailPalette?
     @State private var blurredBackdropImage: CGImage?
     @State private var searchQuery = ""
+    @State private var loadedTrackOffset = 0
+    @State private var isLoadingMoreTracks = false
+    @State private var loadMoreTracksError: String?
+
+    private let trackPageSize = 100
 
     init(playlist context: PlaylistRouteContext) {
         let cachedAssets = ArtworkAccentColorProvider.cachedDetailAssets(
@@ -52,8 +57,13 @@ struct PlaylistDetailView: View {
             searchQuery: searchQuery,
             isLoading: isInitialLoading,
             failureMessage: initialFailureMessage,
+            hasMoreTracks: hasMoreTracks,
+            loadedTrackOffset: loadedTrackOffset,
+            isLoadingMoreTracks: isLoadingMoreTracks,
+            loadMoreTracksError: loadMoreTracksError,
             onRetry: { reloadToken += 1 },
-            onRefresh: { await load() }
+            onRefresh: { await load() },
+            onLoadMore: { await loadMoreTracks() }
         )
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -150,6 +160,15 @@ struct PlaylistDetailView: View {
         return message
     }
 
+    private var hasMoreTracks: Bool {
+        guard case .loaded = phase,
+              let playlist,
+              !playlist.trackIDs.isEmpty else {
+            return false
+        }
+        return loadedTrackOffset < playlist.trackIDs.count
+    }
+
     @ToolbarContentBuilder
     private func playlistToolbar(for playlist: Playlist) -> some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
@@ -192,15 +211,67 @@ struct PlaylistDetailView: View {
         defer { transitionDelay.cancel() }
 
         phase = .loading
+        loadedTrackOffset = 0
+        loadMoreTracksError = nil
         do {
-            let loadedPlaylist = try await api.playlist(id: id)
+            let loadedPlaylist = try await api.playlist(
+                id: id,
+                trackLimit: trackPageSize
+            )
             try await transitionDelay.value
             playlist = loadedPlaylist
+            loadedTrackOffset = min(
+                trackPageSize,
+                loadedPlaylist.trackIDs.count
+            )
             phase = .loaded
         } catch is CancellationError {
             return
         } catch {
             phase = .failed(error.localizedDescription)
+        }
+    }
+
+    private func loadMoreTracks() async {
+        guard let currentPlaylist = playlist,
+              !isLoadingMoreTracks,
+              loadedTrackOffset < currentPlaylist.trackIDs.count else {
+            return
+        }
+
+        let requestedOffset = loadedTrackOffset
+        let trackIDs = currentPlaylist.trackIDs.map(\.id)
+        isLoadingMoreTracks = true
+        loadMoreTracksError = nil
+        defer {
+            isLoadingMoreTracks = false
+        }
+
+        do {
+            let page = try await api.songDetailsPage(
+                ids: trackIDs,
+                offset: requestedOffset,
+                limit: trackPageSize
+            )
+            try Task.checkCancellation()
+            guard playlist?.id == currentPlaylist.id,
+                  loadedTrackOffset == requestedOffset else {
+                return
+            }
+
+            var updatedPlaylist = playlist ?? currentPlaylist
+            var loadedIDs = Set(updatedPlaylist.tracks.map(\.id))
+            updatedPlaylist.tracks.append(
+                contentsOf: page.songs.filter {
+                    loadedIDs.insert($0.id).inserted
+                }
+            )
+            playlist = updatedPlaylist
+            loadedTrackOffset = page.nextOffset
+        } catch is CancellationError {
+            return
+        } catch {
+            loadMoreTracksError = error.localizedDescription
         }
     }
 

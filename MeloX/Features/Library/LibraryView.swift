@@ -112,7 +112,17 @@ struct LibraryView: View {
         default:
             switch section {
             case .songs:
-                songList(library.favoriteSongs, emptyTitle: "还没有收藏歌曲")
+                songList(
+                    library.favoriteSongs,
+                    emptyTitle: "还没有收藏歌曲",
+                    hasMore: library.hasMoreFavoriteSongs,
+                    isLoadingMore: library.isLoadingMoreFavoriteSongs,
+                    loadMoreFailure: library.favoriteSongsLoadMoreError,
+                    loadMoreToken: library.favoriteSongsNextOffset,
+                    onLoadMore: {
+                        await library.loadMoreFavoriteSongs()
+                    }
+                )
             case .playlists:
                 playlistList
             case .downloads:
@@ -211,7 +221,15 @@ struct LibraryView: View {
         return downloads.totalByteCount.formatted(.byteCount(style: .file))
     }
 
-    private func songList(_ songs: [Song], emptyTitle: String) -> some View {
+    private func songList(
+        _ songs: [Song],
+        emptyTitle: String,
+        hasMore: Bool = false,
+        isLoadingMore: Bool = false,
+        loadMoreFailure: String? = nil,
+        loadMoreToken: Int = 0,
+        onLoadMore: @escaping () async -> Void = {}
+    ) -> some View {
         List {
             if !songs.isEmpty {
                 Button {
@@ -237,13 +255,23 @@ struct LibraryView: View {
                     }
                 }
             }
+
+            if hasMore {
+                MusicCollectionPaginationFooter(
+                    isLoading: isLoadingMore,
+                    failureMessage: loadMoreFailure,
+                    loadToken: loadMoreToken,
+                    action: onLoadMore
+                )
+                .listRowSeparator(.hidden)
+            }
         }
         .listStyle(.plain)
         .refreshable {
             await library.refresh(force: true)
         }
         .overlay {
-            if songs.isEmpty {
+            if songs.isEmpty && !hasMore {
                 ContentUnavailableView(
                     emptyTitle,
                     systemImage: section == .history ? "clock" : "heart",

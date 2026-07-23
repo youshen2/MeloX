@@ -9,6 +9,10 @@ final class LibraryStore {
     private(set) var favoriteSongs: [Song] = []
     private(set) var favoritePlaylists: [Playlist] = []
     private(set) var recentSongs: [Song] = []
+    private(set) var favoriteSongTotalCount = 0
+    private(set) var favoriteSongsNextOffset = 0
+    private(set) var isLoadingMoreFavoriteSongs = false
+    private(set) var favoriteSongsLoadMoreError: String?
     private(set) var phase: LoadingPhase = .loaded
     private(set) var errorMessage: String?
 
@@ -24,6 +28,15 @@ final class LibraryStore {
     @ObservationIgnored
     private var refreshingCookie: String?
 
+    @ObservationIgnored
+    private var favoriteSongIDs: [Int] = []
+
+    @ObservationIgnored
+    private var favoriteSongIDSet: Set<Int> = []
+
+    @ObservationIgnored
+    private let favoriteSongPageSize = 100
+
     init(api: NeteaseAPI, settings: AppSettings) {
         self.api = api
         self.settings = settings
@@ -38,8 +51,12 @@ final class LibraryStore {
         return favoritePlaylists.filter { $0.creator?.userID == userID }
     }
 
+    var hasMoreFavoriteSongs: Bool {
+        favoriteSongsNextOffset < favoriteSongTotalCount
+    }
+
     func contains(song: Song) -> Bool {
-        favoriteSongs.contains { $0.id == song.id }
+        favoriteSongIDSet.contains(song.id)
     }
 
     func contains(playlist: Playlist) -> Bool {
@@ -78,6 +95,7 @@ final class LibraryStore {
         }
         phase = .loading
         errorMessage = nil
+        favoriteSongsLoadMoreError = nil
 
         do {
             let loadedProfile = try await api.accountProfile()
@@ -114,10 +132,22 @@ final class LibraryStore {
 
             do {
                 let likedPlaylistID = loadedPlaylists.first?.id
-                favoriteSongs = try await api.likedSongs(
+                let loadedSongIDs = try await api.likedSongIDs(
                     userID: loadedProfile.id,
                     likedPlaylistID: likedPlaylistID
                 )
+                let firstPage = try await api.songDetailsPage(
+                    ids: loadedSongIDs,
+                    offset: 0,
+                    limit: favoriteSongPageSize
+                )
+                try Task.checkCancellation()
+                favoriteSongIDs = loadedSongIDs
+                favoriteSongIDSet = Set(loadedSongIDs)
+                favoriteSongTotalCount = loadedSongIDs.count
+                favoriteSongs = firstPage.songs
+                favoriteSongsNextOffset = firstPage.nextOffset
+                favoriteSongsLoadMoreError = nil
             } catch is CancellationError {
                 return
             } catch {
@@ -151,6 +181,46 @@ final class LibraryStore {
         }
     }
 
+    func loadMoreFavoriteSongs() async {
+        guard !isLoadingMoreFavoriteSongs,
+              hasMoreFavoriteSongs else {
+            return
+        }
+
+        let requestedOffset = favoriteSongsNextOffset
+        let requestedIDs = favoriteSongIDs
+        isLoadingMoreFavoriteSongs = true
+        favoriteSongsLoadMoreError = nil
+        defer {
+            isLoadingMoreFavoriteSongs = false
+        }
+
+        do {
+            let page = try await api.songDetailsPage(
+                ids: requestedIDs,
+                offset: requestedOffset,
+                limit: favoriteSongPageSize
+            )
+            try Task.checkCancellation()
+            guard favoriteSongIDs == requestedIDs,
+                  favoriteSongsNextOffset == requestedOffset else {
+                return
+            }
+
+            var loadedIDs = Set(favoriteSongs.map(\.id))
+            favoriteSongs.append(
+                contentsOf: page.songs.filter {
+                    loadedIDs.insert($0.id).inserted
+                }
+            )
+            favoriteSongsNextOffset = page.nextOffset
+        } catch is CancellationError {
+            return
+        } catch {
+            favoriteSongsLoadMoreError = error.localizedDescription
+        }
+    }
+
     func toggle(song: Song) {
         guard isLoggedIn else {
             errorMessage = APIError.notLoggedIn.localizedDescription
@@ -158,22 +228,14 @@ final class LibraryStore {
         }
 
         let wasLiked = contains(song: song)
-        if wasLiked {
-            favoriteSongs.removeAll { $0.id == song.id }
-        } else {
-            favoriteSongs.insert(song, at: 0)
-        }
+        setLocalSong(song, isLiked: !wasLiked)
 
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 try await self.api.setSongLiked(id: song.id, isLiked: !wasLiked)
             } catch {
-                if wasLiked {
-                    self.favoriteSongs.insert(song, at: 0)
-                } else {
-                    self.favoriteSongs.removeAll { $0.id == song.id }
-                }
+                self.setLocalSong(song, isLiked: wasLiked)
                 self.errorMessage = error.localizedDescription
             }
         }
@@ -238,6 +300,34 @@ final class LibraryStore {
         favoriteSongs = []
         favoritePlaylists = []
         recentSongs = []
+        favoriteSongIDs = []
+        favoriteSongIDSet = []
+        favoriteSongTotalCount = 0
+        favoriteSongsNextOffset = 0
+        isLoadingMoreFavoriteSongs = false
+        favoriteSongsLoadMoreError = nil
+    }
+
+    private func setLocalSong(
+        _ song: Song,
+        isLiked: Bool
+    ) {
+        if let index = favoriteSongIDs.firstIndex(of: song.id) {
+            favoriteSongIDs.remove(at: index)
+            if index < favoriteSongsNextOffset {
+                favoriteSongsNextOffset -= 1
+            }
+        }
+        favoriteSongIDSet.remove(song.id)
+        favoriteSongs.removeAll { $0.id == song.id }
+
+        if isLiked {
+            favoriteSongIDs.insert(song.id, at: 0)
+            favoriteSongIDSet.insert(song.id)
+            favoriteSongs.insert(song, at: 0)
+            favoriteSongsNextOffset += 1
+        }
+        favoriteSongTotalCount = favoriteSongIDs.count
     }
 }
 

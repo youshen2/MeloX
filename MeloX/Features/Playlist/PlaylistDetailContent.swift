@@ -8,8 +8,13 @@ struct PlaylistDetailContent: View {
     let searchQuery: String
     let isLoading: Bool
     let failureMessage: String?
+    let hasMoreTracks: Bool
+    let loadedTrackOffset: Int
+    let isLoadingMoreTracks: Bool
+    let loadMoreTracksError: String?
     let onRetry: () -> Void
     let onRefresh: () async -> Void
+    let onLoadMore: () async -> Void
 
     @Environment(LibraryStore.self) private var library
     private var usesToplistLayout: Bool {
@@ -58,7 +63,12 @@ struct PlaylistDetailContent: View {
                         loadingTitle: usesToplistLayout ? "正在载入排行榜" : "正在载入歌单",
                         isLoading: isLoading,
                         failureMessage: failureMessage,
-                        onRetry: onRetry
+                        hasMoreTracks: hasMoreTracks,
+                        loadedTrackOffset: loadedTrackOffset,
+                        isLoadingMoreTracks: isLoadingMoreTracks,
+                        loadMoreTracksError: loadMoreTracksError,
+                        onRetry: onRetry,
+                        onLoadMore: onLoadMore
                     )
                 }
                 .padding(.bottom, 32)
@@ -76,7 +86,9 @@ struct PlaylistDetailContent: View {
     }
 
     private var standardMetadata: String {
-        let count = playlist.tracks.isEmpty ? playlist.trackCount : playlist.tracks.count
+        let count = playlist.trackCount > 0
+            ? playlist.trackCount
+            : playlist.tracks.count
         return "\(count) 首歌曲 · \(playlist.playCount.compactPlayCount) 次播放"
     }
 
@@ -92,7 +104,12 @@ struct MusicCollectionTrackContent: View {
     let loadingTitle: String
     let isLoading: Bool
     let failureMessage: String?
+    var hasMoreTracks = false
+    var loadedTrackOffset = 0
+    var isLoadingMoreTracks = false
+    var loadMoreTracksError: String?
     let onRetry: () -> Void
+    var onLoadMore: () async -> Void = {}
 
     var body: some View {
         Group {
@@ -108,11 +125,22 @@ struct MusicCollectionTrackContent: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: 220)
             } else {
-                PlaylistTrackList(
-                    tracks: tracks,
-                    sourceID: sourceID,
-                    showsArtwork: showsArtwork
-                )
+                VStack(spacing: 0) {
+                    PlaylistTrackList(
+                        tracks: tracks,
+                        sourceID: sourceID,
+                        showsArtwork: showsArtwork
+                    )
+
+                    if hasMoreTracks {
+                        MusicCollectionPaginationFooter(
+                            isLoading: isLoadingMoreTracks,
+                            failureMessage: loadMoreTracksError,
+                            loadToken: loadedTrackOffset,
+                            action: onLoadMore
+                        )
+                    }
+                }
             }
         }
         .transition(.opacity)
