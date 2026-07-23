@@ -7,10 +7,6 @@ struct ToplistsView: View {
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 148, maximum: 220), spacing: 16),
-    ]
-
     private var officialToplists: [Playlist] {
         playlists.filter(\.isOfficialToplist)
     }
@@ -46,35 +42,42 @@ struct ToplistsView: View {
         if playlists.isEmpty {
             ContentUnavailableView("暂无榜单", systemImage: "chart.bar")
         } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 30) {
-                    if officialToplists.isEmpty {
-                        ToplistGridSection(
-                            title: "全部榜单",
-                            playlists: playlists,
-                            columns: columns
-                        )
-                    } else {
-                        ToplistGridSection(
-                            title: "官方榜",
-                            playlists: officialToplists,
-                            columns: columns
-                        )
+            GeometryReader { proxy in
+                let layout = MediaCardGridLayout(
+                    containerWidth: proxy.size.width,
+                    minimumItemWidth: 148
+                )
 
-                        if !globalToplists.isEmpty {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 30) {
+                        if officialToplists.isEmpty {
                             ToplistGridSection(
-                                title: "全球榜",
-                                playlists: globalToplists,
-                                columns: columns
+                                title: "全部榜单",
+                                playlists: playlists,
+                                layout: layout
                             )
+                        } else {
+                            ToplistGridSection(
+                                title: "官方榜",
+                                playlists: officialToplists,
+                                layout: layout
+                            )
+
+                            if !globalToplists.isEmpty {
+                                ToplistGridSection(
+                                    title: "全球榜",
+                                    playlists: globalToplists,
+                                    layout: layout
+                                )
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 28)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 28)
-            }
-            .refreshable {
-                await load()
+                .refreshable {
+                    await load()
+                }
             }
         }
     }
@@ -97,7 +100,7 @@ struct ToplistsView: View {
 private struct ToplistGridSection: View {
     let title: String
     let playlists: [Playlist]
-    let columns: [GridItem]
+    let layout: MediaCardGridLayout
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -112,14 +115,20 @@ private struct ToplistGridSection: View {
                     .foregroundStyle(.secondary)
             }
 
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
+            LazyVGrid(
+                columns: layout.columns,
+                alignment: .leading,
+                spacing: 22
+            ) {
                 ForEach(playlists) { playlist in
                     NavigationLink(value: MusicRoute.toplist(playlist)) {
                         MediaCardView(
                             title: playlist.name,
                             subtitle: playlist.updateFrequency ?? "\(playlist.trackCount) 首歌曲",
-                            artworkURL: playlist.artworkURL
+                            artworkURL: playlist.artworkURL,
+                            artworkSize: layout.itemWidth
                         )
+                        .frame(width: layout.itemWidth)
                     }
                     .buttonStyle(.plain)
                     .musicMatchedTransitionSource(for: MusicRoute.toplist(playlist))

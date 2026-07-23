@@ -108,7 +108,8 @@ struct HomePlaylistCard: View {
         MediaCardView(
             title: playlist.name,
             subtitle: playlist.copywriter ?? playlist.updateFrequency ?? playlist.creator?.nickname,
-            artworkURL: playlist.artworkURL
+            artworkURL: playlist.artworkURL,
+            artworkSize: 166
         )
         .frame(width: 166)
     }
@@ -121,7 +122,8 @@ struct HomeAlbumCard: View {
         MediaCardView(
             title: album.name,
             subtitle: album.artistText,
-            artworkURL: album.artworkURL
+            artworkURL: album.artworkURL,
+            artworkSize: 166
         )
         .frame(width: 166)
     }
@@ -135,7 +137,8 @@ struct HomeArtistCard: View {
             title: artist.name,
             subtitle: artist.aliases.first ?? "歌手",
             artworkURL: artist.artworkURL,
-            circular: true
+            circular: true,
+            artworkSize: 148
         )
         .frame(width: 148)
     }

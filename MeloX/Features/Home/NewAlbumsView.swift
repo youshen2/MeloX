@@ -7,8 +7,6 @@ struct NewAlbumsView: View {
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
 
-    private let columns = [GridItem(.adaptive(minimum: 145), spacing: 16)]
-
     var body: some View {
         Group {
             switch phase {
@@ -19,21 +17,35 @@ struct NewAlbumsView: View {
                     reloadToken += 1
                 }
             case .loaded:
-                ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
-                        ForEach(albums) { album in
-                            NavigationLink(value: MusicRoute.album(album)) {
-                                MediaCardView(
-                                    title: album.name,
-                                    subtitle: album.artistText,
-                                    artworkURL: album.artworkURL
+                GeometryReader { proxy in
+                    let layout = MediaCardGridLayout(
+                        containerWidth: proxy.size.width
+                    )
+
+                    ScrollView {
+                        LazyVGrid(
+                            columns: layout.columns,
+                            alignment: .leading,
+                            spacing: 24
+                        ) {
+                            ForEach(albums) { album in
+                                NavigationLink(value: MusicRoute.album(album)) {
+                                    MediaCardView(
+                                        title: album.name,
+                                        subtitle: album.artistText,
+                                        artworkURL: album.artworkURL,
+                                        artworkSize: layout.itemWidth
+                                    )
+                                    .frame(width: layout.itemWidth)
+                                }
+                                .buttonStyle(.plain)
+                                .musicMatchedTransitionSource(
+                                    for: MusicRoute.album(album)
                                 )
                             }
-                            .buttonStyle(.plain)
-                            .musicMatchedTransitionSource(for: MusicRoute.album(album))
                         }
+                        .padding()
                     }
-                    .padding()
                 }
             }
         }

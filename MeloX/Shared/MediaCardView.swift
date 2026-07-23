@@ -5,12 +5,15 @@ struct MediaCardView: View {
     let subtitle: String?
     let artworkURL: URL?
     var circular = false
+    var artworkSize: CGFloat = 160
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ArtworkImage(url: artworkURL, cornerRadius: circular ? 1_000 : 10)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
+            ArtworkImage(
+                url: artworkURL,
+                cornerRadius: circular ? 1_000 : 10
+            )
+            .frame(width: artworkSize, height: artworkSize)
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(2)

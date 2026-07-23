@@ -9,8 +9,6 @@ struct PlaylistCategoryView: View {
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
 
-    private let columns = [GridItem(.adaptive(minimum: 145), spacing: 16)]
-
     var body: some View {
         Group {
             switch phase {
@@ -21,24 +19,40 @@ struct PlaylistCategoryView: View {
                     reloadToken += 1
                 }
             default:
-                ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
-                        ForEach(playlists) { playlist in
-                            NavigationLink(value: MusicRoute.playlist(playlist)) {
-                                MediaCardView(
-                                    title: playlist.name,
-                                    subtitle: playlist.creator?.nickname,
-                                    artworkURL: playlist.artworkURL
+                GeometryReader { proxy in
+                    let layout = MediaCardGridLayout(
+                        containerWidth: proxy.size.width
+                    )
+
+                    ScrollView {
+                        LazyVGrid(
+                            columns: layout.columns,
+                            alignment: .leading,
+                            spacing: 24
+                        ) {
+                            ForEach(playlists) { playlist in
+                                NavigationLink(
+                                    value: MusicRoute.playlist(playlist)
+                                ) {
+                                    MediaCardView(
+                                        title: playlist.name,
+                                        subtitle: playlist.creator?.nickname,
+                                        artworkURL: playlist.artworkURL,
+                                        artworkSize: layout.itemWidth
+                                    )
+                                    .frame(width: layout.itemWidth)
+                                }
+                                .buttonStyle(.plain)
+                                .musicMatchedTransitionSource(
+                                    for: MusicRoute.playlist(playlist)
                                 )
                             }
-                            .buttonStyle(.plain)
-                            .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                         }
+                        .padding()
                     }
-                    .padding()
-                }
-                .refreshable {
-                    await load()
+                    .refreshable {
+                        await load()
+                    }
                 }
             }
         }

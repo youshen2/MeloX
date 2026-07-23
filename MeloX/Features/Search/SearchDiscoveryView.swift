@@ -58,7 +58,8 @@ struct SearchDiscoveryView: View {
                                 MediaCardView(
                                     title: playlist.name,
                                     subtitle: playlist.copywriter ?? playlist.creator?.nickname,
-                                    artworkURL: playlist.artworkURL
+                                    artworkURL: playlist.artworkURL,
+                                    artworkSize: 172
                                 )
                                 .frame(width: 172)
                             }
