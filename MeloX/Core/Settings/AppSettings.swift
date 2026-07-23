@@ -47,6 +47,10 @@ final class AppSettings {
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
     static let defaultLyricsFocusCascadeBounceEnabled = true
+    static let defaultLyricsFocusCascadeBounce = 0.52
+    static let lyricsFocusCascadeBounceRange = 0.0...1.0
+    static let defaultLyricsFocusCascadeMinimumBounceDuration = 0.82
+    static let lyricsFocusCascadeMinimumBounceDurationRange = 0.34...1.2
     static let defaultLyricsFocusColorLeadTime = 0.06
     static let lyricsFocusColorLeadTimeRange = 0.0...0.1
     private enum Key {
@@ -86,6 +90,9 @@ final class AppSettings {
         static let lyricsFocusPosition = "lyricsFocusPosition"
         static let lyricsFocusCascadeDelay = "lyricsFocusCascadeDelay"
         static let lyricsFocusCascadeBounceEnabled = "lyricsFocusCascadeBounceEnabled"
+        static let lyricsFocusCascadeBounce = "lyricsFocusCascadeBounce"
+        static let lyricsFocusCascadeMinimumBounceDuration =
+            "lyricsFocusCascadeMinimumBounceDuration"
         static let lyricsFocusColorLeadTime = "lyricsFocusColorLeadTime"
         static let lyricsAdvanceTime = "lyricsAdvanceTime"
         static let lyricsRefreshRate = "lyricsRefreshRate"
@@ -303,6 +310,24 @@ final class AppSettings {
         }
     }
 
+    var lyricsFocusCascadeBounce: Double {
+        didSet {
+            defaults.set(
+                lyricsFocusCascadeBounce,
+                forKey: Key.lyricsFocusCascadeBounce
+            )
+        }
+    }
+
+    var lyricsFocusCascadeMinimumBounceDuration: Double {
+        didSet {
+            defaults.set(
+                lyricsFocusCascadeMinimumBounceDuration,
+                forKey: Key.lyricsFocusCascadeMinimumBounceDuration
+            )
+        }
+    }
+
     var lyricsFocusColorLeadTime: Double {
         didSet {
             defaults.set(
@@ -496,6 +521,26 @@ final class AppSettings {
         lyricsFocusCascadeBounceEnabled = defaults.object(
             forKey: Key.lyricsFocusCascadeBounceEnabled
         ) as? Bool ?? Self.defaultLyricsFocusCascadeBounceEnabled
+        let storedFocusCascadeBounce = defaults.object(
+            forKey: Key.lyricsFocusCascadeBounce
+        ) as? Double ?? Self.defaultLyricsFocusCascadeBounce
+        lyricsFocusCascadeBounce = min(
+            max(
+                storedFocusCascadeBounce,
+                Self.lyricsFocusCascadeBounceRange.lowerBound
+            ),
+            Self.lyricsFocusCascadeBounceRange.upperBound
+        )
+        let storedFocusCascadeMinimumBounceDuration = defaults.object(
+            forKey: Key.lyricsFocusCascadeMinimumBounceDuration
+        ) as? Double ?? Self.defaultLyricsFocusCascadeMinimumBounceDuration
+        lyricsFocusCascadeMinimumBounceDuration = min(
+            max(
+                storedFocusCascadeMinimumBounceDuration,
+                Self.lyricsFocusCascadeMinimumBounceDurationRange.lowerBound
+            ),
+            Self.lyricsFocusCascadeMinimumBounceDurationRange.upperBound
+        )
         let storedFocusColorLeadTime = defaults.object(
             forKey: Key.lyricsFocusColorLeadTime
         ) as? Double ?? Self.defaultLyricsFocusColorLeadTime
@@ -577,6 +622,9 @@ final class AppSettings {
         lyricsFocusPosition = Self.defaultLyricsFocusPosition
         lyricsFocusCascadeDelay = Self.defaultLyricsFocusCascadeDelay
         lyricsFocusCascadeBounceEnabled = Self.defaultLyricsFocusCascadeBounceEnabled
+        lyricsFocusCascadeBounce = Self.defaultLyricsFocusCascadeBounce
+        lyricsFocusCascadeMinimumBounceDuration =
+            Self.defaultLyricsFocusCascadeMinimumBounceDuration
         lyricsFocusColorLeadTime = Self.defaultLyricsFocusColorLeadTime
         lyricsAdvanceTime = 0.2
         lyricsRefreshRate = .defaultValue

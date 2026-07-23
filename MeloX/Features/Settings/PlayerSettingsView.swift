@@ -193,6 +193,24 @@ struct PlayerSettingsView: View {
                     isOn: $settings.lyricsFocusCascadeBounceEnabled
                 )
 
+                if settings.lyricsFocusCascadeBounceEnabled {
+                    valueSlider(
+                        title: "回弹弹性",
+                        value: $settings.lyricsFocusCascadeBounce,
+                        range: AppSettings.lyricsFocusCascadeBounceRange,
+                        step: 0.01,
+                        valueText: "\(Int((settings.lyricsFocusCascadeBounce * 100).rounded()))%"
+                    )
+
+                    valueSlider(
+                        title: "回弹最短时长",
+                        value: $settings.lyricsFocusCascadeMinimumBounceDuration,
+                        range: AppSettings.lyricsFocusCascadeMinimumBounceDurationRange,
+                        step: 0.01,
+                        valueText: "\(settings.lyricsFocusCascadeMinimumBounceDuration.formatted(.number.precision(.fractionLength(2)))) 秒"
+                    )
+                }
+
                 valueSlider(
                     title: "焦点颜色提前",
                     value: $settings.lyricsFocusColorLeadTime,
@@ -203,7 +221,7 @@ struct PlayerSettingsView: View {
             } header: {
                 Text("歌词动画")
             } footer: {
-                Text("焦点颜色会先开始过渡；等待设置的提前量后，可视顶部第一行与模糊同时开始变化，随后各行依次向上。默认开启较慢的轻微回弹；剩余时间不足时会依次取消回弹并压缩逐行延迟与过渡时长，只有连最短 50 毫秒过渡也无法保留时才直接同步。每行延迟设为 0 可恢复整体滚动。")
+                Text("焦点颜色会先开始过渡；等待设置的提前量后，可视顶部第一行与模糊同时开始变化，随后各行依次向上。回弹默认使用 52% 弹性和 0.82 秒最短时长；剩余时间不足时会依次取消回弹并压缩逐行延迟与过渡时长，只有连最短 50 毫秒过渡也无法保留时才直接同步。每行延迟设为 0 可恢复整体滚动。")
             }
 
             Section {

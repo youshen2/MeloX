@@ -648,7 +648,8 @@ struct AppleMusicLyricsView: View {
         )
         let bounceAnimationDuration = LyricPlaybackTimeline.focusCascadeAnimationDuration(
             baseDuration: baseAnimationDuration,
-            bounceEnabled: true
+            bounceEnabled: true,
+            minimumBounceDuration: settings.lyricsFocusCascadeMinimumBounceDuration
         )
         let prefersCascadeBounce = settings.lyricsFocusCascadeBounceEnabled
         let focusColorLeadTime = lyricsFocusColorLeadTime
@@ -783,7 +784,10 @@ struct AppleMusicLyricsView: View {
         }
 
         let cascadeAnimation: Animation = usesBounce
-            ? .spring(duration: animationDuration, bounce: 0.42)
+            ? .spring(
+                duration: animationDuration,
+                bounce: settings.lyricsFocusCascadeBounce
+            )
             : .smooth(duration: animationDuration)
         var elapsedDelay: TimeInterval = 0
         for (order, id) in orderedMovingIDs.enumerated() {
