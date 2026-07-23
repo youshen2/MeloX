@@ -1,3 +1,4 @@
+import MediaPlayer
 import SwiftUI
 
 struct NowPlayingProgressControl: View {
@@ -155,12 +156,31 @@ struct NowPlayingTransportControls: View {
 
 struct NowPlayingVolumeControl: View {
     @Environment(PlayerStore.self) private var player
+    @Environment(AppSettings.self) private var settings
 
+    @ViewBuilder
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "speaker.fill")
-                .font(.caption2)
+        if settings.playerVolumeControlMode != .hidden {
+            HStack(spacing: 10) {
+                Image(systemName: "speaker.fill")
+                    .font(.caption2)
 
+                volumeSlider
+
+                Image(systemName: "speaker.wave.3.fill")
+                    .font(.caption)
+            }
+            .foregroundStyle(.white.opacity(0.62))
+            .frame(height: 42)
+        }
+    }
+
+    @ViewBuilder
+    private var volumeSlider: some View {
+        switch settings.playerVolumeControlMode {
+        case .hidden:
+            EmptyView()
+        case .independent:
             Slider(
                 value: Binding(
                     get: { player.volume },
@@ -169,13 +189,59 @@ struct NowPlayingVolumeControl: View {
                 in: 0...1
             )
             .tint(.white)
-            .accessibilityLabel("音量")
-
-            Image(systemName: "speaker.wave.3.fill")
-                .font(.caption)
+            .accessibilityLabel("播放器音量")
+        case .system:
+            SystemVolumeSlider()
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .layoutPriority(1)
+                .accessibilityLabel("系统音量")
         }
-        .foregroundStyle(.white.opacity(0.62))
-        .frame(height: 42)
+    }
+}
+
+private struct SystemVolumeSlider: UIViewRepresentable {
+    final class Coordinator {
+        let volumeView = MPVolumeView(
+            frame: CGRect(x: 0, y: 0, width: 200, height: 32)
+        )
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView(
+            frame: CGRect(x: 0, y: 0, width: 200, height: 32)
+        )
+        container.backgroundColor = .clear
+
+        let volumeView = context.coordinator.volumeView
+        volumeView.showsVolumeSlider = true
+        volumeView.tintColor = .white
+        volumeView.frame = container.bounds
+        volumeView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.addSubview(volumeView)
+        return container
+    }
+
+    func updateUIView(_ container: UIView, context: Context) {
+        let volumeView = context.coordinator.volumeView
+        volumeView.showsVolumeSlider = true
+        volumeView.tintColor = .white
+        volumeView.frame = container.bounds
+    }
+
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: UIView,
+        context: Context
+    ) -> CGSize? {
+        CGSize(
+            width: proposal.width ?? 200,
+            height: proposal.height ?? 32
+        )
     }
 }
 

@@ -7,6 +7,12 @@ struct SettingsView: View {
         Form {
             Section {
                 NavigationLink {
+                    GeneralSettingsView()
+                } label: {
+                    Label("通用", systemImage: "slider.horizontal.3")
+                }
+
+                NavigationLink {
                     AccountSettingsView()
                 } label: {
                     Label("账号", systemImage: "person.crop.circle")

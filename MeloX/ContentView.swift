@@ -6,7 +6,7 @@ struct ContentView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(DownloadStore.self) private var downloads
 
-    @State private var selectedTab: AppTab = .home
+    @State private var selectedTab: AppTab
     @State private var homePath = NavigationPath()
     @State private var explorePath = NavigationPath()
     @State private var libraryPath = NavigationPath()
@@ -18,6 +18,10 @@ struct ContentView: View {
     @Namespace private var musicNavigationNamespace
 
     private let playerTransitionID = "now-playing"
+
+    init(initialTab: AppTab = .home) {
+        _selectedTab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         Group {
@@ -60,6 +64,9 @@ struct ContentView: View {
             }
             .task(id: settings.cookie) {
                 await library.refresh()
+            }
+            .onChange(of: selectedTab) { _, tab in
+                settings.lastSelectedTab = tab
             }
             .alert(
                 "歌曲无法播放",
@@ -124,21 +131,33 @@ struct ContentView: View {
 
     private var tabs: some View {
         TabView(selection: $selectedTab) {
-            Tab("首页", systemImage: "house", value: AppTab.home) {
+            Tab(
+                AppTab.home.title,
+                systemImage: AppTab.home.systemImage,
+                value: AppTab.home
+            ) {
                 NavigationStack(path: $homePath) {
                     HomeView()
                         .musicDestinations(in: musicNavigationNamespace)
                 }
             }
 
-            Tab("发现", systemImage: "safari", value: AppTab.explore) {
+            Tab(
+                AppTab.explore.title,
+                systemImage: AppTab.explore.systemImage,
+                value: AppTab.explore
+            ) {
                 NavigationStack(path: $explorePath) {
                     ExploreView()
                         .musicDestinations(in: musicNavigationNamespace)
                 }
             }
 
-            Tab("音乐库", systemImage: "music.note.list", value: AppTab.library) {
+            Tab(
+                AppTab.library.title,
+                systemImage: AppTab.library.systemImage,
+                value: AppTab.library
+            ) {
                 NavigationStack(path: $libraryPath) {
                     LibraryView()
                         .musicDestinations(in: musicNavigationNamespace)
@@ -146,8 +165,8 @@ struct ContentView: View {
             }
 
             Tab(
-                "搜索",
-                systemImage: "magnifyingglass",
+                AppTab.search.title,
+                systemImage: AppTab.search.systemImage,
                 value: AppTab.search,
                 role: .search
             ) {
@@ -157,7 +176,11 @@ struct ContentView: View {
                 }
             }
 
-            Tab("设置", systemImage: "gearshape", value: AppTab.settings) {
+            Tab(
+                AppTab.settings.title,
+                systemImage: AppTab.settings.systemImage,
+                value: AppTab.settings
+            ) {
                 NavigationStack(path: $settingsPath) {
                     SettingsView()
                         .musicDestinations(in: musicNavigationNamespace)

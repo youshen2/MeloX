@@ -53,6 +53,13 @@ final class AppSettings {
         static let hasCompletedOnboarding = "melox.hasCompletedOnboarding"
         static let cookie = "musicCookie"
         static let quality = "musicQuality"
+        static let playerVolumeControlMode = "playerVolumeControlMode"
+        static let defaultLaunchTab = "defaultLaunchTab"
+        static let restoresLastSelectedTab = "restoresLastSelectedTab"
+        static let lastSelectedTab = "lastSelectedTab"
+        static let defaultLibraryPage = "defaultLibraryPage"
+        static let restoresLastLibraryPage = "restoresLastLibraryPage"
+        static let lastLibraryPage = "lastLibraryPage"
         static let area = "musicArea"
         static let showPlayCount = "showPlayCount"
         static let playerBackgroundBlur = "playerBackgroundBlur"
@@ -108,6 +115,68 @@ final class AppSettings {
 
     var quality: MusicQuality {
         didSet { defaults.set(quality.rawValue, forKey: Key.quality) }
+    }
+
+    var playerVolumeControlMode: PlayerVolumeControlMode {
+        didSet {
+            defaults.set(
+                playerVolumeControlMode.rawValue,
+                forKey: Key.playerVolumeControlMode
+            )
+        }
+    }
+
+    var defaultLaunchTab: AppTab {
+        didSet {
+            defaults.set(defaultLaunchTab.rawValue, forKey: Key.defaultLaunchTab)
+        }
+    }
+
+    var restoresLastSelectedTab: Bool {
+        didSet {
+            defaults.set(
+                restoresLastSelectedTab,
+                forKey: Key.restoresLastSelectedTab
+            )
+        }
+    }
+
+    var lastSelectedTab: AppTab {
+        didSet {
+            defaults.set(lastSelectedTab.rawValue, forKey: Key.lastSelectedTab)
+        }
+    }
+
+    var defaultLibraryPage: LibraryPage {
+        didSet {
+            defaults.set(
+                defaultLibraryPage.rawValue,
+                forKey: Key.defaultLibraryPage
+            )
+        }
+    }
+
+    var restoresLastLibraryPage: Bool {
+        didSet {
+            defaults.set(
+                restoresLastLibraryPage,
+                forKey: Key.restoresLastLibraryPage
+            )
+        }
+    }
+
+    var lastLibraryPage: LibraryPage {
+        didSet {
+            defaults.set(lastLibraryPage.rawValue, forKey: Key.lastLibraryPage)
+        }
+    }
+
+    var launchTab: AppTab {
+        restoresLastSelectedTab ? lastSelectedTab : defaultLaunchTab
+    }
+
+    var initialLibraryPage: LibraryPage {
+        restoresLastLibraryPage ? lastLibraryPage : defaultLibraryPage
     }
 
     var musicArea: String {
@@ -323,6 +392,27 @@ final class AppSettings {
         )
         cookie = defaults.string(forKey: Key.cookie) ?? ""
         quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high
+        playerVolumeControlMode = PlayerVolumeControlMode(
+            rawValue: defaults.string(forKey: Key.playerVolumeControlMode) ?? ""
+        ) ?? .independent
+        defaultLaunchTab = AppTab(
+            rawValue: defaults.string(forKey: Key.defaultLaunchTab) ?? ""
+        ) ?? .home
+        restoresLastSelectedTab = defaults.object(
+            forKey: Key.restoresLastSelectedTab
+        ) as? Bool ?? false
+        lastSelectedTab = AppTab(
+            rawValue: defaults.string(forKey: Key.lastSelectedTab) ?? ""
+        ) ?? .home
+        defaultLibraryPage = LibraryPage(
+            rawValue: defaults.string(forKey: Key.defaultLibraryPage) ?? ""
+        ) ?? .songs
+        restoresLastLibraryPage = defaults.object(
+            forKey: Key.restoresLastLibraryPage
+        ) as? Bool ?? false
+        lastLibraryPage = LibraryPage(
+            rawValue: defaults.string(forKey: Key.lastLibraryPage) ?? ""
+        ) ?? .songs
         musicArea = defaults.string(forKey: Key.area) ?? "ALL"
         showPlayCount = defaults.object(forKey: Key.showPlayCount) as? Bool ?? true
         playerBackgroundBlur = defaults.object(forKey: Key.playerBackgroundBlur) as? Double ?? 90
@@ -462,6 +552,7 @@ final class AppSettings {
 
     func resetPlayerSettings() {
         quality = .high
+        playerVolumeControlMode = .independent
         playerBackgroundBlur = 90
         playerBackgroundSaturation = 0.82
         shrinksPausedArtwork = true

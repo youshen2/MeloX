@@ -38,7 +38,7 @@ struct MeloXApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(initialTab: settings.launchTab)
                 .environment(settings)
                 .environment(api)
                 .environment(library)

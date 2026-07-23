@@ -94,7 +94,7 @@ final class PlayerStore {
         nowPlayingSession = NowPlayingSession(player: engine.nowPlayingPlayer)
         bindEngine()
         bindRemoteCommands()
-        engine.setVolume(volume)
+        applyVolumeControlMode()
     }
 
     func restore() async {
@@ -115,7 +115,7 @@ final class PlayerStore {
         repeatMode = RepeatMode(rawValue: snapshot.repeatMode) ?? .off
         volume = min(max(snapshot.volume, 0), 1)
         historySourceID = snapshot.historySourceID
-        engine.setVolume(volume)
+        applyVolumeControlMode()
 
         await loadCurrentSong(
             autoplay: false,
@@ -250,8 +250,15 @@ final class PlayerStore {
 
     func setVolume(_ value: Double) {
         volume = min(max(value, 0), 1)
-        engine.setVolume(volume)
+        applyVolumeControlMode()
         persistSnapshot()
+    }
+
+    func applyVolumeControlMode() {
+        let effectiveVolume = settings.playerVolumeControlMode == .independent
+            ? volume
+            : 1
+        engine.setVolume(effectiveVolume)
     }
 
     func cycleRepeatMode() {

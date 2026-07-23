@@ -1,29 +1,20 @@
 import SwiftUI
 
-private enum LibrarySection: String, CaseIterable, Identifiable {
-    case songs = "歌曲"
-    case playlists = "歌单"
-    case downloads = "下载"
-    case cloud = "云盘"
-    case history = "历史"
-
-    var id: String { rawValue }
-}
-
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
     @Environment(DownloadStore.self) private var downloads
 
-    @State private var section: LibrarySection = .songs
+    @State private var section: LibraryPage = .songs
+    @State private var hasAppliedInitialPage = false
     @State private var showsLogin = false
 
     var body: some View {
         VStack(spacing: 0) {
             Picker("音乐库分类", selection: $section) {
-                ForEach(LibrarySection.allCases) { item in
-                    Text(item.rawValue).tag(item)
+                ForEach(LibraryPage.allCases) { item in
+                    Text(item.title).tag(item)
                 }
             }
             .pickerStyle(.segmented)
@@ -39,6 +30,14 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("音乐库")
+        .onAppear {
+            guard !hasAppliedInitialPage else { return }
+            hasAppliedInitialPage = true
+            section = settings.initialLibraryPage
+        }
+        .onChange(of: section) { _, page in
+            settings.lastLibraryPage = page
+        }
         .sheet(isPresented: $showsLogin) {
             NavigationStack {
                 NeteaseLoginView()

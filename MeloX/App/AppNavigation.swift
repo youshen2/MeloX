@@ -1,13 +1,5 @@
 import SwiftUI
 
-enum AppTab: Hashable {
-    case home
-    case explore
-    case library
-    case search
-    case settings
-}
-
 struct PlaylistRouteContext: Hashable {
     let id: Int
     let name: String

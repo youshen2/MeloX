@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerSettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(PlayerStore.self) private var player
 
     @State private var showsResetConfirmation = false
 
@@ -9,12 +10,25 @@ struct PlayerSettingsView: View {
         @Bindable var settings = settings
 
         Form {
-            Section("音频") {
+            Section {
                 Picker("音质", selection: $settings.quality) {
                     ForEach(MusicQuality.allCases) { quality in
                         Text(quality.title).tag(quality)
                     }
                 }
+
+                Picker(
+                    "音量控制",
+                    selection: $settings.playerVolumeControlMode
+                ) {
+                    ForEach(PlayerVolumeControlMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+            } header: {
+                Text("音频")
+            } footer: {
+                Text(settings.playerVolumeControlMode.description)
             }
 
             Section {
@@ -294,6 +308,9 @@ struct PlayerSettingsView: View {
             }
         }
         .navigationTitle("播放器")
+        .onChange(of: settings.playerVolumeControlMode) {
+            player.applyVolumeControlMode()
+        }
         .confirmationDialog("恢复播放器默认设置？", isPresented: $showsResetConfirmation) {
             Button("恢复默认设置", role: .destructive) {
                 settings.resetPlayerSettings()
