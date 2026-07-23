@@ -86,7 +86,7 @@
 ## 运行环境
 
 - Xcode 26.6 或更高版本
-- iOS / iPadOS 26.5 或更高版本
+- iOS / iPadOS 26.0 或更高版本
 - Swift 5
 - 用真机运行时，需要可用于代码签名的 Apple Developer 账号
 
