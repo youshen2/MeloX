@@ -410,6 +410,135 @@ final class NeteaseAPI {
         return response.data?.list.compactMap(\.data) ?? []
     }
 
+    func cloudSongs(limit: Int = 200, offset: Int = 0) async throws -> CloudMusicPage {
+        let path = "/api/v1/cloud/get"
+        let data: [String: Any] = ["limit": limit, "offset": offset]
+        let response: CloudMusicPage
+        do {
+            response = try await client.weapi(path, data: data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            // This authenticated weapi route can return HTTP 200 with an empty
+            // body to CFNetwork. Keep the original route and parameters and
+            // use its supported eapi transport, matching the other library
+            // compatibility fallbacks in this client.
+            response = try await client.eapi(path, data: data, authenticated: true)
+        }
+        try validate(responseCode: response.code)
+        return response
+    }
+
+    func deleteCloudSong(id: Int) async throws {
+        let path = "/api/cloud/del"
+        let data: [String: Any] = ["songIds": [id]]
+        let response: APIStatusResponse
+        do {
+            response = try await client.weapi(path, data: data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            response = try await client.eapi(path, data: data, authenticated: true)
+        }
+        try validate(responseCode: response.code, message: response.message)
+    }
+
+    func uploadCloudSong(fileAt url: URL) async throws {
+        let file = try await CloudUploadFile.prepare(from: url)
+        let bitrate = 999_000
+
+        // Mirrors @neteaseapireborn/api/module/cloud.js: the upload check and
+        // metadata registration use the default eapi transport.
+        let check: CloudUploadCheckResponse = try await client.eapi(
+            "/api/cloud/upload/check",
+            data: [
+                "bitrate": String(bitrate),
+                "ext": "",
+                "length": file.size,
+                "md5": file.md5,
+                "songId": "0",
+                "version": 1,
+            ],
+            authenticated: true
+        )
+        try validate(responseCode: check.code, message: check.message)
+
+        let metadataToken: CloudNOSTokenResponse = try await client.eapi(
+            "/api/nos/token/alloc",
+            data: [
+                "bucket": "",
+                "ext": file.fileExtension,
+                "filename": file.normalizedStem,
+                "local": false,
+                "nos_product": 3,
+                "type": "audio",
+                "md5": file.md5,
+            ],
+            authenticated: true
+        )
+        try validate(responseCode: metadataToken.code, message: metadataToken.message)
+
+        if check.needUpload {
+            let bucket = "jd-musicrep-privatecloud-audio-public"
+            // songUpload.js deliberately obtains a separate weapi token for
+            // the NOS transfer while retaining the eapi resourceId above.
+            let tokenPath = "/api/nos/token/alloc"
+            let tokenData: [String: Any] = [
+                "bucket": bucket,
+                "ext": file.fileExtension,
+                "filename": file.normalizedStem,
+                "local": false,
+                "nos_product": 3,
+                "type": "audio",
+                "md5": file.md5,
+            ]
+            let uploadToken: CloudNOSTokenResponse
+            do {
+                uploadToken = try await client.weapi(tokenPath, data: tokenData)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch APIError.emptyResponse {
+                uploadToken = try await client.eapi(
+                    tokenPath,
+                    data: tokenData,
+                    authenticated: true
+                )
+            }
+            try validate(responseCode: uploadToken.code, message: uploadToken.message)
+            try await client.uploadToNOS(
+                fileURL: file.url,
+                bucket: bucket,
+                objectKey: uploadToken.result.objectKey,
+                token: uploadToken.result.token,
+                md5: file.md5,
+                fileSize: file.size
+            )
+        }
+
+        let uploadInfo: CloudUploadInfoResponse = try await client.eapi(
+            "/api/upload/cloud/info/v2",
+            data: [
+                "md5": file.md5,
+                "songid": check.songID,
+                "filename": file.filename,
+                "song": file.songName,
+                "album": file.album,
+                "artist": file.artist,
+                "bitrate": String(bitrate),
+                "resourceId": metadataToken.result.resourceID,
+            ],
+            authenticated: true
+        )
+        try validate(responseCode: uploadInfo.code, message: uploadInfo.message)
+
+        let publish: APIStatusResponse = try await client.eapi(
+            "/api/cloud/pub/v2",
+            data: ["songid": uploadInfo.songID],
+            authenticated: true
+        )
+        try validate(responseCode: publish.code, message: publish.message)
+    }
+
     func recordRecentPlayback(songID: Int, sourceID: Int) async throws {
         try await submitPlaybackLog(
             action: "startplay",

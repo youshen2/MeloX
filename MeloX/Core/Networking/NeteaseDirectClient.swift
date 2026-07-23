@@ -93,6 +93,69 @@ final class NeteaseDirectClient {
         throw APIError.invalidResponse
     }
 
+    func uploadToNOS(
+        fileURL: URL,
+        bucket: String,
+        objectKey: String,
+        token: String,
+        md5: String,
+        fileSize: Int64
+    ) async throws {
+        var lbsComponents = URLComponents(string: "https://wanproxy.127.net/lbs")
+        lbsComponents?.queryItems = [
+            URLQueryItem(name: "version", value: "1.0"),
+            URLQueryItem(name: "bucketname", value: bucket),
+        ]
+        guard let lbsURL = lbsComponents?.url else {
+            throw APIError.requestEncoding
+        }
+
+        let (lbsData, lbsResponse) = try await session.data(from: lbsURL)
+        guard let lbsHTTPResponse = lbsResponse as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard (200..<300).contains(lbsHTTPResponse.statusCode) else {
+            throw APIError.server(
+                statusCode: lbsHTTPResponse.statusCode,
+                message: HTTPURLResponse.localizedString(forStatusCode: lbsHTTPResponse.statusCode)
+            )
+        }
+        let lbs = try JSONDecoder().decode(NOSLBSResponse.self, from: lbsData)
+        guard let uploadHost = lbs.upload.first else {
+            throw CloudUploadError.noUploadServer
+        }
+
+        var objectKeyAllowed = CharacterSet.urlPathAllowed
+        objectKeyAllowed.remove(charactersIn: "/?#")
+        guard let encodedObjectKey = objectKey.addingPercentEncoding(withAllowedCharacters: objectKeyAllowed),
+              let uploadURL = URL(
+                string: "\(uploadHost.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/\(bucket)/\(encodedObjectKey)?offset=0&complete=true&version=1.0"
+              ) else {
+            throw APIError.requestEncoding
+        }
+
+        var request = URLRequest(url: uploadURL)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 200
+        request.setValue(token, forHTTPHeaderField: "x-nos-token")
+        request.setValue(md5, forHTTPHeaderField: "Content-MD5")
+        request.setValue("audio/mpeg", forHTTPHeaderField: "Content-Type")
+        request.setValue(String(fileSize), forHTTPHeaderField: "Content-Length")
+
+        let (data, response) = try await session.upload(for: request, fromFile: fileURL)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw APIError.server(
+                statusCode: httpResponse.statusCode,
+                message: data.isEmpty
+                    ? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                    : responseDescription(data, decodingError: APIError.invalidResponse)
+            )
+        }
+    }
+
     private func send<Response: Decodable>(
         url: URL,
         form: [String: String],

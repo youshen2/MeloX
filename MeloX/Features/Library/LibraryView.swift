@@ -3,7 +3,8 @@ import SwiftUI
 private enum LibrarySection: String, CaseIterable, Identifiable {
     case songs = "歌曲"
     case playlists = "歌单"
-    case history = "播放历史"
+    case cloud = "云盘"
+    case history = "历史"
 
     var id: String { rawValue }
 }
@@ -22,7 +23,7 @@ struct LibraryView: View {
                 ContentUnavailableView {
                     Label("需要登录", systemImage: "person.crop.circle.badge.exclamationmark")
                 } description: {
-                    Text("登录网易云音乐后，才能读取你的收藏歌曲、歌单和播放记录。")
+                    Text("登录网易云音乐后，才能读取你的收藏歌曲、歌单、音乐云盘和播放记录。")
                 } actions: {
                     Button("登录网易云音乐") {
                         showsLogin = true
@@ -85,6 +86,8 @@ struct LibraryView: View {
                     songList(library.favoriteSongs, emptyTitle: "还没有收藏歌曲")
                 case .playlists:
                     playlistList
+                case .cloud:
+                    CloudMusicView()
                 case .history:
                     songList(
                         library.recentSongs,
@@ -92,6 +95,7 @@ struct LibraryView: View {
                     )
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
