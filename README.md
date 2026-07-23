@@ -22,6 +22,14 @@
   <img src="docs/screenshots/2.png" alt="音乐库" width="20%">
   <br>
   <img src="docs/screenshots/3.png" alt="搜索" width="20%">
+  <img src="docs/screenshots/13.png" alt="歌单" width="20%">
+</p>
+
+### 私信功能
+
+<p align="center">
+  <img src="docs/screenshots/11.png" alt="私信" width="30%">
+  <img src="docs/screenshots/12.png" alt="分享到私信" width="30%">
 </p>
 
 ### 播放器

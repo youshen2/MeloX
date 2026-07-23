@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var searchPath = NavigationPath()
     @State private var settingsPath = NavigationPath()
     @State private var playerPresentation: PlayerPresentation?
+    @State private var neteaseSharePresentation: NeteaseSharePresentation?
+    @State private var nowPlayingSharePresentation: NeteaseSharePresentation?
     @State private var pendingMusicRoute: MusicRoute?
     @Namespace private var playerTransitionNamespace
     @Namespace private var musicNavigationNamespace
@@ -39,6 +41,10 @@ struct ContentView: View {
                 \.openMusicRoute,
                 OpenMusicRouteAction(action: openMusicRoute)
             )
+            .environment(
+                \.openNeteaseShare,
+                OpenNeteaseShareAction(action: openNeteaseShare)
+            )
             .fullScreenCover(
                 item: $playerPresentation,
                 onDismiss: finishPendingSongNavigation
@@ -50,6 +56,19 @@ struct ContentView: View {
                             \.openMusicRoute,
                             OpenMusicRouteAction(action: openMusicRoute)
                         )
+                        .environment(
+                            \.openNeteaseShare,
+                            OpenNeteaseShareAction { presentation in
+                                presentNeteaseShare(
+                                    presentation,
+                                    fromNowPlaying: true
+                                )
+                            }
+                        )
+                        .sheet(item: $nowPlayingSharePresentation) {
+                            presentation in
+                            NeteaseShareSheet(presentation: presentation)
+                        }
                         .presentationBackground(.clear)
                         .navigationTransition(
                             .zoom(
@@ -58,6 +77,9 @@ struct ContentView: View {
                             )
                         )
                 }
+            }
+            .sheet(item: $neteaseSharePresentation) { presentation in
+                NeteaseShareSheet(presentation: presentation)
             }
             .task {
                 await player.restore()
@@ -203,6 +225,28 @@ struct ContentView: View {
             return
         }
         navigate(to: route)
+    }
+
+    private func openNeteaseShare(
+        _ presentation: NeteaseSharePresentation
+    ) {
+        presentNeteaseShare(presentation, fromNowPlaying: false)
+    }
+
+    private func presentNeteaseShare(
+        _ presentation: NeteaseSharePresentation,
+        fromNowPlaying: Bool
+    ) {
+        Task { @MainActor in
+            // Menu actions can fire before the system has completed
+            // dismissing the menu. Present on the next settled UI turn.
+            try? await Task.sleep(for: .milliseconds(140))
+            if fromNowPlaying {
+                nowPlayingSharePresentation = presentation
+            } else {
+                neteaseSharePresentation = presentation
+            }
+        }
     }
 
     private func finishPendingSongNavigation() {

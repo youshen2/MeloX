@@ -134,8 +134,10 @@ struct NowPlayingSongActions: View {
                     Label("添加到歌单", systemImage: "text.badge.plus")
                 }
 
-                ShareLink(item: "\(song.name) — \(song.artistText)") {
-                    Label("分享歌曲信息", systemImage: "square.and.arrow.up")
+                Menu {
+                    NeteaseShareMenuContent(resource: .song(song))
+                } label: {
+                    Label("分享", systemImage: "square.and.arrow.up")
                 }
             } label: {
                 Image(systemName: "ellipsis")

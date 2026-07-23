@@ -2,6 +2,7 @@ import SwiftUI
 
 enum SettingsRoute: Hashable {
     case accountHome
+    case privateMessages
 }
 
 struct SettingsView: View {
@@ -67,6 +68,8 @@ struct SettingsView: View {
                         systemImage: "person.crop.circle.badge.exclamationmark"
                     )
                 }
+            case .privateMessages:
+                NeteasePrivateMessagesView()
             }
         }
     }

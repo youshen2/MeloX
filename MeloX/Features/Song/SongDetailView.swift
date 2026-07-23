@@ -60,6 +60,13 @@ struct SongDetailView: View {
                     Image(systemName: "bubble.left.and.bubble.right")
                 }
                 .accessibilityLabel("查看评论")
+
+                Menu {
+                    NeteaseShareMenuContent(resource: .song(song))
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("分享歌曲")
             }
         }
         .sheet(item: $commentSong) { selectedSong in
@@ -113,7 +120,7 @@ struct SongDetailView: View {
                     Button {
                         Task { await player.play(song, in: [song]) }
                     } label: {
-                        Label("播放", systemImage: "play.fill")
+                        Text("播放")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)

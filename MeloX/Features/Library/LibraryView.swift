@@ -1,5 +1,9 @@
 import SwiftUI
 
+private enum LibraryRoute: Hashable {
+    case privateMessages
+}
+
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(PlayerStore.self) private var player
@@ -30,6 +34,24 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("音乐库")
+        .toolbar {
+            if library.isLoggedIn {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink(value: LibraryRoute.privateMessages) {
+                        Image(
+                            systemName: "bubble.left.and.bubble.right"
+                        )
+                    }
+                    .accessibilityLabel("私信")
+                }
+            }
+        }
+        .navigationDestination(for: LibraryRoute.self) { route in
+            switch route {
+            case .privateMessages:
+                NeteasePrivateMessagesView()
+            }
+        }
         .onAppear {
             guard !hasAppliedInitialPage else { return }
             hasAppliedInitialPage = true

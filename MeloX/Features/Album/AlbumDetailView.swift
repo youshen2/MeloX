@@ -140,7 +140,9 @@ struct AlbumDetailView: View {
     @ToolbarContentBuilder
     private var albumToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            ShareLink(item: "https://music.163.com/album?id=\(id)") {
+            Menu {
+                NeteaseShareMenuContent(resource: .album(displayedAlbum))
+            } label: {
                 Image(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel("分享专辑")

@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 func makeArtworkURL(from source: String?, dimension: Int = 1_024) -> URL? {
@@ -21,6 +22,26 @@ func makeArtworkURL(from source: String?, dimension: Int = 1_024) -> URL? {
         URLQueryItem(name: "param", value: "\(dimension)y\(dimension)")
     ]
     return components.url
+}
+
+func makeArtworkURL(fromNeteasePicID picID: Int64?, dimension: Int = 1_024) -> URL? {
+    guard let picID, picID > 0 else { return nil }
+
+    let source = Array(String(picID).utf8)
+    let magic = Array("3go8&$8*3*3h0k(2)2".utf8)
+    let encrypted = Data(
+        source.enumerated().map { index, byte in
+            byte ^ magic[index % magic.count]
+        }
+    )
+    let digest = Data(Insecure.MD5.hash(data: encrypted))
+    let encodedID = digest.base64EncodedString()
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "+", with: "-")
+    return makeArtworkURL(
+        from: "https://p1.music.126.net/\(encodedID)/\(picID).jpg",
+        dimension: dimension
+    )
 }
 
 struct Artist: Codable, Hashable, Identifiable {
@@ -77,6 +98,7 @@ struct Album: Codable, Hashable, Identifiable {
     let id: Int
     let name: String
     let picURL: String?
+    let picID: Int64?
     let artists: [Artist]
     let publishTime: Double?
     let size: Int?
@@ -85,6 +107,7 @@ struct Album: Codable, Hashable, Identifiable {
 
     var artworkURL: URL? {
         makeArtworkURL(from: picURL)
+            ?? makeArtworkURL(fromNeteasePicID: picID)
     }
 
     var artistText: String {
@@ -92,13 +115,16 @@ struct Album: Codable, Hashable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, picUrl, artists, artist, publishTime, size, type, description
+        case id, name, picUrl, blurPicUrl, artists, artist
+        case pic, picStr = "pic_str", picId, picIdStr = "picId_str"
+        case publishTime, size, type, description
     }
 
     init(
         id: Int,
         name: String,
         picURL: String? = nil,
+        picID: Int64? = nil,
         artists: [Artist] = [],
         publishTime: Double? = nil,
         size: Int? = nil,
@@ -108,6 +134,7 @@ struct Album: Codable, Hashable, Identifiable {
         self.id = id
         self.name = name
         self.picURL = picURL
+        self.picID = picID
         self.artists = artists
         self.publishTime = publishTime
         self.size = size
@@ -120,6 +147,8 @@ struct Album: Codable, Hashable, Identifiable {
         id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? "未知专辑"
         picURL = try container.decodeIfPresent(String.self, forKey: .picUrl)
+            ?? container.decodeIfPresent(String.self, forKey: .blurPicUrl)
+        picID = try Self.decodePicID(from: container)
         if let decodedArtists = try container.decodeIfPresent([Artist].self, forKey: .artists) {
             artists = decodedArtists
         } else if let artist = try container.decodeIfPresent(Artist.self, forKey: .artist) {
@@ -138,11 +167,33 @@ struct Album: Codable, Hashable, Identifiable {
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encodeIfPresent(picURL, forKey: .picUrl)
+        try container.encodeIfPresent(picID, forKey: .pic)
         try container.encode(artists, forKey: .artists)
         try container.encodeIfPresent(publishTime, forKey: .publishTime)
         try container.encodeIfPresent(size, forKey: .size)
         try container.encodeIfPresent(type, forKey: .type)
         try container.encodeIfPresent(albumDescription, forKey: .description)
+    }
+
+    private static func decodePicID(
+        from container: KeyedDecodingContainer<CodingKeys>
+    ) throws -> Int64? {
+        for key in [CodingKeys.pic, .picId] {
+            if let value = try? container.decode(Int64.self, forKey: key) {
+                return value
+            }
+            if let value = try? container.decode(String.self, forKey: key),
+               let parsed = Int64(value) {
+                return parsed
+            }
+        }
+        for key in [CodingKeys.picStr, .picIdStr] {
+            if let value = try? container.decode(String.self, forKey: key),
+               let parsed = Int64(value) {
+                return parsed
+            }
+        }
+        return nil
     }
 }
 

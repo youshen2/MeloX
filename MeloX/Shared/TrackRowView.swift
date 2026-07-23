@@ -86,6 +86,12 @@ struct TrackRowView: View {
             } label: {
                 Label("评论", systemImage: "bubble.left.and.bubble.right")
             }
+
+            Menu {
+                NeteaseShareMenuContent(resource: .song(song))
+            } label: {
+                Label("分享", systemImage: "square.and.arrow.up")
+            }
         }
         .sheet(item: $commentSong) { selectedSong in
             SongCommentsSheet(song: selectedSong)

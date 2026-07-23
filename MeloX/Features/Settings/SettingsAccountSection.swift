@@ -86,6 +86,13 @@ struct SettingsAccountSection: View {
             }
         }
 
+        NavigationLink(value: SettingsRoute.privateMessages) {
+            Label(
+                "私信",
+                systemImage: "bubble.left.and.bubble.right"
+            )
+        }
+
         Button("退出登录", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
             showsLogoutConfirmation = true
         }

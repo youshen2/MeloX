@@ -52,7 +52,7 @@ final class NeteaseAPI {
     private let settings: AppSettings
 
     @ObservationIgnored
-    private let client: NeteaseDirectClient
+    let client: NeteaseDirectClient
 
     init(settings: AppSettings, session: URLSession = .shared) {
         self.settings = settings
@@ -167,10 +167,22 @@ final class NeteaseAPI {
         guard let songsJSON = String(data: songsData, encoding: .utf8) else {
             throw APIError.requestEncoding
         }
-        let response: SongDetailResponse = try await client.eapi(
-            "/api/v3/song/detail",
-            data: ["c": songsJSON]
-        )
+        let path = "/api/v3/song/detail"
+        let response: SongDetailResponse
+        do {
+            // Mirrors @neteaseapireborn/api/module/song_detail.js.
+            response = try await client.weapi(
+                path,
+                data: ["c": songsJSON]
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.emptyResponse {
+            response = try await client.eapi(
+                path,
+                data: ["c": songsJSON]
+            )
+        }
         return response.songs
     }
 
@@ -719,7 +731,7 @@ final class NeteaseAPI {
         try validate(responseCode: response.code, message: response.message)
     }
 
-    private func validate(responseCode: Int, message: String? = nil) throws {
+    func validate(responseCode: Int, message: String? = nil) throws {
         guard (200..<300).contains(responseCode) else {
             throw APIError.server(
                 statusCode: responseCode,

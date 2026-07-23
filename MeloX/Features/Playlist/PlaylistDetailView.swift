@@ -153,7 +153,9 @@ struct PlaylistDetailView: View {
     @ToolbarContentBuilder
     private func playlistToolbar(for playlist: Playlist) -> some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            ShareLink(item: "https://music.163.com/playlist?id=\(playlist.id)") {
+            Menu {
+                NeteaseShareMenuContent(resource: .playlist(playlist))
+            } label: {
                 Image(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel("分享歌单")

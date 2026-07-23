@@ -48,6 +48,7 @@ struct AlbumRouteContext: Hashable {
     let id: Int
     let name: String
     let picURL: String?
+    let picID: Int64?
     let artists: [Artist]
     let publishTime: Double?
     let size: Int?
@@ -58,6 +59,7 @@ struct AlbumRouteContext: Hashable {
         id = album.id
         name = album.name
         picURL = album.picURL
+        picID = album.picID
         artists = album.artists
         publishTime = album.publishTime
         size = album.size
@@ -70,6 +72,7 @@ struct AlbumRouteContext: Hashable {
             id: id,
             name: name,
             picURL: picURL,
+            picID: picID,
             artists: artists,
             publishTime: publishTime,
             size: size,
