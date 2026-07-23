@@ -166,6 +166,9 @@ struct NowPlayingVolumeControl: View {
                     .font(.caption2)
 
                 volumeSlider
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 32)
+                    .layoutPriority(1)
 
                 Image(systemName: "speaker.wave.3.fill")
                     .font(.caption)
@@ -192,50 +195,40 @@ struct NowPlayingVolumeControl: View {
             .accessibilityLabel("播放器音量")
         case .system:
             SystemVolumeSlider()
-                .frame(maxWidth: .infinity)
-                .frame(height: 32)
-                .layoutPriority(1)
                 .accessibilityLabel("系统音量")
         }
     }
 }
 
+private final class AlignedSystemVolumeView: MPVolumeView {
+    override func volumeSliderRect(forBounds bounds: CGRect) -> CGRect {
+        bounds
+    }
+}
+
 private struct SystemVolumeSlider: UIViewRepresentable {
-    final class Coordinator {
-        let volumeView = MPVolumeView(
+    func makeUIView(context: Context) -> AlignedSystemVolumeView {
+        let volumeView = AlignedSystemVolumeView(
             frame: CGRect(x: 0, y: 0, width: 200, height: 32)
         )
+        volumeView.backgroundColor = .clear
+        volumeView.showsVolumeSlider = true
+        volumeView.showsRouteButton = false
+        volumeView.tintColor = .white
+        return volumeView
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> UIView {
-        let container = UIView(
-            frame: CGRect(x: 0, y: 0, width: 200, height: 32)
-        )
-        container.backgroundColor = .clear
-
-        let volumeView = context.coordinator.volumeView
+    func updateUIView(
+        _ volumeView: AlignedSystemVolumeView,
+        context: Context
+    ) {
         volumeView.showsVolumeSlider = true
         volumeView.tintColor = .white
-        volumeView.frame = container.bounds
-        volumeView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.addSubview(volumeView)
-        return container
-    }
-
-    func updateUIView(_ container: UIView, context: Context) {
-        let volumeView = context.coordinator.volumeView
-        volumeView.showsVolumeSlider = true
-        volumeView.tintColor = .white
-        volumeView.frame = container.bounds
     }
 
     func sizeThatFits(
         _ proposal: ProposedViewSize,
-        uiView: UIView,
+        uiView: AlignedSystemVolumeView,
         context: Context
     ) -> CGSize? {
         CGSize(
