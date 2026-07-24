@@ -32,6 +32,7 @@ enum MusicQuality: String, CaseIterable, Identifiable, Codable {
 @MainActor
 @Observable
 final class AppSettings {
+    static let defaultPlayerVolumeControlMode: PlayerVolumeControlMode = .system
     static let automaticCachePlaybackThresholdOptions = [3, 5, 10, 20]
     static let defaultLyricsFontSize = 25.0
     static let defaultLyricsCurrentLineScale = 1.2
@@ -51,8 +52,8 @@ final class AppSettings {
     static let lyricsFocusCascadeBounceRange = 0.0...0.8
     static let defaultLyricsFocusCascadeMinimumBounceDuration = 0.76
     static let lyricsFocusCascadeMinimumBounceDurationRange = 0.34...1.2
-    static let defaultLyricsFocusColorLeadTime = 0.06
-    static let lyricsFocusColorLeadTimeRange = 0.0...0.1
+    static let defaultLyricsFocusColorLeadTime = 0.12
+    static let lyricsFocusColorLeadTimeRange = -0.3...0.3
     private enum Key {
         static let hasCompletedOnboarding = "melox.hasCompletedOnboarding"
         static let cookie = "musicCookie"
@@ -419,7 +420,7 @@ final class AppSettings {
         quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high
         playerVolumeControlMode = PlayerVolumeControlMode(
             rawValue: defaults.string(forKey: Key.playerVolumeControlMode) ?? ""
-        ) ?? .independent
+        ) ?? Self.defaultPlayerVolumeControlMode
         defaultLaunchTab = AppTab(
             rawValue: defaults.string(forKey: Key.defaultLaunchTab) ?? ""
         ) ?? .home
@@ -597,7 +598,7 @@ final class AppSettings {
 
     func resetPlayerSettings() {
         quality = .high
-        playerVolumeControlMode = .independent
+        playerVolumeControlMode = Self.defaultPlayerVolumeControlMode
         playerBackgroundBlur = 90
         playerBackgroundSaturation = 0.82
         shrinksPausedArtwork = true

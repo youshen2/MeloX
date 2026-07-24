@@ -767,8 +767,9 @@ struct AppleMusicLyricsView: View {
         focusColorLeadTime: TimeInterval,
         animationDuration: TimeInterval
     ) async {
-        withAnimation(lyricFocusEffectAnimation(for: highlightedLyricID)) {
-            visualHighlightedLyricID = highlightedLyricID
+        var hasStartedFocusColorTransition = focusColorLeadTime >= 0
+        if hasStartedFocusColorTransition {
+            startFocusColorTransition(to: highlightedLyricID)
         }
         if focusColorLeadTime > 0 {
             do {
@@ -798,6 +799,27 @@ struct AppleMusicLyricsView: View {
                 highlightedLyricID: highlightedLyricID,
                 in: lyrics
             )
+            if !hasStartedFocusColorTransition,
+               -focusColorLeadTime <= targetDelay {
+                let colorTransitionDelay = -focusColorLeadTime - elapsedDelay
+                if colorTransitionDelay > 0 {
+                    do {
+                        try await Task.sleep(
+                            for: .seconds(colorTransitionDelay)
+                        )
+                    } catch {
+                        resolveInterruptedMovement(to: highlightedLyricID)
+                        return
+                    }
+                }
+                guard !Task.isCancelled else {
+                    resolveInterruptedMovement(to: highlightedLyricID)
+                    return
+                }
+                startFocusColorTransition(to: highlightedLyricID)
+                hasStartedFocusColorTransition = true
+                elapsedDelay = -focusColorLeadTime
+            }
             let nextDelay = targetDelay - elapsedDelay
             if nextDelay > 0 {
                 do {
@@ -821,6 +843,25 @@ struct AppleMusicLyricsView: View {
             elapsedDelay = targetDelay
         }
 
+        if !hasStartedFocusColorTransition {
+            let colorTransitionDelay = -focusColorLeadTime - elapsedDelay
+            if colorTransitionDelay > 0 {
+                do {
+                    try await Task.sleep(
+                        for: .seconds(colorTransitionDelay)
+                    )
+                } catch {
+                    resolveInterruptedMovement(to: highlightedLyricID)
+                    return
+                }
+            }
+            guard !Task.isCancelled else {
+                resolveInterruptedMovement(to: highlightedLyricID)
+                return
+            }
+            startFocusColorTransition(to: highlightedLyricID)
+        }
+
         do {
             try await Task.sleep(for: .seconds(animationDuration))
         } catch {
@@ -832,6 +873,14 @@ struct AppleMusicLyricsView: View {
             return
         }
         completeCascadeMovement(to: highlightedLyricID)
+    }
+
+    private func startFocusColorTransition(
+        to highlightedLyricID: LyricLine.ID
+    ) {
+        withAnimation(lyricFocusEffectAnimation(for: highlightedLyricID)) {
+            visualHighlightedLyricID = highlightedLyricID
+        }
     }
 
     private func isAdjacentFocusTransition(
