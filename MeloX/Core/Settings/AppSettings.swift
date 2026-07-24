@@ -47,9 +47,9 @@ final class AppSettings {
     static let defaultLyricsFocusCascadeDelay = 0.025
     static let lyricsFocusCascadeDelayRange = 0.0...0.05
     static let defaultLyricsFocusCascadeBounceEnabled = true
-    static let defaultLyricsFocusCascadeBounce = 0.52
+    static let defaultLyricsFocusCascadeBounce = 0.42
     static let lyricsFocusCascadeBounceRange = 0.0...0.8
-    static let defaultLyricsFocusCascadeMinimumBounceDuration = 0.82
+    static let defaultLyricsFocusCascadeMinimumBounceDuration = 0.76
     static let lyricsFocusCascadeMinimumBounceDurationRange = 0.34...1.2
     static let defaultLyricsFocusColorLeadTime = 0.06
     static let lyricsFocusColorLeadTimeRange = 0.0...0.1
