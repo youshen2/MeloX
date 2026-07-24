@@ -13,9 +13,10 @@ struct AboutView: View {
         Form {
             Section {
                 VStack(spacing: 10) {
-                    Image(systemName: "music.note")
-                        .font(.system(size: 42, weight: .semibold))
-                        .foregroundStyle(.tint)
+                    Image("MeloXLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 72, height: 72)
                         .accessibilityHidden(true)
 
                     Text("MeloX")
