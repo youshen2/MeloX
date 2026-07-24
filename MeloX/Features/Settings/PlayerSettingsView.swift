@@ -25,6 +25,15 @@ struct PlayerSettingsView: View {
                         Text(mode.title).tag(mode)
                     }
                 }
+
+                NavigationLink {
+                    EqualizerSettingsView()
+                } label: {
+                    LabeledContent(
+                        "均衡器",
+                        value: settings.equalizer.summary
+                    )
+                }
             } header: {
                 Text("音频")
             } footer: {
@@ -332,6 +341,8 @@ struct PlayerSettingsView: View {
         .confirmationDialog("恢复播放器默认设置？", isPresented: $showsResetConfirmation) {
             Button("恢复默认设置", role: .destructive) {
                 settings.resetPlayerSettings()
+                player.applyVolumeControlMode()
+                player.applyEqualizerSettings()
             }
         }
     }

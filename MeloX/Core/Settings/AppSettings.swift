@@ -405,6 +405,7 @@ final class AppSettings {
 
     let skylineLyrics: SkylineLyricsPreferences
     let textPV: TextPVPreferences
+    let equalizer: AudioEqualizerPreferences
 
     @ObservationIgnored
     private let defaults: UserDefaults
@@ -413,6 +414,7 @@ final class AppSettings {
         self.defaults = defaults
         skylineLyrics = SkylineLyricsPreferences(defaults: defaults)
         textPV = TextPVPreferences(defaults: defaults)
+        equalizer = AudioEqualizerPreferences(defaults: defaults)
         hasCompletedOnboarding = defaults.bool(
             forKey: Key.hasCompletedOnboarding
         )
@@ -599,6 +601,7 @@ final class AppSettings {
     func resetPlayerSettings() {
         quality = .high
         playerVolumeControlMode = Self.defaultPlayerVolumeControlMode
+        equalizer.reset()
         playerBackgroundBlur = 90
         playerBackgroundSaturation = 0.82
         shrinksPausedArtwork = true

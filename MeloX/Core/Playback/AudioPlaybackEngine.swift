@@ -40,6 +40,7 @@ final class AudioPlaybackEngine {
     private(set) var state: AudioPlaybackState = .idle
 
     private let player = AVPlayer()
+    private let equalizerProcessor: AudioEqualizerProcessor
     private var timeObserver: Any?
     private var itemStatusObserver: NSKeyValueObservation?
     private var timeControlObserver: NSKeyValueObservation?
@@ -49,6 +50,7 @@ final class AudioPlaybackEngine {
     private var seekGeneration = 0
     private var suppressesProgressUpdates = false
     private var didReportCurrentItemFailure = false
+    private var loadGeneration = 0
 
     var hasCurrentItem: Bool {
         player.currentItem != nil
@@ -58,7 +60,10 @@ final class AudioPlaybackEngine {
         player
     }
 
-    init() {
+    init(equalizerConfiguration: AudioEqualizerConfiguration) {
+        equalizerProcessor = AudioEqualizerProcessor(
+            configuration: equalizerConfiguration
+        )
         player.automaticallyWaitsToMinimizeStalling = true
         player.preventsDisplaySleepDuringVideoPlayback = false
         installPlayerObservers()
@@ -74,19 +79,41 @@ final class AudioPlaybackEngine {
         }
     }
 
-    func load(_ source: PlaybackSource, startAt: TimeInterval = 0, autoplay: Bool) {
+    func load(
+        _ source: PlaybackSource,
+        startAt: TimeInterval = 0,
+        autoplay: Bool
+    ) async {
+        loadGeneration += 1
+        let generation = loadGeneration
         wantsPlayback = autoplay
         pendingSeekTime = max(0, startAt)
         seekGeneration += 1
         suppressesProgressUpdates = pendingSeekTime > 0
         didReportCurrentItemFailure = false
         itemStatusObserver?.invalidate()
+        transition(to: .loading)
 
-        let item = AVPlayerItem(url: source.url)
+        let asset = AVURLAsset(url: source.url)
+        let item = AVPlayerItem(asset: asset)
         item.preferredForwardBufferDuration = 8
+
+        do {
+            if let audioTrack = try await asset.loadTracks(
+                withMediaType: .audio
+            ).first {
+                item.audioMix = equalizerProcessor.makeAudioMix(
+                    for: audioTrack
+                )
+            }
+        } catch {
+            // AVPlayerItem will surface an actionable source error if playback
+            // also fails. A missing track here should not prevent playback.
+        }
+
+        guard generation == loadGeneration, !Task.isCancelled else { return }
         observeStatus(of: item)
         player.replaceCurrentItem(with: item)
-        transition(to: .loading)
 
         if autoplay {
             play()
@@ -94,6 +121,7 @@ final class AudioPlaybackEngine {
     }
 
     func unload() {
+        loadGeneration += 1
         wantsPlayback = false
         pendingSeekTime = 0
         seekGeneration += 1
@@ -150,6 +178,12 @@ final class AudioPlaybackEngine {
 
     func setVolume(_ volume: Double) {
         player.volume = Float(min(max(volume, 0), 1))
+    }
+
+    func setEqualizerConfiguration(
+        _ configuration: AudioEqualizerConfiguration
+    ) {
+        equalizerProcessor.update(configuration: configuration)
     }
 
     private func installPlayerObservers() {

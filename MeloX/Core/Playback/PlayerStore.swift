@@ -90,7 +90,9 @@ final class PlayerStore {
             settings: settings,
             onRecorded: onPlaybackRecorded
         )
-        engine = AudioPlaybackEngine()
+        engine = AudioPlaybackEngine(
+            equalizerConfiguration: settings.equalizer.configuration
+        )
         nowPlayingSession = NowPlayingSession(player: engine.nowPlayingPlayer)
         bindEngine()
         bindRemoteCommands()
@@ -261,6 +263,10 @@ final class PlayerStore {
         engine.setVolume(effectiveVolume)
     }
 
+    func applyEqualizerSettings() {
+        engine.setEqualizerConfiguration(settings.equalizer.configuration)
+    }
+
     func cycleRepeatMode() {
         switch repeatMode {
         case .off: repeatMode = .all
@@ -312,7 +318,11 @@ final class PlayerStore {
             }
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
-            engine.load(source, startAt: startAt, autoplay: autoplay)
+            await engine.load(
+                source,
+                startAt: startAt,
+                autoplay: autoplay
+            )
         } catch is CancellationError {
             return
         } catch {
