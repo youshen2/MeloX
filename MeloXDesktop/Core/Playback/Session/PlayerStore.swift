@@ -942,19 +942,22 @@ final class PlayerStore {
     }
 
     func cycleRepeatMode() {
-        guard !isListenTogetherSessionActive else { return }
-        cancelAutoMixPreparation()
         switch repeatMode {
         case .off:
-            repeatMode = .all
-            queueModeIndicator = .repeatAll
+            setRepeatMode(.all)
         case .all:
-            repeatMode = .one
-            queueModeIndicator = .repeatOne
+            setRepeatMode(.one)
         case .one:
-            repeatMode = .off
-            updateQueueModeIndicator()
+            setRepeatMode(.off)
         }
+    }
+
+    func setRepeatMode(_ mode: RepeatMode) {
+        guard !isListenTogetherSessionActive,
+              repeatMode != mode else { return }
+        cancelAutoMixPreparation()
+        repeatMode = mode
+        updateQueueModeIndicator()
         persistSnapshot()
     }
 

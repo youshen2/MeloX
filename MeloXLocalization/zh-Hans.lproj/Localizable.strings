@@ -230,6 +230,7 @@
 "ui.player.repeat.off" = "循环关闭";
 "ui.player.repeat.all" = "列表循环";
 "ui.player.repeat.one" = "单曲循环";
+"ui.player.repeat" = "循环播放";
 "ui.error.playback.unavailable" = "《%@》可能因版权或地区限制，当前没有可用的播放地址。";
 "ui.error.playback.source_load_failed" = "《%@》的音源无法载入，可能因版权、地区限制或网络问题。";
 "ui.error.playback.failed" = "《%@》播放失败：%@";

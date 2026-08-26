@@ -3,7 +3,12 @@ import SwiftUI
 
 @main
 struct MeloXDesktopApp: App {
-    @State private var model = DesktopAppModel()
+    @NSApplicationDelegateAdaptor(DesktopAppDelegate.self)
+    private var appDelegate
+
+    private var model: DesktopAppModel {
+        appDelegate.model
+    }
 
     init() {
         // MeloX 的各播放器窗口用途不同，不应被系统合并为标签页。

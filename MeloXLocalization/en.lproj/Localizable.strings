@@ -230,6 +230,7 @@
 "ui.player.repeat.off" = "Repeat Off";
 "ui.player.repeat.all" = "Repeat All";
 "ui.player.repeat.one" = "Repeat One";
+"ui.player.repeat" = "Repeat";
 "ui.error.playback.unavailable" = "“%@” is currently unavailable, possibly due to copyright or regional restrictions.";
 "ui.error.playback.source_load_failed" = "The audio source for “%@” could not be loaded due to copyright, regional restrictions, or a network issue.";
 "ui.error.playback.failed" = "Could not play “%@”: %@";
