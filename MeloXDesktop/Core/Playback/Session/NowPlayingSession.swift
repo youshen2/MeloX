@@ -43,6 +43,7 @@ final class NowPlayingSession {
         lyricsDisplaySettings: NowPlayingLyricsDisplaySettings
     ) {
         representedSongID = song.id
+        setPlaybackCommandsEnabled(true)
         artworkTask?.cancel()
         let metadata = NowPlayingLyricsFormatter.metadata(
             songTitle: song.name,
@@ -118,11 +119,6 @@ final class NowPlayingSession {
         nowPlayingInfo[MPNowPlayingInfoPropertyDefaultPlaybackRate] = 1.0
         nowPlayingCenter.nowPlayingInfo = nowPlayingInfo
         nowPlayingCenter.playbackState = isPlaying ? .playing : .paused
-        commandCenter.playCommand.isEnabled = !isPlaying
-        commandCenter.pauseCommand.isEnabled = isPlaying
-        // Some macOS media keys and control surfaces only send the toggle
-        // command, so it must stay registered alongside play/pause.
-        commandCenter.togglePlayPauseCommand.isEnabled = true
     }
 
     func clear() {
@@ -132,15 +128,11 @@ final class NowPlayingSession {
         nowPlayingInfo = [:]
         nowPlayingCenter.nowPlayingInfo = nil
         nowPlayingCenter.playbackState = .stopped
-        commandCenter.playCommand.isEnabled = false
-        commandCenter.pauseCommand.isEnabled = false
-        commandCenter.togglePlayPauseCommand.isEnabled = false
+        setPlaybackCommandsEnabled(false)
     }
 
     private func installRemoteCommands() {
-        commandCenter.playCommand.isEnabled = true
-        commandCenter.pauseCommand.isEnabled = false
-        commandCenter.togglePlayPauseCommand.isEnabled = false
+        setPlaybackCommandsEnabled(false)
         commandCenter.nextTrackCommand.isEnabled = true
         commandCenter.previousTrackCommand.isEnabled = true
         commandCenter.changePlaybackPositionCommand.isEnabled = true
@@ -181,6 +173,14 @@ final class NowPlayingSession {
             Task { @MainActor in self?.onSeek?(position) }
             return .success
         }
+    }
+
+    private func setPlaybackCommandsEnabled(_ isEnabled: Bool) {
+        // Availability describes supported actions. The current transport
+        // state is published separately through MPNowPlayingInfoCenter.
+        commandCenter.playCommand.isEnabled = isEnabled
+        commandCenter.pauseCommand.isEnabled = isEnabled
+        commandCenter.togglePlayPauseCommand.isEnabled = isEnabled
     }
 
     private func addTarget(
