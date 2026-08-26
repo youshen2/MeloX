@@ -41,7 +41,6 @@ final class LibraryStore {
     @ObservationIgnored
     private var favoriteSongIDs: [Int] = []
 
-    @ObservationIgnored
     private var favoriteSongIDSet: Set<Int> = []
 
     @ObservationIgnored

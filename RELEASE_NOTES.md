@@ -22,6 +22,7 @@
 
 - 增加了 Dock 图标右键菜单的播放控制项
 - 修复了 macOS 媒体暂停键无法暂停 MeloX 播放的问题
+- 修复了 macOS 播放器收藏按钮点按后状态未实时刷新的问题
 - 增加了多声部同时唱词，主唱与独立声部在重叠段落可同时展示并分别逐字高亮
 - 增强了 TTML 歌词解析，支持声部标记、嵌套背景和声、逐字时间、翻译和音译
 
@@ -29,5 +30,6 @@
 
 - Added playback controls to the Dock icon’s context menu
 - Fixed an issue where the macOS media pause key could not pause MeloX playback
+- Fixed an issue where the macOS player’s favorite button did not update immediately after being clicked
 - Added simultaneous multi-vocal lyrics, allowing lead and independent vocal parts to remain visible and highlight their own words during overlapping sections
 - Expanded TTML lyric parsing with support for vocal-part markers, nested background vocals, word timing, translations, and romanization
