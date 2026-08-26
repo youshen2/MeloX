@@ -8,6 +8,7 @@
 - 增强了 TTML 歌词解析，支持声部标记、嵌套背景和声、逐字时间、翻译和音译
 - 提升了 Apple Watch 逐字歌词的获取和回退稳定性
 - 修复了外接蓝牙音频设备断开后播放不会自动暂停的问题
+- 优化了播放器菜单，将歌词源选择收纳至子菜单
 
 ### English
 
@@ -15,6 +16,7 @@
 - Expanded TTML lyric parsing with support for vocal-part markers, nested background vocals, word timing, translations, and romanization
 - Improved word-synced lyric fetching and fallback reliability on Apple Watch
 - Fixed an issue where playback did not pause automatically after a connected Bluetooth audio device disconnected
+- Refined the player menu by moving lyric source selection into a submenu
 
 ## macOS
 
