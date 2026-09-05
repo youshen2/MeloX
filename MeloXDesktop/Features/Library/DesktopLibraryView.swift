@@ -115,6 +115,8 @@ struct DesktopLibraryView: View {
                 cloudList
             case .playlists:
                 playlistGrid
+            case .albums:
+                albumGrid
             case .podcasts:
                 podcastGrid
             default:
@@ -158,6 +160,9 @@ struct DesktopLibraryView: View {
         case .playlists:
             model.library.phase == .loading
                 && model.library.favoritePlaylists.isEmpty
+        case .albums:
+            model.library.phase == .loading
+                && model.library.favoriteAlbums.isEmpty
         case .podcasts:
             model.library.phase == .loading
                 && model.library.subscribedPodcasts.isEmpty
@@ -217,6 +222,25 @@ struct DesktopLibraryView: View {
                         showsPlayCount: model.settings.showPlayCount,
                         action: { model.ui.navigate(to: .playlist(playlist.id)) },
                         playAction: { play(playlist) }
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var albumGrid: some View {
+        let albums = model.library.favoriteAlbums
+        if albums.isEmpty {
+            libraryEmptyView
+        } else {
+            LazyVGrid(columns: columns, spacing: 24) {
+                ForEach(albums) { album in
+                    DesktopMediaCard(
+                        title: album.name,
+                        subtitle: album.artistText,
+                        artworkURL: album.artworkURL,
+                        action: { model.ui.navigate(to: .album(album.id)) }
                     )
                 }
             }

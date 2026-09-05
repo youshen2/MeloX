@@ -114,15 +114,14 @@ enum TimedLyricTextBuilder {
             }
         )
         var activeHorizontalOffset: CGFloat = 0
-        return characters.enumerated().reduce(Text(verbatim: "")) {
-            result,
+        return characters.enumerated().reduce(into: LyricAttributedText(verbatim: "")) {
+            text,
             entry in
-            var text = result
             let offset = entry.offset
             if lineBreakOffsets.contains(offset),
                offset > 0,
                !characters[offset - 1].isLineBreak {
-                text = Text("\(text)\(Text(verbatim: "\n"))")
+                text.append(LyricAttributedText(verbatim: "\n"))
                 activeHorizontalOffset = 0
             }
             if let horizontalOffset =
@@ -132,7 +131,7 @@ enum TimedLyricTextBuilder {
 
             let character = entry.element
             let wordTiming = wordTimings[offset]
-            var fragment = Text(verbatim: character.text).customAttribute(
+            var fragment = LyricAttributedText(verbatim: character.text).customAttribute(
                 LyricTimingTextAttribute(
                     startTime: character.startTime,
                     endTime: character.endTime,
@@ -156,8 +155,8 @@ enum TimedLyricTextBuilder {
                     )
                 )
             }
-            return Text("\(text)\(fragment)")
-        }
+            text.append(fragment)
+        }.text
     }
 
     private static func makeText(
@@ -188,20 +187,20 @@ enum TimedLyricTextBuilder {
             }
         )
         var activeHorizontalOffset: CGFloat = 0
-        var result = Text(verbatim: "")
+        var result = LyricAttributedText(verbatim: "")
         for (offset, character) in characters.enumerated() {
             if lineBreakOffsets.contains(offset),
                offset > 0,
                !characters[offset - 1].isNewline,
                !character.isNewline {
-                result = Text("\(result)\(Text(verbatim: "\n"))")
+                result.append(LyricAttributedText(verbatim: "\n"))
                 activeHorizontalOffset = 0
             }
             if let horizontalOffset =
                 horizontalOffsetByCharacterOffset[offset] {
                 activeHorizontalOffset = horizontalOffset
             }
-            var fragment = Text(verbatim: String(character))
+            var fragment = LyricAttributedText(verbatim: String(character))
             if activeHorizontalOffset != 0 {
                 fragment = fragment.customAttribute(
                     LyricRubyPlacementTextAttribute(
@@ -209,9 +208,9 @@ enum TimedLyricTextBuilder {
                     )
                 )
             }
-            result = Text("\(result)\(fragment)")
+            result.append(fragment)
         }
-        return result
+        return result.text
     }
 
     private static func resolvedLineBreakCharacterOffsets(

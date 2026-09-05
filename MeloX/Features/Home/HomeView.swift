@@ -80,6 +80,7 @@ struct HomeView: View {
             LibraryView(showsNavigationTitle: false)
         case .librarySongs,
              .libraryPlaylists,
+             .libraryAlbums,
              .libraryPodcasts,
              .libraryDownloads,
              .libraryCloud,

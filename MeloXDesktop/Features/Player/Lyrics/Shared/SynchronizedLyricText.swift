@@ -198,6 +198,7 @@ struct SynchronizedLyricText: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: alignment.frameAlignment)
+        .lyricTextAttributes()
     }
 
     private var primaryContent: some View {
@@ -377,14 +378,16 @@ struct SynchronizedLyricText: View {
             )
     }
 
+    @ViewBuilder
     private var primaryLyric: some View {
-        stablePrimaryLyric
-            .opacity(presentsTimedLyrics ? 0 : 1)
-            .overlay(alignment: alignment.frameAlignment) {
-                if presentsTimedLyrics {
-                    synchronizedPrimaryLyric
-                }
-            }
+        // A timed line keeps the same Text and renderer through promotion and
+        // demotion. Exchanging a plain white copy for a timed overlay exposes
+        // an intermediate all-white/all-dim frame under the row's animation.
+        if supportsTimedLyrics {
+            synchronizedPrimaryLyric
+        } else {
+            stablePrimaryLyric
+        }
     }
 
     private var stablePrimaryLyric: some View {
@@ -395,7 +398,7 @@ struct SynchronizedLyricText: View {
                     appliesTimingEffects: false
                 )
             } else {
-                stablePrimaryContent
+                layoutStableText
                     .font(primaryFont)
                     .foregroundStyle(primaryColor)
                     .multilineTextAlignment(alignment.textAlignment)
@@ -428,10 +431,11 @@ struct SynchronizedLyricText: View {
         TimelineView(
             .animation(
                 minimumInterval: effectiveLyricsRefreshRate.minimumInterval,
-                paused: !player.isPlaying || !lyricsRenderingIsActive
+                paused: !presentsTimedLyrics
+                    || !player.isPlaying || !lyricsRenderingIsActive
             )
-        ) { context in
-            let playbackTime = player.estimatedProgress(at: context.date)
+        ) { _ in
+            let playbackTime = player.estimatedProgress(at: .now)
                 + settings.wordByWordLyricsAdvanceTime
                 + (motionProfile?.animationHeadstart ?? 0)
 
@@ -464,6 +468,7 @@ struct SynchronizedLyricText: View {
                                     timedLyricPresentationProgress
                             )
                         )
+                        .transaction { $0.animation = nil }
                 }
             }
                 .frame(
@@ -479,12 +484,6 @@ struct SynchronizedLyricText: View {
                     anchor: .center
                 )
         }
-    }
-
-    private var stablePrimaryContent: Text {
-        supportsTimedLyrics
-            ? activeSynchronizedText
-            : layoutStableText
     }
 
     private func lyricTextRenderer(
@@ -587,11 +586,15 @@ struct SynchronizedLyricText: View {
 
     private var timedLyricPresentationProgress: Double {
         guard supportsTimedLyrics else { return 0 }
-        if isVocalActive { return 1 }
-        guard let playbackFocusProgress else {
-            return usesTimedLyrics ? 1 : 0
+        // Independent duet vocals have no focus transition of their own.
+        // The focused row must keep using its presentation value when the
+        // vocal clock activates, otherwise its upcoming opacity jumps.
+        if isVocalActive && !isPlaybackLine,
+           line.agent?.alignment == .flipped { return 1 }
+        if let playbackFocusProgress {
+            return Double(min(max(playbackFocusProgress, 0), 1))
         }
-        return Double(min(max(playbackFocusProgress, 0), 1))
+        return usesTimedLyrics ? 1 : 0
     }
 
     private var presentsTimedLyrics: Bool {

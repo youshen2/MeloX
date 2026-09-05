@@ -19,6 +19,7 @@
 "ui.navigation.home" = "Home";
 "ui.navigation.library" = "Library";
 "ui.navigation.library.liked_playlists" = "Favorite Playlists";
+"ui.navigation.library.liked_albums" = "Favorite Albums";
 "ui.navigation.library.liked_songs" = "Liked Songs";
 "ui.navigation.library.subscribed_podcasts" = "Subscribed Podcasts";
 "ui.navigation.music" = "Music";
@@ -31,6 +32,7 @@
 "ui.settings.appearance.option.light" = "Light";
 "ui.settings.appearance.option.system" = "System";
 "ui.settings.navigation.page.liked_playlists" = "Playlists (Favorites)";
+"ui.settings.navigation.page.liked_albums" = "Albums (Favorites)";
 "ui.settings.navigation.page.liked_songs" = "Songs (Liked)";
 "ui.settings.navigation.page.subscribed_podcasts" = "Podcasts (Subscribed)";
 "ui.settings.navigation.placement.tab_bar" = "Tab Bar";
@@ -1123,6 +1125,7 @@
 "ui.library.loading" = "Loading Library";
 "ui.library.search.favorite_songs" = "Search Favorite Songs";
 "ui.library.search.favorite_playlists" = "Search Favorite Playlists";
+"ui.library.search.favorite_albums" = "Search Favorite Albums";
 "ui.library.search.subscribed_podcasts" = "Search Subscribed Podcasts";
 "ui.library.search.downloads" = "Search Downloaded Songs";
 "ui.library.search.songs" = "Search Songs";
@@ -1139,7 +1142,9 @@
 "ui.library.my_listening_rank" = "My Listening Rank";
 "ui.library.my_listening_rank.hint" = "View your listening rank for the past week or all time";
 "ui.library.no_favorite_playlists" = "No Favorite Playlists Yet";
+"ui.library.no_favorite_albums" = "No Favorite Albums Yet";
 "ui.library.no_favorite_playlists.message" = "Open a playlist and tap the Favorite button.";
+"ui.library.no_favorite_albums.message" = "Open an album and tap the Favorite button.";
 "ui.downloads.management" = "Download Management";
 "ui.downloads.active" = "Downloading";
 "ui.downloads.delete" = "Delete Download";
@@ -1154,6 +1159,7 @@
 "ui.library.no_history" = "No Listening History Yet";
 "ui.library.no_history.message" = "Recently played music from NetEase Cloud Music appears here.";
 "ui.library.error.playlists" = "Playlists: %@";
+"ui.library.error.favorite_albums" = "Favorite albums: %@";
 "ui.library.error.subscribed_podcasts" = "Subscribed Podcasts: %@";
 "ui.library.error.favorite_songs" = "Favorite Songs: %@";
 "ui.library.error.history" = "Listening History: %@";
@@ -1942,8 +1948,8 @@
 "ui.desktop.render_quality.low" = "Low";
 "ui.desktop.render_quality.automatic.detail" = "Selects a rendering resolution from system conditions and lowers quality in Low Power Mode.";
 "ui.desktop.render_quality.high.detail" = "Uses the player window’s native resolution for the best quality and highest GPU usage.";
-"ui.desktop.render_quality.standard.detail" = "Limits the longest rendered edge to 960 pt for a balance of quality and performance.";
-"ui.desktop.render_quality.low.detail" = "Limits the longest rendered edge to 720 pt to save power with a slightly softer image.";
+"ui.desktop.render_quality.standard.detail" = "Limits the longest rendered edge to 960 pixels for a balance of quality and performance.";
+"ui.desktop.render_quality.low.detail" = "Limits the longest rendered edge to 640 pixels to save power with a slightly softer image.";
 "ui.desktop.floating_lyrics.background.transparent" = "Transparent";
 "ui.desktop.floating_lyrics.background.material" = "System Material";
 "ui.desktop.floating_lyrics.background.blurred_artwork" = "Blurred Artwork";

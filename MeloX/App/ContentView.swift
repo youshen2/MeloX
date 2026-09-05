@@ -414,6 +414,7 @@ struct ContentView: View {
             SearchView()
         case .librarySongs,
              .libraryPlaylists,
+             .libraryAlbums,
              .libraryPodcasts,
              .libraryDownloads,
              .libraryCloud,

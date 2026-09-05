@@ -11,8 +11,7 @@ private let appleMusicBackdropLogger = Logger(
 /// keeps the 60Hz timeline free of the per-frame full-pass Gaussian blur.
 private struct DesktopBackdropArtworkKey: Hashable {
     let url: URL?
-    /// `nil` keeps the original artwork (the `.high` quality path still
-    /// performs the blur every frame); otherwise the baked radius in points.
+    /// Blur baked into the cached artwork, in source pixels.
     let blurRadius: Double?
 }
 
@@ -236,10 +235,9 @@ struct DesktopAppleMusicBackdropArtwork<ArtworkContent: View>: View {
     private var accessibilityReduceMotion
 
     let artworkURL: URL?
-    /// Baked blur radius in points. `nil` keeps the original artwork so the
-    /// caller can run Apple's faithful per-frame blur pipeline.
+    /// Blur baked into the cached artwork, in source pixels.
     let blurRadius: Double?
-    private let artworkContent: (Image) -> ArtworkContent
+    private let artworkContent: (NSImage) -> ArtworkContent
 
     @State private var displayedURL: URL?
     @State private var displayedBlurRadius: Double?
@@ -252,7 +250,7 @@ struct DesktopAppleMusicBackdropArtwork<ArtworkContent: View>: View {
     init(
         artworkURL: URL?,
         blurRadius: Double?,
-        @ViewBuilder artworkContent: @escaping (Image) -> ArtworkContent
+        @ViewBuilder artworkContent: @escaping (NSImage) -> ArtworkContent
     ) {
         self.artworkURL = artworkURL
         self.blurRadius = blurRadius
@@ -261,21 +259,40 @@ struct DesktopAppleMusicBackdropArtwork<ArtworkContent: View>: View {
 
     var body: some View {
         ZStack {
-            if hasOutgoingSource, let outgoingImage {
-                artworkContent(Image(nsImage: outgoingImage))
-                    .opacity(1 - incomingOpacity)
+            // Keep the incoming surface's identity when it becomes outgoing.
+            // Its completed frame and producer survive the next artwork load.
+            ForEach(artworkLayers) { layer in
+                artworkContent(layer.image)
+                    .opacity(layer.opacity)
             }
-
-            if let displayedImage {
-                artworkContent(Image(nsImage: displayedImage))
-                    .opacity(hasOutgoingSource ? incomingOpacity : 1)
-            } else if !hasOutgoingSource {
+            if artworkLayers.isEmpty {
                 Color(white: 0.30)
             }
         }
         .task(id: artworkTaskID) {
             await loadCurrentArtwork()
         }
+    }
+
+    private var artworkLayers: [ArtworkLayer] {
+        var layers: [ArtworkLayer] = []
+        if hasOutgoingSource, let outgoingImage {
+            layers.append(ArtworkLayer(image: outgoingImage, opacity: 1))
+        }
+        if let displayedImage {
+            layers.append(ArtworkLayer(
+                image: displayedImage,
+                opacity: hasOutgoingSource ? incomingOpacity : 1
+            ))
+        }
+        return layers
+    }
+
+    private struct ArtworkLayer: Identifiable {
+        let image: NSImage
+        let opacity: Double
+
+        var id: ObjectIdentifier { ObjectIdentifier(image) }
     }
 
     private var artworkTaskID: DesktopBackdropArtworkKey {

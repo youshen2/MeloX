@@ -3,12 +3,8 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Foundation
 
-/// Music.app `TSLBackdropMetalView` 的 SwiftUI 版预烘焙器：
-/// - Apple 在后台线程把封面解码后限制为短边 300px 再交给 GPU；
-/// - 高斯模糊随后烘焙进这张小纹理，动画每帧只采样小纹理，
-///   不必在 640/480pt 的离屏 pass 上逐帧执行大核 blur。
-///
-/// `.high` 渲染质量仍走逐帧 blur 的忠实管线，其余质量档使用本缓存。
+/// Prepares and caches a small, edge-clamped artwork texture. The SwiftUI
+/// background shader reuses it for all rotating layers and quality levels.
 actor DesktopArtworkBackdropRenderer {
     static let shared = DesktopArtworkBackdropRenderer()
 
@@ -117,7 +113,7 @@ actor DesktopArtworkBackdropRenderer {
         }
 
         // 调用方传入的 radius 已经按
-        // `blurSigma * sourcePixels / targetPixels` 折算过，
+        // `blurSigma * sourcePixels / artworkSide` 折算过，
         // 这里与 Apple 一样把有效半径限制在可接受区间。
         let radius = min(max(blurRadius, 0), 48)
         let filter = CIFilter.gaussianBlur()
@@ -150,7 +146,7 @@ actor DesktopArtworkBackdropRenderer {
     }
 }
 
-private final class DesktopArtworkBackdropImageCache:
+nonisolated private final class DesktopArtworkBackdropImageCache:
     NSObject, @unchecked Sendable {
     private let storage = NSCache<NSString, NSImage>()
 

@@ -3,7 +3,7 @@ import Foundation
 /// A monotonic presentation clock that freezes at its current phase while the
 /// player is hidden. Restarting the renderer must not snap the three Music
 /// backdrop transforms back to their zero-angle state.
-struct DesktopAppleMusicBackdropClock {
+struct DesktopAppleMusicBackdropClock: Equatable {
     private(set) var elapsed: TimeInterval = 0
     private(set) var resumedAt: Date?
 

@@ -19,6 +19,7 @@
 "ui.navigation.home" = "首页";
 "ui.navigation.library" = "音乐库";
 "ui.navigation.library.liked_playlists" = "收藏歌单";
+"ui.navigation.library.liked_albums" = "收藏专辑";
 "ui.navigation.library.liked_songs" = "收藏歌曲";
 "ui.navigation.library.subscribed_podcasts" = "订阅播客";
 "ui.navigation.music" = "音乐";
@@ -31,6 +32,7 @@
 "ui.settings.appearance.option.light" = "浅色";
 "ui.settings.appearance.option.system" = "跟随系统";
 "ui.settings.navigation.page.liked_playlists" = "歌单（收藏）";
+"ui.settings.navigation.page.liked_albums" = "专辑（收藏）";
 "ui.settings.navigation.page.liked_songs" = "歌曲（收藏）";
 "ui.settings.navigation.page.subscribed_podcasts" = "播客（收藏）";
 "ui.settings.navigation.placement.tab_bar" = "底部标签栏";
@@ -1123,6 +1125,7 @@
 "ui.library.loading" = "正在读取音乐库";
 "ui.library.search.favorite_songs" = "在收藏歌曲中搜索";
 "ui.library.search.favorite_playlists" = "在收藏歌单中搜索";
+"ui.library.search.favorite_albums" = "在收藏专辑中搜索";
 "ui.library.search.subscribed_podcasts" = "在订阅播客中搜索";
 "ui.library.search.downloads" = "在下载歌曲中搜索";
 "ui.library.search.songs" = "搜索歌曲";
@@ -1139,7 +1142,9 @@
 "ui.library.my_listening_rank" = "我的听歌排行";
 "ui.library.my_listening_rank.hint" = "查看最近一周或所有时间的听歌排行";
 "ui.library.no_favorite_playlists" = "还没有收藏歌单";
+"ui.library.no_favorite_albums" = "还没有收藏专辑";
 "ui.library.no_favorite_playlists.message" = "打开歌单详情后，轻点收藏按钮。";
+"ui.library.no_favorite_albums.message" = "打开专辑详情后，轻点收藏按钮。";
 "ui.downloads.management" = "下载管理";
 "ui.downloads.active" = "正在下载";
 "ui.downloads.delete" = "删除下载";
@@ -1154,6 +1159,7 @@
 "ui.library.no_history" = "还没有播放记录";
 "ui.library.no_history.message" = "网易云音乐中的最近播放会显示在这里。";
 "ui.library.error.playlists" = "歌单：%@";
+"ui.library.error.favorite_albums" = "收藏专辑：%@";
 "ui.library.error.subscribed_podcasts" = "订阅播客：%@";
 "ui.library.error.favorite_songs" = "收藏歌曲：%@";
 "ui.library.error.history" = "播放历史：%@";
@@ -1942,8 +1948,8 @@
 "ui.desktop.render_quality.low" = "低";
 "ui.desktop.render_quality.automatic.detail" = "根据系统状态自动选择渲染分辨率，低电量模式下使用更低画质。";
 "ui.desktop.render_quality.high.detail" = "使用播放器窗口的原始分辨率，画质最佳，GPU 占用最高。";
-"ui.desktop.render_quality.standard.detail" = "渲染最长边限制为 960pt，画质与性能平衡。";
-"ui.desktop.render_quality.low.detail" = "渲染最长边限制为 720pt，更省电，画面略柔和。";
+"ui.desktop.render_quality.standard.detail" = "渲染最长边限制为 960 像素，画质与性能平衡。";
+"ui.desktop.render_quality.low.detail" = "渲染最长边限制为 640 像素，更省电，画面略柔和。";
 "ui.desktop.floating_lyrics.background.transparent" = "透明";
 "ui.desktop.floating_lyrics.background.material" = "系统材质";
 "ui.desktop.floating_lyrics.background.blurred_artwork" = "模糊封面";

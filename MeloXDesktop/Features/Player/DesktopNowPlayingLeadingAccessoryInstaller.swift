@@ -126,6 +126,7 @@ private struct DesktopNowPlayingLeadingAccessoryContent: View {
             openMiniPlayer: openMiniPlayer
         )
         .frame(width: 74, height: 36)
+        .environment(\.colorScheme, .dark)
         .opacity(isPresented ? 1 : 0)
         .allowsHitTesting(isPresented)
         .accessibilityHidden(!isPresented)

@@ -9,6 +9,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     case library
     case librarySongs
     case libraryPlaylists
+    case libraryAlbums
     case libraryPodcasts
     case libraryDownloads
     case libraryCloud
@@ -27,6 +28,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .library: L10n.string("ui.navigation.library")
         case .librarySongs: L10n.string("ui.navigation.library.liked_songs")
         case .libraryPlaylists: L10n.string("ui.navigation.library.liked_playlists")
+        case .libraryAlbums: L10n.string("ui.navigation.library.liked_albums")
         case .libraryPodcasts: L10n.string("ui.navigation.library.subscribed_podcasts")
         case .libraryDownloads: L10n.string("ui.navigation.downloads")
         case .libraryCloud: L10n.string("ui.navigation.cloud")
@@ -45,6 +47,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .library: "music.note.list"
         case .librarySongs: "heart"
         case .libraryPlaylists: "music.note.list"
+        case .libraryAlbums: "square.stack"
         case .libraryPodcasts: "mic"
         case .libraryDownloads: "arrow.down.circle"
         case .libraryCloud: "icloud"
@@ -57,6 +60,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .librarySongs: .songs
         case .libraryPlaylists: .playlists
+        case .libraryAlbums: .albums
         case .libraryPodcasts: .podcasts
         case .libraryDownloads: .downloads
         case .libraryCloud: .cloud
@@ -95,6 +99,7 @@ enum AppTab: String, CaseIterable, Identifiable {
              .library,
              .librarySongs,
              .libraryPlaylists,
+             .libraryAlbums,
              .search:
             nil
         }
@@ -120,6 +125,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         var pages: [AppTab] = [
             .librarySongs,
             .libraryPlaylists,
+            .libraryAlbums,
             .libraryPodcasts,
         ]
         if AppFeatureAvailability.downloads {
@@ -139,6 +145,8 @@ enum AppTab: String, CaseIterable, Identifiable {
             self = .librarySongs
         case .playlists:
             self = .libraryPlaylists
+        case .albums:
+            self = .libraryAlbums
         case .podcasts:
             self = .libraryPodcasts
         case .downloads:
@@ -170,6 +178,7 @@ enum AppPagePlacement: String, CaseIterable, Identifiable {
 enum LibraryPage: String, CaseIterable, Identifiable {
     case songs
     case playlists
+    case albums
     case podcasts
     case downloads
     case cloud
@@ -187,6 +196,7 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         switch self {
         case .songs: L10n.string("ui.common.songs")
         case .playlists: L10n.string("ui.common.playlists")
+        case .albums: L10n.string("ui.common.albums")
         case .podcasts: L10n.string("ui.navigation.podcasts")
         case .downloads: L10n.string("ui.navigation.downloads")
         case .cloud: L10n.string("ui.navigation.cloud")
@@ -198,6 +208,7 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         switch self {
         case .songs: "music.note"
         case .playlists: "music.note.list"
+        case .albums: "square.stack"
         case .podcasts: "mic"
         case .downloads: "arrow.down.circle"
         case .cloud: "icloud"
@@ -209,6 +220,7 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         switch self {
         case .songs: L10n.string("ui.settings.navigation.page.liked_songs")
         case .playlists: L10n.string("ui.settings.navigation.page.liked_playlists")
+        case .albums: L10n.string("ui.settings.navigation.page.liked_albums")
         case .podcasts: L10n.string("ui.settings.navigation.page.subscribed_podcasts")
         case .downloads: L10n.string("ui.navigation.downloads")
         case .cloud: L10n.string("ui.navigation.cloud")
@@ -222,7 +234,7 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         case .downloads: .downloads
         case .cloud: .cloudMusic
         case .history: .listeningHistory
-        case .songs, .playlists: nil
+        case .songs, .playlists, .albums: nil
         }
     }
 }

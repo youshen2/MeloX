@@ -5,26 +5,26 @@ enum LyricRubyTextBuilder {
     static func romanizationText(
         from units: [LyricRubyPlacementUnit]
     ) -> Text {
-        units.reduce(Text(verbatim: "")) { result, unit in
+        units.reduce(into: LyricAttributedText(verbatim: "")) { result, unit in
             guard let romanization = unit.lyric.romanizationText else {
-                return result
+                return
             }
-            let fragment: Text
+            let fragment: LyricAttributedText
             if hasTimedRomanization(unit.lyric) {
                 fragment = timedText(
                     syllables:
                         unit.lyric.romanizationSyllables
                 )
             } else {
-                fragment = Text(verbatim: romanization)
+                fragment = LyricAttributedText(verbatim: romanization)
             }
             let placedFragment = fragment.customAttribute(
                 LyricRubyPlacementTextAttribute(
                     horizontalOffset: unit.romanizationOffset
                 )
             )
-            return Text("\(result)\(placedFragment)")
-        }
+            result.append(placedFragment)
+        }.text
     }
 
     static func hasTimedRomanization(
@@ -43,14 +43,14 @@ enum LyricRubyTextBuilder {
 
     private static func timedText(
         syllables: [LyricSyllable]
-    ) -> Text {
-        syllables.filter { !$0.text.isEmpty }.reduce(
-            Text(verbatim: "")
+    ) -> LyricAttributedText {
+        syllables.filter { !$0.text.isEmpty }.reduce(into:
+            LyricAttributedText(verbatim: "")
         ) {
             result,
             syllable in
             let isWhitespace = syllable.text.allSatisfy(\.isWhitespace)
-            let fragment = Text(verbatim: syllable.text)
+            let fragment = LyricAttributedText(verbatim: syllable.text)
                 .customAttribute(
                     LyricTimingTextAttribute(
                         startTime: syllable.startTime,
@@ -76,7 +76,7 @@ enum LyricRubyTextBuilder {
                         isWhitespace: isWhitespace
                     )
                 )
-            return Text("\(result)\(fragment)")
+            result.append(fragment)
         }
     }
 }

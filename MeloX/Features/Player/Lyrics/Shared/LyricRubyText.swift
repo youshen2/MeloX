@@ -79,6 +79,7 @@ struct LyricRubyText: View {
                         timingEffectsStrength
                 )
             )
+            .transaction { $0.animation = nil }
             .frame(
                 width: row.width,
                 alignment: .leading

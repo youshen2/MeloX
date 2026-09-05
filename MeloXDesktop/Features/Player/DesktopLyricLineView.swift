@@ -36,8 +36,6 @@ struct DesktopLyricLineView: View, Equatable {
             isActualPlaybackLine
             && !isPlaybackLine
             && line.agent?.alignment == .flipped
-        let isInactiveFocusOwner =
-            isPlaybackLine && !isActualPlaybackLine
         let resolvedFontSize = compact
             && motionProfile == nil
             ? min(fontSize, 23)
@@ -202,16 +200,6 @@ struct DesktopLyricLineView: View, Equatable {
                         ? 1
                         : isActiveIndependentVocalLine
                             ? 1
-                        : isInactiveFocusOwner
-                            ? motionProfile == nil
-                                ? lyricEmphasis(
-                                    focusProgress: 0,
-                                    dimAmount: dimAmount
-                                )
-                                : Self.appleMusicLyricFocusOpacity(
-                                    focusProgress: 0,
-                                    motionProfile: motionProfile
-                                )
                         : motionProfile == nil
                             ? lyricEmphasis(
                                 focusProgress: focusProgress.color,

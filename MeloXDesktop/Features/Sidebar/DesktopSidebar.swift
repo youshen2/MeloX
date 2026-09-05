@@ -18,6 +18,7 @@ struct DesktopSidebar: View {
     private let librarySections: [DesktopSection] = [
         .songs,
         .playlists,
+        .albums,
         .podcasts,
         .downloads,
         .cloud,

@@ -9,6 +9,7 @@ enum DesktopSection: String, CaseIterable, Identifiable, Hashable {
     case recent
     case songs
     case playlists
+    case albums
     case podcasts
     case downloads
     case cloud
@@ -25,6 +26,7 @@ enum DesktopSection: String, CaseIterable, Identifiable, Hashable {
         case .recent: L10n.string("ui.navigation.library.history")
         case .songs: L10n.string("ui.navigation.library.liked_songs")
         case .playlists: L10n.string("ui.navigation.library.liked_playlists")
+        case .albums: L10n.string("ui.navigation.library.liked_albums")
         case .podcasts: L10n.string("ui.navigation.library.podcasts")
         case .downloads: L10n.string("ui.navigation.downloads")
         case .cloud: L10n.string("ui.navigation.cloud")
@@ -41,6 +43,7 @@ enum DesktopSection: String, CaseIterable, Identifiable, Hashable {
         case .recent: "clock"
         case .songs: "heart"
         case .playlists: "music.note.list"
+        case .albums: "square.stack"
         case .podcasts: "mic"
         case .downloads: "arrow.down.circle"
         case .cloud: "icloud"
@@ -63,6 +66,7 @@ enum DesktopSection: String, CaseIterable, Identifiable, Hashable {
              .discovery,
              .songs,
              .playlists,
+             .albums,
              .messages:
             nil
         }

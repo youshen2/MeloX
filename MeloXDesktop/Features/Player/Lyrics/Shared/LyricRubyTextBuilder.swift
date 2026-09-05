@@ -5,7 +5,7 @@ enum LyricRubyTextBuilder {
     static func originalText(
         from units: [LyricRubyPlacementUnit]
     ) -> Text {
-        units.reduce(Text(verbatim: "")) { result, unit in
+        units.reduce(into: LyricAttributedText(verbatim: "")) { result, unit in
             let fragment = timedText(
                 source: unit.lyric.originalText,
                 syllables: unit.lyric.originalSyllables
@@ -15,16 +15,16 @@ enum LyricRubyTextBuilder {
                     horizontalOffset: unit.originalOffset
                 )
             )
-            return Text("\(result)\(placedFragment)")
-        }
+            result.append(placedFragment)
+        }.text
     }
 
     static func romanizationText(
         from units: [LyricRubyPlacementUnit]
     ) -> Text {
-        units.reduce(Text(verbatim: "")) { result, unit in
+        units.reduce(into: LyricAttributedText(verbatim: "")) { result, unit in
             guard let romanization = unit.lyric.romanizationText else {
-                return result
+                return
             }
             let fragment = timedText(
                 source: romanization,
@@ -35,18 +35,18 @@ enum LyricRubyTextBuilder {
                     horizontalOffset: unit.romanizationOffset
                 )
             )
-            return Text("\(result)\(placedFragment)")
-        }
+            result.append(placedFragment)
+        }.text
     }
 
     private static func timedText(
         source: String,
         syllables: [LyricSyllable]
-    ) -> Text {
+    ) -> LyricAttributedText {
         let characters = timedCharacters(from: syllables)
         guard !characters.isEmpty,
               characters.map(\.text).joined() == source else {
-            return Text(verbatim: source)
+            return LyricAttributedText(verbatim: source)
         }
 
         let timedIndices = characters.indices.filter {
@@ -69,12 +69,12 @@ enum LyricRubyTextBuilder {
                     characters[$0].isLatinLetter
                 }
 
-        return characters.enumerated().reduce(
-            Text(verbatim: "")
+        return characters.enumerated().reduce(into:
+            LyricAttributedText(verbatim: "")
         ) { result, entry in
             let index = entry.offset
             let character = entry.element
-            let fragment = Text(verbatim: character.text)
+            let fragment = LyricAttributedText(verbatim: character.text)
                 .customAttribute(
                     LyricTimingTextAttribute(
                         startTime: character.startTime,
@@ -97,7 +97,7 @@ enum LyricRubyTextBuilder {
                         isWhitespace: character.isWhitespace
                     )
                 )
-            return Text("\(result)\(fragment)")
+            result.append(fragment)
         }
     }
 

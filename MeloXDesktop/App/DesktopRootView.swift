@@ -149,6 +149,9 @@ struct DesktopRootView: View {
                 isRenderingActive: isRenderingActive
             )
         }
+        // The backdrop is a sibling of the white player content, so both
+        // must inherit the player's dark appearance from their common root.
+        .environment(\.colorScheme, .dark)
     }
 
     private func updateNowPlayingLifecycle(
@@ -313,6 +316,7 @@ struct DesktopSectionContentView: View {
         case .recent,
              .songs,
              .playlists,
+             .albums,
              .podcasts,
              .downloads,
              .cloud:

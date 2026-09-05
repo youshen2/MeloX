@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct LyricTimingTextAttribute: TextAttribute, Hashable, Sendable {
+nonisolated struct LyricTimingTextAttribute: TextAttribute, Hashable, Sendable {
     let startTime: TimeInterval
     let endTime: TimeInterval
     let syllableStartTime: TimeInterval

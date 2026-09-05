@@ -539,8 +539,6 @@ struct AppleMusicLyricsView: View {
             isActualPlaybackLine
             && !isPlaybackLine
             && line.agent?.alignment == .flipped
-        let isInactiveFocusOwner =
-            isPlaybackLine && !isActualPlaybackLine
         let isRetainedCascadeLine =
             context.retainedCascadeLyricIDs.contains(line.id)
         let showsTranslation = showsLyricTranslation(
@@ -647,19 +645,6 @@ struct AppleMusicLyricsView: View {
                     ? 0
                     : isActiveIndependentVocalLine
                         ? 1
-                    : isInactiveFocusOwner
-                        ? context.motionProfile == nil
-                            ? Self.lyricEmphasis(
-                                focusProgress: 0,
-                                isBrowsingFocus: false,
-                                dimAmount: context.dimAmount
-                            )
-                            : Self.appleMusicLyricFocusOpacity(
-                                focusProgress: 0,
-                                motionProfile: context.motionProfile,
-                                usesIncreasedContrast:
-                                    colorSchemeContrast == .increased
-                            )
                     : context.motionProfile == nil
                         ? Self.lyricEmphasis(
                             focusProgress: focusProgress.color,

@@ -8,6 +8,7 @@ final class LibraryStore {
     private(set) var accountDetail: AccountDetail?
     private(set) var favoriteSongs: [Song] = []
     private(set) var favoritePlaylists: [Playlist] = []
+    private(set) var favoriteAlbums: [Album] = []
     private(set) var subscribedPodcasts: [Podcast] = []
     private(set) var recentSongs: [Song] = []
     private(set) var likedPlaylistID: Int?
@@ -93,6 +94,22 @@ final class LibraryStore {
         favoritePlaylists.contains { $0.id == playlist.id }
     }
 
+    func contains(album: Album) -> Bool {
+        favoriteAlbums.contains { $0.id == album.id }
+    }
+
+    func setAlbumSubscribed(
+        _ album: Album,
+        isSubscribed: Bool
+    ) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        try await api.setAlbumSubscribed(id: album.id, isSubscribed: isSubscribed)
+        favoriteAlbums.removeAll { $0.id == album.id }
+        if isSubscribed {
+            favoriteAlbums.insert(album, at: 0)
+        }
+    }
+
     func contains(podcast: Podcast) -> Bool {
         subscribedPodcasts.contains { $0.id == podcast.id }
     }
@@ -167,6 +184,18 @@ final class LibraryStore {
                 return
             } catch {
                 partialFailures.append(L10n.format("ui.library.error.playlists", error.localizedDescription))
+            }
+
+            do {
+                let albums = try await api.subscribedAlbums()
+                try Task.checkCancellation()
+                favoriteAlbums = albums
+            } catch is CancellationError {
+                return
+            } catch {
+                partialFailures.append(
+                    L10n.format("ui.library.error.favorite_albums", error.localizedDescription)
+                )
             }
 
             if settings.isContentFeatureEnabled(.podcasts) {
@@ -553,6 +582,7 @@ final class LibraryStore {
         accountDetail = nil
         favoriteSongs = []
         favoritePlaylists = []
+        favoriteAlbums = []
         subscribedPodcasts = []
         recentSongs = []
         likedPlaylistID = nil

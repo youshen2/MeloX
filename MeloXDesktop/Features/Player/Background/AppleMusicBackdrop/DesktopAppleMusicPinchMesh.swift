@@ -21,8 +21,8 @@ enum DesktopAppleMusicPinchMeshStore {
     private static let lookupDimension = 64
     private static var meshesByIndex: [Int: DesktopAppleMusicPinchMesh] = [:]
 
-    static func randomMesh() -> DesktopAppleMusicPinchMesh {
-        mesh(at: Int.random(in: 0..<pairCount))
+    static func randomIndex() -> Int {
+        Int.random(in: 0..<pairCount)
     }
 
     static func mesh(at requestedIndex: Int) -> DesktopAppleMusicPinchMesh {

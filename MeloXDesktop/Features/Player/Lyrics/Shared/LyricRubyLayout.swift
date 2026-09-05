@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-struct LyricRubyPlacementTextAttribute:
+nonisolated struct LyricRubyPlacementTextAttribute:
     TextAttribute,
     Hashable,
     Sendable

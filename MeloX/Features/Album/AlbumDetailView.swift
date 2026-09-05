@@ -324,8 +324,8 @@ struct AlbumDetailView: View {
         Task {
             defer { isUpdatingSubscription = false }
             do {
-                try await api.setAlbumSubscribed(
-                    id: id,
+                try await library.setAlbumSubscribed(
+                    displayedAlbum,
                     isSubscribed: targetState
                 )
             } catch {
@@ -351,6 +351,7 @@ struct AlbumDetailView: View {
             songs = loadedSongs
             phase = .loaded
 
+            isSubscribed = library.contains(album: loadedAlbum)
             if library.isLoggedIn,
                let loadedSubscription = try? await api.albumSubscriptionStatus(id: id) {
                 isSubscribed = loadedSubscription

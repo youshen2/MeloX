@@ -152,6 +152,8 @@ struct LibraryView: View {
                 LibrarySongsView(searchQuery: searchQuery)
             case .playlists:
                 LibraryPlaylistsView(searchQuery: searchQuery)
+            case .albums:
+                LibraryAlbumsView(searchQuery: searchQuery)
             case .podcasts:
                 SubscribedPodcastsView(searchQuery: searchQuery)
             case .downloads:
@@ -175,6 +177,8 @@ struct LibraryView: View {
             L10n.string("ui.library.search.favorite_songs")
         case .playlists:
             L10n.string("ui.library.search.favorite_playlists")
+        case .albums:
+            L10n.string("ui.library.search.favorite_albums")
         case .podcasts:
             L10n.string("ui.library.search.subscribed_podcasts")
         case .downloads:

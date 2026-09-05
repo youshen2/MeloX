@@ -3,7 +3,7 @@ import UIKit
 
 /// Moves a transliteration run to its mapped logical position without
 /// introducing placeholder whitespace into the attributed string.
-struct LyricRubyPlacementTextAttribute:
+nonisolated struct LyricRubyPlacementTextAttribute:
     TextAttribute,
     Hashable,
     Sendable

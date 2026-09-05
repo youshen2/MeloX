@@ -35,7 +35,6 @@ struct DesktopLyricsScrollView: View {
     @State private var isViewportChanging = false
     @State private var isBrowsingLyrics = false
     @State private var browsingGeneration = 0
-    @State private var initialFocusPreparationRevision = 0
     @State private var positionedLyricID: LyricLine.ID?
     @State private var positionedInterludeID: LyricInterlude.ID?
     @State private var playbackFocus: AppleMusicLyricsPlaybackFocus?
@@ -378,8 +377,7 @@ struct DesktopLyricsScrollView: View {
             + "\(model.lyrics.lyrics.count)-"
             + "\(requestedFocusID ?? "none")-"
             + "\(presentationFocusRequestID)-"
-            + "\(isBrowsingLyrics)-"
-            + "\(initialFocusPreparationRevision)"
+            + "\(isBrowsingLyrics)"
     }
 
     private var presentationFocusRequestID: String {
@@ -407,10 +405,14 @@ struct DesktopLyricsScrollView: View {
     var body: some View {
         GeometryReader { geometry in
             Group {
-                if model.lyrics.isLoading {
+                // A published NetEase result is usable while automatic
+                // source ranking continues in the background, just like iOS.
+                if !model.lyrics.lyrics.isEmpty {
+                    lyricsScrollView(viewportSize: geometry.size)
+                } else if model.lyrics.isLoading {
                     Color.clear
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if model.lyrics.lyrics.isEmpty {
+                } else {
                     ContentUnavailableView(
                         "ui.desktop.lyrics.unavailable",
                         systemImage: "quote.bubble",
@@ -420,8 +422,6 @@ struct DesktopLyricsScrollView: View {
                         )
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    lyricsScrollView(viewportSize: geometry.size)
                 }
             }
             .onChange(of: geometry.size, initial: true) { _, size in
@@ -486,7 +486,6 @@ struct DesktopLyricsScrollView: View {
             isViewportChanging = false
             isBrowsingLyrics = false
             browsingGeneration &+= 1
-            initialFocusPreparationRevision = 0
             positionedLyricID = nil
             positionedInterludeID = nil
             playbackFocus = nil
@@ -654,8 +653,9 @@ struct DesktopLyricsScrollView: View {
     }
 
     private func lyricsScrollView(viewportSize: CGSize) -> some View {
+        // Initial positioning controls animation, not content availability.
+        // Keeping loaded lyrics visible also covers clamped scroll targets.
         surfacedScrollView(viewportSize: viewportSize)
-            .opacity(isInitialFocusPrepared ? 1 : 0)
             .task(id: lyricFocusColorTransition?.id) {
                 guard let lyricFocusColorTransition else { return }
                 await finishFocusColorTransition(
@@ -721,21 +721,14 @@ struct DesktopLyricsScrollView: View {
         if waitsForLyricGeometry, let id {
             _ = await waitForLyricFrame(id: id)
             guard !Task.isCancelled else { return }
-            let isPrepared = await ensureFocusAlignment(
+            _ = await ensureFocusAlignment(
                 to: id,
                 viewportHeight: viewportHeight,
                 animated: false,
                 forcesScrollTargetReapplication: true
             )
-            guard isPrepared else {
-                await retryInitialFocusPreparation()
-                return
-            }
         } else if let id {
-            guard await reapplyScrollTarget(id) else {
-                await retryInitialFocusPreparation()
-                return
-            }
+            guard await reapplyScrollTarget(id) else { return }
         } else {
             do {
                 try await Task.sleep(for: .milliseconds(16))
@@ -750,16 +743,6 @@ struct DesktopLyricsScrollView: View {
         withTransaction(transaction) {
             isInitialFocusPrepared = true
         }
-    }
-
-    private func retryInitialFocusPreparation() async {
-        do {
-            try await Task.sleep(for: .milliseconds(16))
-        } catch {
-            return
-        }
-        guard !Task.isCancelled else { return }
-        initialFocusPreparationRevision &+= 1
     }
 
     private func prepareFocusForPresentationIfNeeded() async -> Bool {

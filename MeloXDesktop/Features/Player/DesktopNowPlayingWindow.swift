@@ -81,7 +81,6 @@ struct DesktopNowPlayingWindow: View {
             .clipped()
         }
         .ignoresSafeArea(.container, edges: .top)
-        .environment(\.colorScheme, .dark)
         .frame(minWidth: 980, minHeight: 540)
         .keepsScreenAwake(keepsScreenAwake)
         .task(id: artworkURL) {

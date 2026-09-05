@@ -181,6 +181,7 @@ private struct DesktopNowPlayingTrailingAccessoryContent: View {
             .allowsHitTesting(isPresented)
             .accessibilityHidden(!isPresented)
             .environment(model)
+            .environment(\.colorScheme, .dark)
             .transaction { transaction in
                 transaction.animation = nil
             }

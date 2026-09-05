@@ -78,20 +78,19 @@ enum TimedLyricTextBuilder {
             usesTimedRunBoundaries: true
         )
 
-        return characters.enumerated().reduce(Text(verbatim: "")) {
-            result,
+        return characters.enumerated().reduce(into: LyricAttributedText(verbatim: "")) {
+            text,
             entry in
-            var text = result
             let offset = entry.offset
             if lineBreakOffsets.contains(offset),
                offset > 0,
                !characters[offset - 1].isLineBreak {
-                text = Text("\(text)\(Text(verbatim: "\n"))")
+                text.append(LyricAttributedText(verbatim: "\n"))
             }
 
             let character = entry.element
             let wordTiming = wordTimings[offset]
-            let fragment = Text(verbatim: character.text).customAttribute(
+            let fragment = LyricAttributedText(verbatim: character.text).customAttribute(
                 LyricTimingTextAttribute(
                     startTime: character.startTime,
                     endTime: character.endTime,
@@ -108,8 +107,8 @@ enum TimedLyricTextBuilder {
                     isWhitespace: character.isWhitespace
                 )
             )
-            return Text("\(text)\(fragment)")
-        }
+            text.append(fragment)
+        }.text
     }
 
     private static func makeText(
