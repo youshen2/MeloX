@@ -7,6 +7,7 @@ struct DesktopAppleMusicPinchMesh: Equatable {
     let lookupTriangles: Data
 }
 
+@MainActor
 enum DesktopAppleMusicPinchMeshStore {
     private static let pairCount = 5
     private static let gridDimension = 41
@@ -18,6 +19,7 @@ enum DesktopAppleMusicPinchMeshStore {
         * phaseCount
         * bytesPerPoint
     private static let lookupDimension = 64
+    private static var meshesByIndex: [Int: DesktopAppleMusicPinchMesh] = [:]
 
     static func randomMesh() -> DesktopAppleMusicPinchMesh {
         mesh(at: Int.random(in: 0..<pairCount))
@@ -25,15 +27,17 @@ enum DesktopAppleMusicPinchMeshStore {
 
     static func mesh(at requestedIndex: Int) -> DesktopAppleMusicPinchMesh {
         let index = min(max(requestedIndex, 0), pairCount - 1)
+        if let mesh = meshesByIndex[index] { return mesh }
         let lowerBound = index * pairByteCount
         let upperBound = lowerBound + pairByteCount
-        guard allMeshData.count >= upperBound else {
-            return makeMesh(index: index, positions: identityMeshData)
-        }
-        return makeMesh(
+        let mesh = makeMesh(
             index: index,
-            positions: allMeshData.subdata(in: lowerBound..<upperBound)
+            positions: allMeshData.count >= upperBound
+                ? allMeshData.subdata(in: lowerBound..<upperBound)
+                : identityMeshData
         )
+        meshesByIndex[index] = mesh
+        return mesh
     }
 
     private static func makeMesh(

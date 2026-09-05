@@ -182,93 +182,30 @@ struct SynchronizedLyricText: View {
         self.playbackScaleRange = playbackScaleRange
         self.playbackScaleStartDelay = playbackScaleStartDelay
 
-        let pseudoSyllables = usesPseudoTiming
-            ? line.makePseudoSyllables()
-            : []
-        let activeSyllables = line.syllables.isEmpty
-            ? pseudoSyllables
-            : line.syllables
-        let timedLayoutWidth = layoutWidth.map {
-            $0 / max(playbackScaleRange?.upperBound ?? 1, 1)
-        }
-        let calculationScale = promotedLayoutScale.isFinite
-            ? max(promotedLayoutScale, 1)
-            : 1
-        let rubyLayoutWidth = timedLayoutWidth.map {
-            $0 / calculationScale
-        }
-        hasPseudoSyllables = !pseudoSyllables.isEmpty
-        let romanizationUnits =
-            includesRomanization
-                ? LyricRomanizationAligner.units(
-                    for: line,
-                    activeSyllables: activeSyllables
-                )
-                : []
-        let romanizationPlan = LyricRubyLayoutPlanner.plan(
-            for: romanizationUnits,
+        let layout = SynchronizedLyricTextLayout.resolve(
+            line: line,
+            usesPseudoTiming: usesPseudoTiming,
             fontSize: fontSize,
-            romanizationFontSize:
-                self.romanizationFontSize,
-            primaryFontWeight: fontWeight,
-            romanizationFontWeight:
-                supplementalTextProfile == nil ? fontWeight : .bold,
-            availableWidth: rubyLayoutWidth,
+            romanizationFontSize: self.romanizationFontSize,
+            fontWeight: fontWeight,
+            includesRomanization: includesRomanization,
+            showsRomanization: showsRomanization,
+            layoutWidth: layoutWidth,
+            promotedLayoutScale: promotedLayoutScale,
+            playbackScaleRange: playbackScaleRange,
+            romanizationFontWeight: supplementalTextProfile == nil ? fontWeight : .bold,
             minimumWordSpacing: CGFloat(
-                supplementalTextProfile?
-                    .transliterationMinimumWordSpacing
+                supplementalTextProfile?.transliterationMinimumWordSpacing
                     ?? max(self.romanizationFontSize * 0.18, 2)
             )
         )
-        romanizationRows = romanizationPlan.rows
-        let usesRomanizationLayout =
-            showsRomanization
-            && romanizationUnits.map(\.originalText).joined() == line.text
-        let primaryLineBreakOffsets =
-            usesRomanizationLayout
-                ? romanizationPlan.sourceLineBreakCharacterOffsets
-                : nil
-        let primaryHorizontalOffsets =
-            usesRomanizationLayout
-                ? romanizationPlan
-                    .sourceHorizontalOffsetsByCharacterOffset
-                : [:]
-        primaryTrailingVisualOverflow =
-            primaryHorizontalOffsets.values.max() ?? 0
-        synchronizedText = TimedLyricTextBuilder.text(
-            from: line.syllables,
-            constrainedWidth: timedLayoutWidth,
-            fontSize: fontSize * calculationScale,
-            fontWeight: fontWeight,
-            forcedLineBreakCharacterOffsets: primaryLineBreakOffsets,
-            forcedHorizontalOffsetsByCharacterOffset:
-                primaryHorizontalOffsets
-        )
-        pseudoSynchronizedText = TimedLyricTextBuilder.text(
-            from: pseudoSyllables,
-            constrainedWidth: timedLayoutWidth,
-            fontSize: fontSize * calculationScale,
-            fontWeight: fontWeight,
-            forcedLineBreakCharacterOffsets: primaryLineBreakOffsets,
-            forcedHorizontalOffsetsByCharacterOffset:
-                primaryHorizontalOffsets
-        )
-        layoutStableText = TimedLyricTextBuilder.text(
-            from: line.text,
-            constrainedWidth: layoutWidth,
-            fontSize: fontSize * calculationScale,
-            fontWeight: fontWeight,
-            forcedLineBreakCharacterOffsets: primaryLineBreakOffsets,
-            forcedHorizontalOffsetsByCharacterOffset:
-                primaryHorizontalOffsets
-        )
-        if let firstSyllable = activeSyllables.first,
-           let lastSyllable = activeSyllables.last,
-           lastSyllable.endTime > firstSyllable.startTime {
-            timedPlaybackRange = firstSyllable.startTime...lastSyllable.endTime
-        } else {
-            timedPlaybackRange = nil
-        }
+        synchronizedText = layout.synchronizedText
+        pseudoSynchronizedText = layout.pseudoSynchronizedText
+        layoutStableText = layout.layoutStableText
+        hasPseudoSyllables = layout.hasPseudoSyllables
+        timedPlaybackRange = layout.timedPlaybackRange
+        romanizationRows = layout.romanizationRows
+        primaryTrailingVisualOverflow = layout.primaryTrailingVisualOverflow
     }
 
     var body: some View {

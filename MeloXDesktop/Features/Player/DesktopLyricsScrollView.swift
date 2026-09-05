@@ -159,12 +159,9 @@ struct DesktopLyricsScrollView: View {
         )
     }
 
-    private var activePlaybackLyricIDs: Set<LyricLine.ID> {
-        LyricPlaybackTimeline.position(
-            at: model.player.progress + effectiveLyricsAdvanceTime,
-            in: model.lyrics.lyrics
-        ).activeLyricIDs
-    }
+    // The coordinator publishes only vocal-boundary changes, keeping the
+    // scrolling hierarchy independent of the player's progress ticks.
+    @State private var activePlaybackLyricIDs: Set<LyricLine.ID> = []
 
     private var interludes: [LyricInterlude] {
         guard model.settings.lyricsInterludeCountdownEnabled else {
@@ -464,7 +461,8 @@ struct DesktopLyricsScrollView: View {
                 isActive: coordinatesPlaybackFocus,
                 playbackFocus: $playbackFocus,
                 timelineHighlightedLyricID: $timelineHighlightedLyricID,
-                visibleInterludeID: $visibleInterludeID
+                visibleInterludeID: $visibleInterludeID,
+                activePlaybackLyricIDs: $activePlaybackLyricIDs
             )
             .environment(model.player)
             .environment(model.settings)

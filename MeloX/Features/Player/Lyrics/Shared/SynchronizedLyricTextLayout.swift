@@ -1,0 +1,190 @@
+import SwiftUI
+
+/// Reuses the complete text/ruby layout during display-clock updates. Playback,
+/// focus, and interaction values do not participate in this bounded cache.
+@MainActor
+struct SynchronizedLyricTextLayout {
+    let synchronizedText: Text
+    let pseudoSynchronizedText: Text
+    let layoutStableText: Text
+    let hasPseudoSyllables: Bool
+    let timedPlaybackRange: ClosedRange<TimeInterval>?
+    let romanizationRows: [LyricRubyRow]
+    let primaryTrailingVisualOverflow: CGFloat
+
+    private struct Key: Hashable {
+        let lineID: LyricLine.ID
+        let usesPseudoTiming: Bool
+        let fontSize: CGFloat
+        let romanizationFontSize: CGFloat
+        let fontWeight: LyricsFontWeight
+        let includesRomanization: Bool
+        let showsRomanization: Bool
+        let layoutWidth: CGFloat?
+        let promotedLayoutScale: CGFloat
+        let playbackScaleRange: ClosedRange<CGFloat>?
+        let romanizationFontWeight: LyricsFontWeight
+        let minimumWordSpacing: CGFloat
+    }
+
+    private struct Entry {
+        let line: LyricLine
+        let layout: SynchronizedLyricTextLayout
+    }
+
+    private static var entries: [Key: Entry] = [:]
+    private static let capacity = 256
+
+    static func resolve(
+        line: LyricLine,
+        usesPseudoTiming: Bool,
+        fontSize: CGFloat,
+        romanizationFontSize: CGFloat,
+        fontWeight: LyricsFontWeight,
+        includesRomanization: Bool,
+        showsRomanization: Bool,
+        layoutWidth: CGFloat?,
+        promotedLayoutScale: CGFloat,
+        playbackScaleRange: ClosedRange<CGFloat>?,
+        romanizationFontWeight: LyricsFontWeight,
+        minimumWordSpacing: CGFloat
+    ) -> SynchronizedLyricTextLayout {
+        let key = Key(
+            lineID: line.id,
+            usesPseudoTiming: usesPseudoTiming,
+            fontSize: fontSize,
+            romanizationFontSize: romanizationFontSize,
+            fontWeight: fontWeight,
+            includesRomanization: includesRomanization,
+            showsRomanization: showsRomanization,
+            layoutWidth: layoutWidth,
+            promotedLayoutScale: promotedLayoutScale,
+            playbackScaleRange: playbackScaleRange,
+            romanizationFontWeight: romanizationFontWeight,
+            minimumWordSpacing: minimumWordSpacing
+        )
+        if let entry = entries[key], entry.line == line {
+            return entry.layout
+        }
+        let layout = SynchronizedLyricTextLayout(
+            line: line,
+            usesPseudoTiming: usesPseudoTiming,
+            fontSize: fontSize,
+            romanizationFontSize: romanizationFontSize,
+            fontWeight: fontWeight,
+            includesRomanization: includesRomanization,
+            showsRomanization: showsRomanization,
+            layoutWidth: layoutWidth,
+            promotedLayoutScale: promotedLayoutScale,
+            playbackScaleRange: playbackScaleRange,
+            romanizationFontWeight: romanizationFontWeight,
+            minimumWordSpacing: minimumWordSpacing
+        )
+        if entries[key] == nil, entries.count >= capacity {
+            entries.remove(at: entries.startIndex)
+        }
+        entries[key] = Entry(line: line, layout: layout)
+        return layout
+    }
+
+    private init(
+        line: LyricLine,
+        usesPseudoTiming: Bool,
+        fontSize: CGFloat,
+        romanizationFontSize: CGFloat,
+        fontWeight: LyricsFontWeight,
+        includesRomanization: Bool,
+        showsRomanization: Bool,
+        layoutWidth: CGFloat?,
+        promotedLayoutScale: CGFloat,
+        playbackScaleRange: ClosedRange<CGFloat>?,
+        romanizationFontWeight: LyricsFontWeight,
+        minimumWordSpacing: CGFloat
+    ) {
+        let pseudoSyllables = usesPseudoTiming
+            ? line.makePseudoSyllables()
+            : []
+        let activeSyllables = line.syllables.isEmpty
+            ? pseudoSyllables
+            : line.syllables
+        let timedLayoutWidth = layoutWidth.map {
+            $0 / max(playbackScaleRange?.upperBound ?? 1, 1)
+        }
+        let calculationScale = promotedLayoutScale.isFinite
+            ? max(promotedLayoutScale, 1)
+            : 1
+        let rubyLayoutWidth = timedLayoutWidth.map {
+            $0 / calculationScale
+        }
+        hasPseudoSyllables = !pseudoSyllables.isEmpty
+        let romanizationUnits =
+            includesRomanization
+                ? LyricRomanizationAligner.units(
+                    for: line,
+                    activeSyllables: activeSyllables
+                )
+                : []
+        let romanizationPlan = LyricRubyLayoutPlanner.plan(
+            for: romanizationUnits,
+            fontSize: fontSize,
+            romanizationFontSize:
+                romanizationFontSize,
+            primaryFontWeight: fontWeight,
+            romanizationFontWeight:
+                romanizationFontWeight,
+            availableWidth: rubyLayoutWidth,
+            minimumWordSpacing: CGFloat(
+                minimumWordSpacing
+            )
+        )
+        romanizationRows = romanizationPlan.rows
+        let usesRomanizationLayout =
+            showsRomanization
+            && romanizationUnits.map(\.originalText).joined() == line.text
+        let primaryLineBreakOffsets =
+            usesRomanizationLayout
+                ? romanizationPlan.sourceLineBreakCharacterOffsets
+                : nil
+        let primaryHorizontalOffsets =
+            usesRomanizationLayout
+                ? romanizationPlan
+                    .sourceHorizontalOffsetsByCharacterOffset
+                : [:]
+        primaryTrailingVisualOverflow =
+            primaryHorizontalOffsets.values.max() ?? 0
+        synchronizedText = TimedLyricTextBuilder.text(
+            from: line.syllables,
+            constrainedWidth: timedLayoutWidth,
+            fontSize: fontSize * calculationScale,
+            fontWeight: fontWeight,
+            forcedLineBreakCharacterOffsets: primaryLineBreakOffsets,
+            forcedHorizontalOffsetsByCharacterOffset:
+                primaryHorizontalOffsets
+        )
+        pseudoSynchronizedText = TimedLyricTextBuilder.text(
+            from: pseudoSyllables,
+            constrainedWidth: timedLayoutWidth,
+            fontSize: fontSize * calculationScale,
+            fontWeight: fontWeight,
+            forcedLineBreakCharacterOffsets: primaryLineBreakOffsets,
+            forcedHorizontalOffsetsByCharacterOffset:
+                primaryHorizontalOffsets
+        )
+        layoutStableText = TimedLyricTextBuilder.text(
+            from: line.text,
+            constrainedWidth: layoutWidth,
+            fontSize: fontSize * calculationScale,
+            fontWeight: fontWeight,
+            forcedLineBreakCharacterOffsets: primaryLineBreakOffsets,
+            forcedHorizontalOffsetsByCharacterOffset:
+                primaryHorizontalOffsets
+        )
+        if let firstSyllable = activeSyllables.first,
+           let lastSyllable = activeSyllables.last,
+           lastSyllable.endTime > firstSyllable.startTime {
+            timedPlaybackRange = firstSyllable.startTime...lastSyllable.endTime
+        } else {
+            timedPlaybackRange = nil
+        }
+    }
+}

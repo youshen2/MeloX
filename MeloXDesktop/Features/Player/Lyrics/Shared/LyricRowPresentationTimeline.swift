@@ -7,6 +7,8 @@ import SwiftUI
 struct LyricRowPresentationTimeline<Content: View>: View {
     @Environment(\.lyricsRenderingIsActive)
     private var lyricsRenderingIsActive
+    @Environment(\.effectiveLyricsRefreshRate)
+    private var effectiveLyricsRefreshRate
 
     let lyricID: LyricLine.ID
     let focusedLyricID: LyricLine.ID?
@@ -17,21 +19,18 @@ struct LyricRowPresentationTimeline<Content: View>: View {
         LyricFocusVisualProgress
     ) -> Content
 
-    @ViewBuilder
     var body: some View {
-        if requiresContinuousUpdates {
-            TimelineView(
-                .animation(paused: !lyricsRenderingIsActive)
-            ) { context in
-                content(
-                    movementPhase.presentation(at: context.date).offset,
-                    focusProgress(at: context.date)
-                )
-            }
-        } else {
+        // Pausing the existing timeline preserves the text's scale, hover,
+        // and annotation animation state when a transition starts or settles.
+        TimelineView(
+            .animation(
+                minimumInterval: effectiveLyricsRefreshRate.minimumInterval,
+                paused: !requiresContinuousUpdates || !lyricsRenderingIsActive
+            )
+        ) { context in
             content(
-                movementPhase.targetOffset,
-                stationaryFocusProgress
+                movementPhase.presentation(at: context.date).offset,
+                focusProgress(at: context.date)
             )
         }
     }

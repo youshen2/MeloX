@@ -163,62 +163,24 @@ struct SynchronizedLyricText: View {
         self.playbackScaleRange = playbackScaleRange
         self.playbackScaleStartDelay = playbackScaleStartDelay
 
-        let pseudoSyllables = usesPseudoTiming
-            ? line.makePseudoSyllables()
-            : []
-        let activeSyllables = line.syllables.isEmpty
-            ? pseudoSyllables
-            : line.syllables
-        let timedLayoutWidth = layoutWidth.map {
-            $0 / max(playbackScaleRange?.upperBound ?? 1, 1)
-        }
-        let calculationScale = promotedLayoutScale.isFinite
-            ? max(promotedLayoutScale, 1)
-            : 1
-        let rubyLayoutWidth = timedLayoutWidth.map {
-            $0 / calculationScale
-        }
-        synchronizedText = TimedLyricTextBuilder.text(
-            from: line.syllables,
-            constrainedWidth: timedLayoutWidth,
-            fontSize: fontSize * calculationScale,
-            fontWeight: fontWeight
-        )
-        pseudoSynchronizedText = TimedLyricTextBuilder.text(
-            from: pseudoSyllables,
-            constrainedWidth: timedLayoutWidth,
-            fontSize: fontSize * calculationScale,
-            fontWeight: fontWeight
-        )
-        layoutStableText = TimedLyricTextBuilder.text(
-            from: line.text,
-            constrainedWidth: layoutWidth,
-            fontSize: fontSize * calculationScale,
-            fontWeight: fontWeight
-        )
-        hasPseudoSyllables = !pseudoSyllables.isEmpty
-        let romanizationUnits =
-            includesRomanization && showsRomanization
-                ? LyricRomanizationAligner.units(
-                    for: line,
-                    activeSyllables: activeSyllables
-                )
-                : []
-        romanizationRows = LyricRubyLayoutPlanner.rows(
-            for: romanizationUnits,
+        let layout = SynchronizedLyricTextLayout.resolve(
+            line: line,
+            usesPseudoTiming: usesPseudoTiming,
             fontSize: fontSize,
-            romanizationFontSize:
-                self.romanizationFontSize,
+            romanizationFontSize: self.romanizationFontSize,
             fontWeight: fontWeight,
-            availableWidth: rubyLayoutWidth
+            includesRomanization: includesRomanization,
+            showsRomanization: showsRomanization,
+            layoutWidth: layoutWidth,
+            promotedLayoutScale: promotedLayoutScale,
+            playbackScaleRange: playbackScaleRange
         )
-        if let firstSyllable = activeSyllables.first,
-           let lastSyllable = activeSyllables.last,
-           lastSyllable.endTime > firstSyllable.startTime {
-            timedPlaybackRange = firstSyllable.startTime...lastSyllable.endTime
-        } else {
-            timedPlaybackRange = nil
-        }
+        synchronizedText = layout.synchronizedText
+        pseudoSynchronizedText = layout.pseudoSynchronizedText
+        layoutStableText = layout.layoutStableText
+        hasPseudoSyllables = layout.hasPseudoSyllables
+        timedPlaybackRange = layout.timedPlaybackRange
+        romanizationRows = layout.romanizationRows
     }
 
     var body: some View {

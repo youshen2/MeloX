@@ -28,6 +28,7 @@ struct AppleMusicLyricsFocusCoordinator: View {
     @Binding var playbackFocus: AppleMusicLyricsPlaybackFocus?
     @Binding var timelineHighlightedLyricID: LyricLine.ID?
     @Binding var visibleInterludeID: LyricInterlude.ID?
+    @Binding var activePlaybackLyricIDs: Set<LyricLine.ID>
 
     var body: some View {
         Color.clear
@@ -139,6 +140,7 @@ struct AppleMusicLyricsFocusCoordinator: View {
             focus: focus,
             highlightedLyricID: lyricPosition.highlightedLyricID,
             visibleInterludeID: interludePosition.visibleInterludeID,
+            activeLyricIDs: lyricPosition.activeLyricIDs,
             nextTransitionTime: nextTransitionTime
         )
     }
@@ -149,12 +151,14 @@ struct AppleMusicLyricsFocusCoordinator: View {
         guard playbackFocus != position.focus
                 || timelineHighlightedLyricID
                     != position.highlightedLyricID
-                || visibleInterludeID != position.visibleInterludeID else {
+                || visibleInterludeID != position.visibleInterludeID
+                || activePlaybackLyricIDs != position.activeLyricIDs else {
             return
         }
         playbackFocus = position.focus
         timelineHighlightedLyricID = position.highlightedLyricID
         visibleInterludeID = position.visibleInterludeID
+        activePlaybackLyricIDs = position.activeLyricIDs
     }
 
     private var advanceTime: TimeInterval {
@@ -310,5 +314,6 @@ private struct AppleMusicLyricsPlaybackFocusPosition {
     let focus: AppleMusicLyricsPlaybackFocus?
     let highlightedLyricID: LyricLine.ID?
     let visibleInterludeID: LyricInterlude.ID?
+    let activeLyricIDs: Set<LyricLine.ID>
     let nextTransitionTime: TimeInterval?
 }

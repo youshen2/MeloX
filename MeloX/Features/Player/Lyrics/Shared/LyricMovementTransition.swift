@@ -326,36 +326,3 @@ struct LyricMovementTransition: Equatable {
         )
     }
 }
-
-struct LifecycleAwareLyricMovement<Content: View>: View {
-    @Environment(\.effectiveLyricsRefreshRate)
-    private var effectiveLyricsRefreshRate
-
-    let phase: LyricMovementPhase
-    let isActive: Bool
-    @ViewBuilder let content: (CGFloat) -> Content
-
-    init(
-        phase: LyricMovementPhase,
-        isActive: Bool = true,
-        @ViewBuilder content: @escaping (CGFloat) -> Content
-    ) {
-        self.phase = phase
-        self.isActive = isActive
-        self.content = content
-    }
-
-    var body: some View {
-        TimelineView(
-            .animation(
-                minimumInterval:
-                    effectiveLyricsRefreshRate.minimumInterval,
-                paused: !phase.isAnimated || !isActive
-            )
-        ) { context in
-            content(
-                phase.presentation(at: context.date).offset
-            )
-        }
-    }
-}

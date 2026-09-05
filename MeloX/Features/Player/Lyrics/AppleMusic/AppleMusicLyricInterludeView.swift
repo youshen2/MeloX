@@ -24,19 +24,22 @@ struct AppleMusicLyricsFocusCoordinator: View {
     let isActive: Bool
     @Binding var playbackFocus: AppleMusicLyricsPlaybackFocus?
     @Binding var visibleInterludeID: LyricInterlude.ID?
+    @Binding var activePlaybackLyricIDs: Set<LyricLine.ID>
 
     init(
         lyrics: [LyricLine],
         interludes: [LyricInterlude],
         isActive: Bool = true,
         playbackFocus: Binding<AppleMusicLyricsPlaybackFocus?>,
-        visibleInterludeID: Binding<LyricInterlude.ID?>
+        visibleInterludeID: Binding<LyricInterlude.ID?>,
+        activePlaybackLyricIDs: Binding<Set<LyricLine.ID>>
     ) {
         self.lyrics = lyrics
         self.interludes = interludes
         self.isActive = isActive
         _playbackFocus = playbackFocus
         _visibleInterludeID = visibleInterludeID
+        _activePlaybackLyricIDs = activePlaybackLyricIDs
     }
 
     var body: some View {
@@ -144,6 +147,7 @@ struct AppleMusicLyricsFocusCoordinator: View {
             focus: focus,
             visibleInterludeID:
                 interludePosition.visibleInterludeID,
+            activeLyricIDs: lyricPosition.activeLyricIDs,
             nextTransitionTime: nextTransitionTime
         )
     }
@@ -152,11 +156,13 @@ struct AppleMusicLyricsFocusCoordinator: View {
         to position: AppleMusicLyricsPlaybackFocusPosition
     ) {
         guard playbackFocus != position.focus
-                || visibleInterludeID != position.visibleInterludeID else {
+                || visibleInterludeID != position.visibleInterludeID
+                || activePlaybackLyricIDs != position.activeLyricIDs else {
             return
         }
         playbackFocus = position.focus
         visibleInterludeID = position.visibleInterludeID
+        activePlaybackLyricIDs = position.activeLyricIDs
     }
 
     private var advanceTime: TimeInterval {
@@ -303,5 +309,6 @@ private struct AppleMusicLyricsFocusSynchronizationTrigger: Hashable {
 private struct AppleMusicLyricsPlaybackFocusPosition {
     let focus: AppleMusicLyricsPlaybackFocus?
     let visibleInterludeID: LyricInterlude.ID?
+    let activeLyricIDs: Set<LyricLine.ID>
     let nextTransitionTime: TimeInterval?
 }

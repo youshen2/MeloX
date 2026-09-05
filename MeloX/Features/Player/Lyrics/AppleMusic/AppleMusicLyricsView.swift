@@ -87,13 +87,9 @@ struct AppleMusicLyricsView: View {
     private let hasRomanizations: Bool
     private let interludeCandidates: [LyricInterlude]
 
-    private var activePlaybackLyricIDs: Set<LyricLine.ID> {
-        let advanceTime = settings.effectiveLyricsAdvanceTime(for: lyrics)
-        return LyricPlaybackTimeline.position(
-            at: player.progress + advanceTime,
-            in: lyrics
-        ).activeLyricIDs
-    }
+    // The coordinator publishes only vocal-boundary changes, keeping the
+    // scrolling hierarchy independent of the player's progress ticks.
+    @State private var activePlaybackLyricIDs: Set<LyricLine.ID> = []
 
     @State private var scrollPositionID: LyricLine.ID?
     @State private var isBrowsingLyrics = false
@@ -174,7 +170,8 @@ struct AppleMusicLyricsView: View {
                     interludes: interludes,
                     isActive: isActive,
                     playbackFocus: $playbackFocus,
-                    visibleInterludeID: $visibleInterludeID
+                    visibleInterludeID: $visibleInterludeID,
+                    activePlaybackLyricIDs: $activePlaybackLyricIDs
                 )
             }
             .onChange(of: isInterfaceHidden) { _, isHidden in
@@ -565,187 +562,183 @@ struct AppleMusicLyricsView: View {
             isFocused: isVisualScaleFocusLine
         )
 
-        return LifecycleAwareLyricMovement(
-            phase: movementPhase,
+        return LyricRowPresentationTimeline(
+            lyricID: line.id,
+            focusedLyricID: visualHighlightedLyricID,
+            movementPhase: movementPhase,
+            focusTransition: lyricFocusColorTransition,
             isActive: isActive
-        ) { movementOffset in
-            LifecycleAwareLyricFocusColor(
-                lyricID: line.id,
-                focusedLyricID: visualHighlightedLyricID,
-                transition: lyricFocusColorTransition,
-                isActive: isActive || lyricFocusColorTransition != nil
-            ) { focusProgress in
-                LyricPressInteraction(
-                    isSelected:
-                        seekFeedback?.lyricID == line.id
-                        || lyricSharePresentation?.initialLyricID
-                            == line.id,
-                    allowsTap: settings.lyricsTapToSeek,
-                    allowsLongPress:
-                        settings.lyricsLongPressToShare
-                        && line.text.count
-                            <= LyricsSelectionManager
-                                .defaultCharacterLimit,
-                    onTap: {
-                        if !isInterfaceHidden {
-                            onInterfaceInteraction?()
-                        }
-                        seek(to: line)
-                    },
-                    onLongPress: {
-                        presentShare(for: line)
+        ) { movementOffset, focusProgress in
+            LyricPressInteraction(
+                isSelected:
+                    seekFeedback?.lyricID == line.id
+                    || lyricSharePresentation?.initialLyricID
+                        == line.id,
+                allowsTap: settings.lyricsTapToSeek,
+                allowsLongPress:
+                    settings.lyricsLongPressToShare
+                    && line.text.count
+                        <= LyricsSelectionManager
+                            .defaultCharacterLimit,
+                onTap: {
+                    if !isInterfaceHidden {
+                        onInterfaceInteraction?()
                     }
-                ) { interactionBackgroundProgress in
-                    SynchronizedLyricText(
-                        line: line,
-                        isPlaybackLine: isPlaybackLine,
-                        isVocalActive: isActualPlaybackLine,
-                        isAnimationActive: isActive,
-                        playbackFocusProgress: focusProgress.color,
-                        usesPseudoTiming: context.usesPseudoTiming,
-                        fontSize: CGFloat(resolvedLyricsFontSize),
-                        romanizationFontSize:
-                            context.romanizationFontSize,
-                        fontWeight: resolvedLyricsFontWeight,
-                        alignment: .resolved(
-                            for: line,
-                            duetLayoutEnabled:
-                                settings.lyricsDuetLayoutEnabled
-                        ),
-                        primaryColor: .white,
-                        showsTranslation: showsTranslation,
-                        showsRomanization:
-                            settings.lyricsRomanizationEnabled
-                            && showsRomanization,
-                        includesRomanization: true,
-                        reservesAnnotationSpace:
-                            context.reservesAnnotationSpace,
-                        onAnnotationHeightChange: { height in
-                            recordAnnotationHeight(height, for: line.id)
-                        },
-                        annotationLayoutAnimation:
-                            lyricAnnotationLayoutAnimation(),
-                        annotationVisibilityAnimation:
-                            lyricAnnotationVisibilityAnimation(
-                                focusScaleAnimation: focusScaleAnimation
-                            ),
-                        interactionBackgroundOpacity:
-                            0.12 * interactionBackgroundProgress,
-                        visualScale: lyricVisualScale(
-                            isFocused: isVisualScaleFocusLine,
-                            focusedScale: context.currentLineScale,
-                            motionProfile: context.motionProfile
-                        ),
-                        visualScaleAnimation: focusScaleAnimation,
-                        promotedLayoutScale:
-                            context.motionProfile == nil
-                                ? context.currentLineScale
-                                : 1,
-                        layoutWidth: context.lyricLayoutWidth,
-                        motionProfile: context.motionProfile,
-                        suppressesTimedGlyphBlur:
-                            context.motionProfile != nil
-                                && colorSchemeContrast == .increased
-                    )
+                    seek(to: line)
+                },
+                onLongPress: {
+                    presentShare(for: line)
                 }
-                .opacity(
-                    isRetainedCascadeLine
-                        ? 0
-                        : isActiveIndependentVocalLine
-                            ? 1
-                        : isInactiveFocusOwner
-                            ? context.motionProfile == nil
-                                ? Self.lyricEmphasis(
-                                    focusProgress: 0,
-                                    isBrowsingFocus: false,
-                                    dimAmount: context.dimAmount
-                                )
-                                : Self.appleMusicLyricFocusOpacity(
-                                    focusProgress: 0,
-                                    motionProfile: context.motionProfile,
-                                    usesIncreasedContrast:
-                                        colorSchemeContrast == .increased
-                                )
-                        : context.motionProfile == nil
+            ) { interactionBackgroundProgress in
+                SynchronizedLyricText(
+                    line: line,
+                    isPlaybackLine: isPlaybackLine,
+                    isVocalActive: isActualPlaybackLine,
+                    isAnimationActive: isActive,
+                    playbackFocusProgress: focusProgress.color,
+                    usesPseudoTiming: context.usesPseudoTiming,
+                    fontSize: CGFloat(resolvedLyricsFontSize),
+                    romanizationFontSize:
+                        context.romanizationFontSize,
+                    fontWeight: resolvedLyricsFontWeight,
+                    alignment: .resolved(
+                        for: line,
+                        duetLayoutEnabled:
+                            settings.lyricsDuetLayoutEnabled
+                    ),
+                    primaryColor: .white,
+                    showsTranslation: showsTranslation,
+                    showsRomanization:
+                        settings.lyricsRomanizationEnabled
+                        && showsRomanization,
+                    includesRomanization: true,
+                    reservesAnnotationSpace:
+                        context.reservesAnnotationSpace,
+                    onAnnotationHeightChange: { height in
+                        recordAnnotationHeight(height, for: line.id)
+                    },
+                    annotationLayoutAnimation:
+                        lyricAnnotationLayoutAnimation(),
+                    annotationVisibilityAnimation:
+                        lyricAnnotationVisibilityAnimation(
+                            focusScaleAnimation: focusScaleAnimation
+                        ),
+                    interactionBackgroundOpacity:
+                        0.12 * interactionBackgroundProgress,
+                    visualScale: lyricVisualScale(
+                        isFocused: isVisualScaleFocusLine,
+                        focusedScale: context.currentLineScale,
+                        motionProfile: context.motionProfile
+                    ),
+                    visualScaleAnimation: focusScaleAnimation,
+                    promotedLayoutScale:
+                        context.motionProfile == nil
+                            ? context.currentLineScale
+                            : 1,
+                    layoutWidth: context.lyricLayoutWidth,
+                    motionProfile: context.motionProfile,
+                    suppressesTimedGlyphBlur:
+                        context.motionProfile != nil
+                            && colorSchemeContrast == .increased
+                )
+            }
+            .opacity(
+                isRetainedCascadeLine
+                    ? 0
+                    : isActiveIndependentVocalLine
+                        ? 1
+                    : isInactiveFocusOwner
+                        ? context.motionProfile == nil
                             ? Self.lyricEmphasis(
-                                focusProgress: focusProgress.color,
+                                focusProgress: 0,
                                 isBrowsingFocus: false,
                                 dimAmount: context.dimAmount
                             )
                             : Self.appleMusicLyricFocusOpacity(
-                                focusProgress: focusProgress.color,
+                                focusProgress: 0,
                                 motionProfile: context.motionProfile,
                                 usesIncreasedContrast:
                                     colorSchemeContrast == .increased
                             )
-                )
-                .contentShape(.rect)
-                .visualEffect { content, geometry in
-                    let frame = geometry.frame(
-                        in: .scrollView(axis: .vertical)
-                    )
-                    let visualMidY = frame.midY + movementOffset
-                    let distance = Self.lyricVisualDistance(
-                        visualMidY: visualMidY,
-                        focusAnchorY: context.focusAnchorY,
-                        expandedBottomProgress:
-                            context.hiddenInterfaceProgress
-                    )
-                    let activeDistanceBlurScale =
-                        context.distanceBlurScale
-                        + (
-                            context.hiddenInterfaceBlurScale
-                                - context.distanceBlurScale
-                        ) * context.hiddenInterfaceProgress
-                    let bottomRevealOpacity =
-                        Self.lyricBottomRevealOpacity(
-                            frame: frame,
-                            movementOffset: movementOffset,
-                            viewportHeight: context.viewportHeight
+                    : context.motionProfile == nil
+                        ? Self.lyricEmphasis(
+                            focusProgress: focusProgress.color,
+                            isBrowsingFocus: false,
+                            dimAmount: context.dimAmount
                         )
-                    let distanceOpacity: CGFloat =
-                        if isActiveIndependentVocalLine {
-                            1
-                        } else if context.motionProfile == nil {
-                            Self.lyricOpacity(
+                        : Self.appleMusicLyricFocusOpacity(
+                            focusProgress: focusProgress.color,
+                            motionProfile: context.motionProfile,
+                            usesIncreasedContrast:
+                                colorSchemeContrast == .increased
+                        )
+            )
+            .contentShape(.rect)
+            .visualEffect { content, geometry in
+                let frame = geometry.frame(
+                    in: .scrollView(axis: .vertical)
+                )
+                let visualMidY = frame.midY + movementOffset
+                let distance = Self.lyricVisualDistance(
+                    visualMidY: visualMidY,
+                    focusAnchorY: context.focusAnchorY,
+                    expandedBottomProgress:
+                        context.hiddenInterfaceProgress
+                )
+                let activeDistanceBlurScale =
+                    context.distanceBlurScale
+                    + (
+                        context.hiddenInterfaceBlurScale
+                            - context.distanceBlurScale
+                    ) * context.hiddenInterfaceProgress
+                let bottomRevealOpacity =
+                    Self.lyricBottomRevealOpacity(
+                        frame: frame,
+                        movementOffset: movementOffset,
+                        viewportHeight: context.viewportHeight
+                    )
+                let distanceOpacity: CGFloat =
+                    if isActiveIndependentVocalLine {
+                        1
+                    } else if context.motionProfile == nil {
+                        Self.lyricOpacity(
+                            forPixelDistance: distance,
+                            lyricStride: context.lyricStride,
+                            dimAmount: context.distanceDimAmount,
+                            focusProgress: focusProgress.color
+                        )
+                    } else {
+                        1
+                    }
+                return content
+                    .blur(
+                        radius: isActiveIndependentVocalLine
+                            ? 0
+                            : Self.lyricDistanceBlurRadius(
                                 forPixelDistance: distance,
                                 lyricStride: context.lyricStride,
-                                dimAmount: context.distanceDimAmount,
-                                focusProgress: focusProgress.color
+                                intensity:
+                                    context.activeBlurIntensity
+                                    * activeDistanceBlurScale,
+                                focusProgress: focusProgress.blur,
+                                motionProfile: context.motionProfile
                             )
-                        } else {
-                            1
-                        }
-                    return content
-                        .blur(
-                            radius: isActiveIndependentVocalLine
-                                ? 0
-                                : Self.lyricDistanceBlurRadius(
-                                    forPixelDistance: distance,
-                                    lyricStride: context.lyricStride,
-                                    intensity:
-                                        context.activeBlurIntensity
-                                        * activeDistanceBlurScale,
-                                    focusProgress: focusProgress.blur,
-                                    motionProfile: context.motionProfile
-                                )
-                        )
-                        .opacity(
-                            distanceOpacity * bottomRevealOpacity
-                        )
-                        .offset(y: movementOffset)
-                }
-                .blur(
-                    radius:
-                        isActiveIndependentVocalLine
-                            ? 0
-                            : focusBlurRadius
-                )
-                .animation(
-                    context.focusEffectAnimation,
-                    value: focusBlurRadius
-                )
+                    )
+                    .opacity(
+                        distanceOpacity * bottomRevealOpacity
+                    )
+                    .offset(y: movementOffset)
             }
+            .blur(
+                radius:
+                    isActiveIndependentVocalLine
+                        ? 0
+                        : focusBlurRadius
+            )
+            .animation(
+                context.focusEffectAnimation,
+                value: focusBlurRadius
+            )
         }
         .onGeometryChange(for: LyricGeometryMeasurement.self) { geometry in
             LyricGeometryMeasurement(
@@ -1219,10 +1212,13 @@ struct AppleMusicLyricsView: View {
                         isFocused: isVisualScaleFocusLine
                     )
 
-                    LifecycleAwareLyricMovement(
-                        phase: movementPhase,
+                    LyricRowPresentationTimeline(
+                        lyricID: line.id,
+                        focusedLyricID: visualHighlightedLyricID,
+                        movementPhase: movementPhase,
+                        focusTransition: lyricFocusColorTransition,
                         isActive: isActive
-                    ) { movementOffset in
+                    ) { movementOffset, focusProgress in
                         let visualOffset =
                             movementOffset
                             - retainedLyric.movementDistance
@@ -1243,146 +1239,132 @@ struct AppleMusicLyricsView: View {
                                     - distanceBlurScale
                             ) * hiddenInterfaceProgress
 
-                        LifecycleAwareLyricFocusColor(
-                            lyricID: line.id,
-                            focusedLyricID:
-                                visualHighlightedLyricID,
-                            transition: lyricFocusColorTransition,
-                            isActive:
-                                isActive
-                                || lyricFocusColorTransition != nil
-                        ) { focusProgress in
-                            SynchronizedLyricText(
-                                line: line,
-                                isPlaybackLine: isPlaybackLine,
-                                isAnimationActive: isActive,
-                                playbackFocusProgress:
-                                    focusProgress.color,
-                                usesPseudoTiming: usesPseudoTiming,
-                                fontSize: CGFloat(
-                                    resolvedLyricsFontSize
+                        SynchronizedLyricText(
+                            line: line,
+                            isPlaybackLine: isPlaybackLine,
+                            isAnimationActive: isActive,
+                            playbackFocusProgress:
+                                focusProgress.color,
+                            usesPseudoTiming: usesPseudoTiming,
+                            fontSize: CGFloat(
+                                resolvedLyricsFontSize
+                            ),
+                            romanizationFontSize:
+                                lyricRomanizationFontSize,
+                            fontWeight: resolvedLyricsFontWeight,
+                            alignment: .resolved(
+                                for: line,
+                                duetLayoutEnabled:
+                                    settings.lyricsDuetLayoutEnabled
+                            ),
+                            showsTranslation: showsTranslation,
+                            showsRomanization:
+                                settings.lyricsRomanizationEnabled
+                                && showsRomanization,
+                            includesRomanization: true,
+                            reservesAnnotationSpace:
+                                (
+                                    settings
+                                        .lyricsRomanizationEnabled
+                                        && hasRomanizations
+                                ) || (
+                                    settings
+                                        .lyricsTranslationEnabled
+                                        && hasTranslations
                                 ),
-                                romanizationFontSize:
-                                    lyricRomanizationFontSize,
-                                fontWeight: resolvedLyricsFontWeight,
-                                alignment: .resolved(
-                                    for: line,
-                                    duetLayoutEnabled:
-                                        settings.lyricsDuetLayoutEnabled
+                            annotationLayoutAnimation:
+                                lyricAnnotationLayoutAnimation(),
+                            annotationVisibilityAnimation:
+                                lyricAnnotationVisibilityAnimation(
+                                    focusScaleAnimation:
+                                        focusScaleAnimation
                                 ),
-                                showsTranslation: showsTranslation,
-                                showsRomanization:
-                                    settings.lyricsRomanizationEnabled
-                                    && showsRomanization,
-                                includesRomanization: true,
-                                reservesAnnotationSpace:
-                                    (
-                                        settings
-                                            .lyricsRomanizationEnabled
-                                            && hasRomanizations
-                                    ) || (
-                                        settings
-                                            .lyricsTranslationEnabled
-                                            && hasTranslations
-                                    ),
-                                annotationLayoutAnimation:
-                                    lyricAnnotationLayoutAnimation(),
-                                annotationVisibilityAnimation:
-                                    lyricAnnotationVisibilityAnimation(
-                                        focusScaleAnimation:
-                                            focusScaleAnimation
-                                    ),
-                                visualScale:
-                                    lyricVisualScale(
-                                        isFocused:
-                                            isVisualScaleFocusLine,
-                                        focusedScale:
-                                            currentLineScale,
-                                        motionProfile:
-                                            motionProfile
-                                    ),
-                                visualScaleAnimation:
-                                    focusScaleAnimation,
-                                promotedLayoutScale:
-                                    motionProfile == nil
-                                        ? currentLineScale
-                                        : 1,
-                                layoutWidth: lyricLayoutWidth,
-                                motionProfile: motionProfile,
-                                suppressesTimedGlyphBlur:
-                                    motionProfile != nil
-                                        && colorSchemeContrast
-                                            == .increased
-                            )
-                            .opacity(
+                            visualScale:
+                                lyricVisualScale(
+                                    isFocused:
+                                        isVisualScaleFocusLine,
+                                    focusedScale:
+                                        currentLineScale,
+                                    motionProfile:
+                                        motionProfile
+                                ),
+                            visualScaleAnimation:
+                                focusScaleAnimation,
+                            promotedLayoutScale:
                                 motionProfile == nil
-                                    ? Self.lyricEmphasis(
-                                        focusProgress:
-                                            focusProgress.color,
-                                        isBrowsingFocus: false,
-                                        dimAmount: dimAmount
-                                    )
-                                    : Self.appleMusicLyricFocusOpacity(
-                                        focusProgress:
-                                            focusProgress.color,
-                                        motionProfile: motionProfile,
-                                        usesIncreasedContrast:
-                                            colorSchemeContrast
-                                                == .increased
-                                    )
-                            )
-                            .blur(
-                                radius:
-                                    Self.lyricDistanceBlurRadius(
+                                    ? currentLineScale
+                                    : 1,
+                            layoutWidth: lyricLayoutWidth,
+                            motionProfile: motionProfile,
+                            suppressesTimedGlyphBlur:
+                                motionProfile != nil
+                                    && colorSchemeContrast
+                                        == .increased
+                        )
+                        .opacity(
+                            motionProfile == nil
+                                ? Self.lyricEmphasis(
+                                    focusProgress:
+                                        focusProgress.color,
+                                    isBrowsingFocus: false,
+                                    dimAmount: dimAmount
+                                )
+                                : Self.appleMusicLyricFocusOpacity(
+                                    focusProgress:
+                                        focusProgress.color,
+                                    motionProfile: motionProfile,
+                                    usesIncreasedContrast:
+                                        colorSchemeContrast
+                                            == .increased
+                                )
+                        )
+                        .blur(
+                            radius:
+                                Self.lyricDistanceBlurRadius(
+                                    forPixelDistance: distance,
+                                    lyricStride: lyricStride,
+                                    intensity:
+                                        blurIntensity
+                                            * activeDistanceBlurScale,
+                                    focusProgress:
+                                        focusProgress.blur,
+                                    motionProfile: motionProfile
+                                )
+                        )
+                        .opacity(
+                            (
+                                motionProfile == nil
+                                    ? Self.lyricOpacity(
                                         forPixelDistance: distance,
                                         lyricStride: lyricStride,
-                                        intensity:
-                                            blurIntensity
-                                                * activeDistanceBlurScale,
+                                        dimAmount:
+                                            distanceDimAmount,
                                         focusProgress:
-                                            focusProgress.blur,
-                                        motionProfile: motionProfile
+                                            focusProgress.color
                                     )
+                                    : 1
+                            ) * Self.lyricBottomRevealOpacity(
+                                frame: retainedLyric.frame,
+                                movementOffset: visualOffset,
+                                viewportHeight: viewportSize.height
                             )
-                            .opacity(
-                                (
-                                    motionProfile == nil
-                                        ? Self.lyricOpacity(
-                                            forPixelDistance: distance,
-                                            lyricStride: lyricStride,
-                                            dimAmount:
-                                                distanceDimAmount,
-                                            focusProgress:
-                                                focusProgress.color
-                                        )
-                                        : 1
-                                ) * Self.lyricBottomRevealOpacity(
-                                    frame: retainedLyric.frame,
-                                    movementOffset: visualOffset,
-                                    viewportHeight: viewportSize.height
-                                )
-                            )
-                            .blur(radius: focusBlurRadius)
-                            .animation(
-                                focusEffectAnimation,
-                                value: focusBlurRadius
-                            )
-                            .frame(
-                                width: viewportSize.width,
-                                alignment: .leading
-                            )
-                            .offset(
-                                y:
-                                    retainedLyric.frame.minY
-                                    + visualOffset
-                            )
-                        }
+                        )
+                        .blur(radius: focusBlurRadius)
+                        .animation(
+                            focusEffectAnimation,
+                            value: focusBlurRadius
+                        )
+                        .frame(
+                            width: viewportSize.width,
+                            alignment: .leading
+                        )
+                        .offset(
+                            y:
+                                retainedLyric.frame.minY
+                                + visualOffset
+                        )
                     }
-                    // A retained line can survive into the next cascade with
-                    // the same lyric ID. Reset only its movement state when
-                    // the transition changes so it cannot replay the prior
-                    // transition's final offset for one frame.
-                    .id(lyricMovementTransition?.id)
+
                 }
             }
         }

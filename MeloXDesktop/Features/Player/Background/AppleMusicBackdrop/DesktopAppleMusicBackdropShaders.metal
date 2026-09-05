@@ -23,18 +23,6 @@ static float2 solveColumns(float2 xColumn, float2 yColumn, float2 value) {
     );
 }
 
-static float appleMusicMeshWeight(float time, float timeScale) {
-    float safeTimeScale = max(timeScale, 0.1f);
-    // Mathematically identical to
-    // `acos(sin(time * π / timeScale)) / π`, but evaluated with fmod + abs
-    // instead of two transcendental instructions per pixel.
-    float cycle = fmod(time, 2.0f * safeTimeScale) / safeTimeScale;
-    float phase = (cycle < 1.0f)
-        ? abs(cycle - 0.5f)
-        : 1.0f - abs(cycle - 1.5f);
-    return phase * phase * (3.0f - 2.0f * phase);
-}
-
 static float2 appleMusicMeshDestination(
     device const float2 *meshPositions,
     uint x,
@@ -140,16 +128,14 @@ static float2 appleMusicInverseMesh(
         lookupCell.y * appleMusicLookupDimension + lookupCell.x;
     uint firstCandidate = lookupOffsets[lookupIndex];
     uint candidateLimit = lookupOffsets[lookupIndex + 1u];
-    float2 result = float2(destination.x, 1.0f - destination.y);
-
-    // Candidate IDs are stored in Music's original index-buffer order. Do
-    // not return early: when the source mesh folds, the later primitive is
-    // the one left in the render target.
+    // Candidates retain Music's index-buffer order. Search back to front:
+    // the first containing primitive is exactly the last writer from the
+    // forward pass, including folded/overlapping portions of the mesh.
     for (
-        uint candidateIndex = firstCandidate;
-        candidateIndex < candidateLimit;
-        ++candidateIndex
+        uint candidateIndex = candidateLimit;
+        candidateIndex > firstCandidate;
     ) {
+        --candidateIndex;
         uint triangle = uint(lookupTriangles[candidateIndex]);
         uint linearCell = triangle / 2u;
         uint2 cellIndex = uint2(
@@ -168,7 +154,7 @@ static float2 appleMusicInverseMesh(
             (triangle & 1u) != 0u,
             solvedLocal
         )) {
-            result = clamp(
+            return clamp(
                 (float2(cellIndex) + solvedLocal)
                     / float(appleMusicMeshCellCount),
                 0.0f,
@@ -176,7 +162,7 @@ static float2 appleMusicInverseMesh(
             );
         }
     }
-    return clamp(result, 0.0f, 1.0f);
+    return clamp(float2(destination.x, 1.0f - destination.y), 0.0f, 1.0f);
 }
 
 [[ stitchable ]]
@@ -184,8 +170,7 @@ half4 desktopAppleMusicBackdropPinch(
     float2 position,
     SwiftUI::Layer layer,
     float2 size,
-    float time,
-    float meshWarpTimeScale,
+    float meshWeight,
     float blackScrimAlpha,
     float usesDarkAppearance,
     float averageLuminosity,
@@ -206,12 +191,11 @@ half4 desktopAppleMusicBackdropPinch(
     const device ushort *lookupTriangles =
         static_cast<const device ushort *>(lookupTrianglesData);
 
-    float weight = appleMusicMeshWeight(time, meshWarpTimeScale);
     float2 destination = position / size;
     float2 textureCoordinates = appleMusicInverseMesh(
         destination,
         meshPositions,
-        weight,
+        meshWeight,
         lookupOffsets,
         lookupTriangles
     );
