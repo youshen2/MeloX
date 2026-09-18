@@ -21,7 +21,11 @@ struct DesktopPlaylistDetailView: View {
         Group {
             if let playlist {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 34) {
+                    // Keep a single lazy container for the rows below. The
+                    // track section owns virtualization; nesting another
+                    // lazy stack here makes macOS repeatedly remeasure the
+                    // whole playlist while a page is appended.
+                    VStack(alignment: .leading, spacing: 34) {
                         DesktopCollectionHeader(
                             artworkURL: playlist.artworkURL,
                             kind: playlist.isOfficialToplist
@@ -49,22 +53,18 @@ struct DesktopPlaylistDetailView: View {
                         DesktopCollectionTrackList(
                             songs: songs,
                             sourceID: playlist.id,
-                            loadMoreToken: hasMoreTracks
-                                ? loadedTrackOffset
-                                : nil,
-                            onLoadMore: {
-                                await loadMoreTracks()
-                            }
+                            footer: hasMoreTracks ? {
+                                AnyView(
+                                    DesktopCollectionPaginationFooter(
+                                        isLoading: isLoadingMoreTracks,
+                                        failureMessage: loadMoreTracksError,
+                                        loadToken: loadedTrackOffset
+                                    ) {
+                                        await loadMoreTracks()
+                                    }
+                                )
+                            } : nil
                         )
-
-                        if hasMoreTracks {
-                            DesktopCollectionPaginationFooter(
-                                isLoading: isLoadingMoreTracks,
-                                failureMessage: loadMoreTracksError
-                            ) {
-                                await loadMoreTracks()
-                            }
-                        }
                     }
                     .padding(.horizontal, 42)
                     .padding(.vertical, 34)
