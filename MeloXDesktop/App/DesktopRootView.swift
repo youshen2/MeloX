@@ -1,11 +1,15 @@
+import AppKit
+import CoreGraphics
 import SwiftUI
 
 struct DesktopRootView: View {
     @Environment(DesktopAppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isNowPlayingLayerMounted = false
     @State private var isNowPlayingRenderingActive = false
+    @State private var isWindowActuallyVisible = true
 
     var body: some View {
         @Bindable var ui = model.ui
@@ -80,6 +84,15 @@ struct DesktopRootView: View {
         .tint(.red)
         .desktopLaunchExperience()
         .task { await model.bootstrap() }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            updatePlaybackUIActivity(for: phase)
+        }
+        .background {
+            DesktopWindowVisibilityReader { isVisible in
+                isWindowActuallyVisible = isVisible
+                updatePlaybackUIActivity(for: scenePhase)
+            }
+        }
         .task(id: ui.isNowPlayingPresented) {
             await updateNowPlayingLifecycle(
                 isPresented: ui.isNowPlayingPresented
@@ -129,6 +142,12 @@ struct DesktopRootView: View {
                 ui.isNowPlayingPresented = false
             }
         }
+    }
+
+    private func updatePlaybackUIActivity(for phase: ScenePhase) {
+        model.player.setPlaybackUIActive(
+            phase == .active && isWindowActuallyVisible
+        )
     }
 
     private func nowPlayingLayer(
@@ -204,6 +223,138 @@ struct DesktopRootView: View {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             isNowPlayingRenderingActive = isActive
+        }
+    }
+}
+
+private struct DesktopWindowVisibilityReader: NSViewRepresentable {
+    let onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> ObserverView {
+        ObserverView(onChange: onChange)
+    }
+
+    func updateNSView(_ nsView: ObserverView, context: Context) {
+        nsView.onChange = onChange
+        nsView.publishVisibility()
+    }
+
+    final class ObserverView: NSView {
+        var onChange: (Bool) -> Void
+        private weak var observedWindow: NSWindow?
+
+        init(onChange: @escaping (Bool) -> Void) {
+            self.onChange = onChange
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            NotificationCenter.default.removeObserver(self)
+            observedWindow = window
+            guard let window else {
+                onChange(false)
+                return
+            }
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSWindow.didResignKeyNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSApplication.didBecomeActiveNotification,
+                object: nil
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSApplication.didResignActiveNotification,
+                object: nil
+            )
+            publishVisibility()
+        }
+
+        @objc func publishVisibility() {
+            guard let window else {
+                onChange(false)
+                return
+            }
+            onChange(
+                window.isVisible
+                    && window.occlusionState.contains(.visible)
+                    && !Self.isFullyCovered(window)
+            )
+        }
+
+        private static func isFullyCovered(_ window: NSWindow) -> Bool {
+            // A frontmost active app may still have same-sized windows from
+            // other Spaces in the on-screen list. OcclusionState remains the
+            // authoritative signal for normal and partial occlusion; this
+            // geometry check only supplements it while the app is inactive.
+            guard !NSApp.isActive else { return false }
+            let windowID = CGWindowID(window.windowNumber)
+            let windowFrame = window.frame
+            guard windowFrame.width > 0, windowFrame.height > 0,
+                  let windowList = CGWindowListCopyWindowInfo(
+                      [.optionOnScreenOnly],
+                      kCGNullWindowID
+            ) as? [[String: Any]] else {
+                return false
+            }
+
+            for info in windowList {
+                guard let candidateNumber = info[kCGWindowNumber as String]
+                        as? NSNumber else { continue }
+                let candidateID = CGWindowID(candidateNumber.uint32Value)
+                if candidateID == windowID { return false }
+                guard let alpha = (info[kCGWindowAlpha as String]
+                    as? NSNumber)?.doubleValue,
+                      alpha > 0.01,
+                      let bounds = info[kCGWindowBounds as String]
+                        as? [String: Any],
+                      let x = (bounds["X"] as? NSNumber)?.doubleValue,
+                      let y = (bounds["Y"] as? NSNumber)?.doubleValue,
+                      let width = (bounds["Width"] as? NSNumber)?.doubleValue,
+                      let height = (bounds["Height"] as? NSNumber)?.doubleValue else {
+                    continue
+                }
+
+                let candidateFrame = CGRect(
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height
+                )
+                let sameSize = abs(candidateFrame.width - windowFrame.width)
+                    < 1
+                    && abs(candidateFrame.height - windowFrame.height) < 1
+                guard sameSize else { continue }
+                return true
+            }
+            return false
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
         }
     }
 }

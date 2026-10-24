@@ -81,6 +81,32 @@ final class DesktopAppModel {
         }
         _ = await (homeLoad, notificationLoad)
         await synchronizeLyrics()
+        // Apply this after launch-time clipboard/update tasks so the debug
+        // harness always ends on the real dynamic playback page.
+        await activateDebugPlaybackPageIfRequested()
+    }
+
+    /// Test-only entry point for repeatable real-player performance runs.
+    /// It uses the restored song and queue so old and new builds can be
+    /// launched into the same dynamic lyrics page without manual clicks.
+    private func activateDebugPlaybackPageIfRequested() async {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["MELOX_DEBUG_FIXED_PLAYBACK_PAGE"] == "1"
+            || CommandLine.arguments.contains(
+                "--melox-debug-fixed-playback-page"
+            ) else { return }
+        guard player.currentSong != nil else {
+            print("[MeloX debug] fixed playback page requested without a restored song")
+            return
+        }
+
+        ui.isNowPlayingPresented = true
+        if !player.isPlaying {
+            player.togglePlayback()
+        }
+        print(
+            "[MeloX debug] fixed playback page active for song \(player.currentSong?.id ?? 0)"
+        )
     }
 
     func synchronizeLyrics() async {

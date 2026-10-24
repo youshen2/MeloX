@@ -53,6 +53,8 @@ struct AppleMusicLyricsFocusCoordinator: View {
         AppleMusicLyricsFocusSynchronizationTrigger(
             songID: player.currentSong?.id,
             seekRevision: player.seekRevision,
+            playbackUIActivationRevision:
+                player.playbackUIActivationRevision,
             isPlaying: player.isPlaying,
             isActive: isActive,
             isEnabled: settings.lyricsInterludeCountdownEnabled,
@@ -298,6 +300,7 @@ struct AppleMusicLyricInterludeView: View {
 private struct AppleMusicLyricsFocusSynchronizationTrigger: Hashable {
     let songID: Int?
     let seekRevision: Int
+    let playbackUIActivationRevision: Int
     let isPlaying: Bool
     let isActive: Bool
     let isEnabled: Bool

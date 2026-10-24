@@ -8,12 +8,13 @@ import Foundation
 actor DesktopArtworkBackdropRenderer {
     static let shared = DesktopArtworkBackdropRenderer()
 
-    /// Music.app 的封面纹理上限是短边 300px（`sub_101831D5B`）。
-    nonisolated static let standardPixelSize = 300
+    /// The moving shader only needs a small source texture after baking blur.
+    /// Keeping the normal source below the old 300px cap reduces texture
+    /// upload and sampling cost while preserving the cached artwork path.
+    nonisolated static let standardPixelSize = 240
 
-    /// 低功耗模式下收紧到 180px，对应 Apple 按 `device.isLowPower`
-    /// 切换处理阈值的行为。
-    nonisolated static let lowPowerPixelSize = 180
+    /// Low-power mode uses a smaller source texture still.
+    nonisolated static let lowPowerPixelSize = 160
 
     private nonisolated static let imageCache =
         DesktopArtworkBackdropImageCache()

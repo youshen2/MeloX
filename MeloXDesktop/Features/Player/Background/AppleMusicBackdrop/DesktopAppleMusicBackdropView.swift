@@ -27,8 +27,12 @@ struct DesktopAppleMusicBackdropView: View {
     @State private var thermalState =
         ProcessInfo.processInfo.thermalState
 
-    private static let standardRenderDimension: CGFloat = 960
-    private static let lowPowerRenderDimension: CGFloat = 640
+    // The default path rasterizes a bounded Metal surface and copies every
+    // completed frame back into a CGImage for SwiftUI. Keep the normal path
+    // below the cost of a full 60 Hz 960px surface; high remains an explicit
+    // opt-in for users who prefer maximum motion fidelity.
+    private static let standardRenderDimension: CGFloat = 640
+    private static let lowPowerRenderDimension: CGFloat = 480
 
     var body: some View {
         GeometryReader { proxy in
@@ -121,6 +125,12 @@ struct DesktopAppleMusicBackdropView: View {
     }
 
     private var frameInterval: TimeInterval {
+        if renderQuality != .high {
+            if isLowPowerModeEnabled || thermalState == .serious {
+                return 1.0 / 20.0
+            }
+            return 1.0 / 30.0
+        }
         if isLowPowerModeEnabled {
             return 1.0 / 30.0
         }

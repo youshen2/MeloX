@@ -38,11 +38,19 @@ final class PlayerStore {
         category: "BeatNet"
     )
 
+    // Playback clock samples arrive every 100 ms. Persisting the complete
+    // queue and its song models every second needlessly encodes the same
+    // snapshot while a track is playing. Explicit playback state changes
+    // still call persistSnapshot immediately; this interval only throttles
+    // progress-only updates.
+    private static let playbackSnapshotProgressInterval: TimeInterval = 5
+
     private(set) var currentSong: Song?
     private(set) var isPlaying = false
     private(set) var progress: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
     private(set) var seekRevision = 0
+    private(set) var playbackUIActivationRevision = 0
     private(set) var isLoading = false
     private(set) var playbackIssue: PlaybackIssue?
     private(set) var volume: Double = 1
@@ -184,6 +192,8 @@ final class PlayerStore {
 
     @ObservationIgnored
     private var lastPersistedSecond = -1
+
+    private(set) var isPlaybackUIActive = true
 
     @ObservationIgnored
     private var playbackTimelineClock = PlaybackTimelineClock()
@@ -751,6 +761,19 @@ final class PlayerStore {
         )
     }
 
+    func setPlaybackUIActive(_ active: Bool) {
+        guard active != isPlaybackUIActive else { return }
+        isPlaybackUIActive = active
+        guard active else { return }
+
+        playbackUIActivationRevision &+= 1
+        let currentProgress = clampedPlaybackPosition(estimatedProgress())
+        progress = currentProgress
+        updateNowPlayingLyricMetadata(force: true)
+        updateLyricsLiveActivity(force: true)
+        updateLyricsNotification(force: true)
+    }
+
     private var playbackDurationLimit: TimeInterval {
         if duration.isFinite, duration > 0 {
             return duration
@@ -925,9 +948,15 @@ final class PlayerStore {
     }
 
     func applyVolumeControlMode() {
-        let effectiveVolume = settings.playerVolumeControlMode == .independent
-            ? volume
-            : 1
+        let debugMuted = ProcessInfo.processInfo.environment[
+            "MELOX_DEBUG_MUTE"
+        ] == "1"
+            || CommandLine.arguments.contains("--melox-debug-mute")
+        let effectiveVolume = debugMuted
+            ? 0
+            : settings.playerVolumeControlMode == .independent
+                ? volume
+                : 1
         engine.setVolume(effectiveVolume)
     }
 
@@ -1228,7 +1257,13 @@ final class PlayerStore {
         let measuredProgress = clampedPlaybackPosition(
             sample.position
         )
-        progress = measuredProgress
+        // Keep the foreground display on the same 100 ms clock as the
+        // player. Only suppress the observable update while the app is
+        // inactive; returning to the foreground publishes immediately in
+        // setPlaybackUIActive(_:).
+        if isPlaybackUIActive {
+            progress = measuredProgress
+        }
         reanchorPlaybackTimeline(
             to: measuredProgress,
             rate: sample.rate,
@@ -1238,9 +1273,10 @@ final class PlayerStore {
         updateLyricsLiveActivity()
         updateLyricsNotification()
         let second = Int(measuredProgress)
-        if second != lastPersistedSecond {
+        if abs(measuredProgress - Double(lastPersistedSecond))
+            >= Self.playbackSnapshotProgressInterval {
             lastPersistedSecond = second
-            persistSnapshot()
+            persistSnapshot(progressOverride: measuredProgress)
         }
         prepareAutoMixIfNeeded()
     }
@@ -1600,7 +1636,7 @@ final class PlayerStore {
         downloads.recordPlayback(currentSong)
     }
 
-    private func persistSnapshot() {
+    private func persistSnapshot(progressOverride: TimeInterval? = nil) {
         guard !queue.isEmpty else {
             persistence.clear()
             return
@@ -1609,7 +1645,7 @@ final class PlayerStore {
             PlaybackSnapshot(
                 queue: queue,
                 currentIndex: currentIndex,
-                progress: progress,
+                progress: progressOverride ?? progress,
                 repeatMode: repeatMode.rawValue,
                 isShuffled: isShuffled,
                 shuffledOrder: playbackQueue.persistedShuffleOrder,

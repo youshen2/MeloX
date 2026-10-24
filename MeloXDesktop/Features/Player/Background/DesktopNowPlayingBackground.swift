@@ -83,7 +83,7 @@ struct DesktopNowPlayingBackdrop: View {
                     settings.playerBackgroundMotionIntensity,
                 renderQuality:
                     settings.playerBackgroundRenderQuality,
-                isActive: isActive,
+                isActive: isBackgroundAnimationActive,
                 isPlaying: player.isPlaying
             )
             .frame(width: size.width, height: size.height)
@@ -100,7 +100,7 @@ struct DesktopNowPlayingBackdrop: View {
                 beatEffectsEnabled:
                     settings
                         .playerBackgroundBeatEffectsEnabled,
-                isActive: isActive
+                isActive: isBackgroundAnimationActive
             )
             .frame(
                 width: size.width,
@@ -110,6 +110,10 @@ struct DesktopNowPlayingBackdrop: View {
         case .blurredArtwork:
             blurredArtworkBackground(in: size)
         }
+    }
+
+    private var isBackgroundAnimationActive: Bool {
+        isActive && player.isPlaybackUIActive
     }
 
     @ViewBuilder
