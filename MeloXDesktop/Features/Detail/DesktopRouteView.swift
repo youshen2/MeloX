@@ -54,7 +54,6 @@ struct DesktopCollectionHeader: View {
     var artworkSystemImage: String?
     var artworkTint: Color = .red
     var supplementaryAction: DesktopCollectionSupplementaryAction?
-    var locatePlayingAction: DesktopCollectionSupplementaryAction?
     var onPlayAll: ((Bool) async -> Void)?
 
     @Environment(DesktopAppModel.self) private var model
@@ -224,23 +223,9 @@ struct DesktopCollectionHeader: View {
                 )
             }
 
-            if locatePlayingAction != nil
-                || model.settings.isContentFeatureEnabled(.downloads)
+            if model.settings.isContentFeatureEnabled(.downloads)
                 || shareURL != nil {
                 Menu {
-                    if let locatePlayingAction {
-                        Button(
-                            locatePlayingAction.title,
-                            systemImage: locatePlayingAction.systemImage,
-                            action: locatePlayingAction.action
-                        )
-                        .disabled(
-                            locatePlayingAction.isDisabled
-                                || locatePlayingAction.isRunning
-                        )
-                        Divider()
-                    }
-
                     if model.settings.isContentFeatureEnabled(.downloads) {
                         Button("ui.desktop.collection.download_all", systemImage: "arrow.down.circle") {
                             model.downloads.start(

@@ -50,18 +50,6 @@ struct DesktopPlaylistDetailView: View {
                                 shareURL: URL(
                                     string: "https://music.163.com/#/playlist?id=\(playlist.id)"
                                 ),
-                                locatePlayingAction: DesktopCollectionSupplementaryAction(
-                                    title: L10n.string(
-                                        songToLocate == nil
-                                            ? "ui.collection.locate_playing"
-                                            : "ui.collection.locating_playing"
-                                    ),
-                                    systemImage: "scope",
-                                    isRunning: songToLocate != nil,
-                                    isDisabled: currentSongID == nil
-                                        || isLoading || isLoadingMoreTracks,
-                                    action: { songToLocate = currentSongID }
-                                ),
                                 onPlayAll: { shuffled in
                                     await playAll(shuffled: shuffled)
                                 }
@@ -93,6 +81,28 @@ struct DesktopPlaylistDetailView: View {
                         }
                         .padding(.horizontal, 42)
                         .padding(.vertical, 34)
+                    }
+                    .contentMargins(.bottom, 48, for: .scrollContent)
+                    .overlay(alignment: .bottomTrailing) {
+                        let title = L10n.string(
+                            songToLocate == nil
+                                ? "ui.collection.locate_playing"
+                                : "ui.collection.locating_playing"
+                        )
+                        Button(title, systemImage: "scope") {
+                            songToLocate = currentSongID
+                        }
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                        .controlSize(.large)
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.circle)
+                        .disabled(
+                            currentSongID == nil || isLoading
+                                || isLoadingMoreTracks || songToLocate != nil
+                        )
+                        .help(title)
+                        .padding(24)
                     }
                     .task(id: songToLocate) {
                         if let songToLocate {

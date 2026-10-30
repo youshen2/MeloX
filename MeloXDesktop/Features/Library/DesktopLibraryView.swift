@@ -37,6 +37,27 @@ struct DesktopLibraryView: View {
                 }
                 .padding(.horizontal, 34)
                 .padding(.vertical, 28)
+                .padding(.bottom, section == .songs ? 48 : 0)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if section == .songs {
+                    let title = L10n.string(
+                        songToLocate == nil
+                            ? "ui.collection.locate_playing"
+                            : "ui.collection.locating_playing"
+                    )
+                    Button(title, systemImage: "scope") {
+                        songToLocate = currentSongID
+                    }
+                    .labelStyle(.iconOnly)
+                    .font(.title3)
+                    .controlSize(.large)
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.circle)
+                    .disabled(currentSongID == nil || songToLocate != nil)
+                    .help(title)
+                    .padding(24)
+                }
             }
             .task(id: songToLocate) {
                 if let songToLocate { await locateSong(songToLocate) }
@@ -147,16 +168,6 @@ struct DesktopLibraryView: View {
     private var headerActions: some View {
         switch section {
         case .songs:
-            Menu {
-                Button("ui.collection.locate_playing", systemImage: "scope") {
-                    songToLocate = currentSongID
-                }
-                .disabled(currentSongID == nil || songToLocate != nil)
-            } label: {
-                Image(systemName: "ellipsis")
-            }
-            .help(L10n.string("ui.common.more"))
-
             Button(action: playFavoriteSongs) {
                 HStack(spacing: 7) {
                     Label("ui.common.play_all", systemImage: "play.fill")

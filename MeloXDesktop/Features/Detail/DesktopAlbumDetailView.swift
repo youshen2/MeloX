@@ -33,16 +33,6 @@ struct DesktopAlbumDetailView: View {
                                 favoriteAction: toggleSubscription,
                                 shareURL: URL(
                                     string: "https://music.163.com/#/album?id=\(album.id)"
-                                ),
-                                locatePlayingAction: DesktopCollectionSupplementaryAction(
-                                    title: L10n.string("ui.collection.locate_playing"),
-                                    systemImage: "scope",
-                                    isDisabled: currentSongID == nil,
-                                    action: {
-                                        if let currentSongID {
-                                            trackLocator.locate(currentSongID)
-                                        }
-                                    }
                                 )
                             )
 
@@ -58,6 +48,25 @@ struct DesktopAlbumDetailView: View {
                         }
                         .padding(.horizontal, 42)
                         .padding(.vertical, 34)
+                    }
+                    .contentMargins(.bottom, 48, for: .scrollContent)
+                    .overlay(alignment: .bottomTrailing) {
+                        Button(
+                            L10n.string("ui.collection.locate_playing"),
+                            systemImage: "scope"
+                        ) {
+                            if let currentSongID {
+                                trackLocator.locate(currentSongID)
+                            }
+                        }
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                        .controlSize(.large)
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.circle)
+                        .disabled(currentSongID == nil || isLoading)
+                        .help(L10n.string("ui.collection.locate_playing"))
+                        .padding(24)
                     }
                     .task(id: trackLocator.request) {
                         await trackLocator.scroll(using: proxy, reduceMotion: reduceMotion)
