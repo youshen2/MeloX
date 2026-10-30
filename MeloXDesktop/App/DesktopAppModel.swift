@@ -18,6 +18,9 @@ final class DesktopAppModel {
     let home: DesktopHomeStore
     let ui = DesktopUIState()
 
+    @ObservationIgnored
+    private let lyricsSynchronizer: DesktopLyricsSynchronizer
+
     private(set) var hasBootstrapped = false
     private(set) var launchErrorMessage: String?
 
@@ -54,7 +57,13 @@ final class DesktopAppModel {
         )
         listenTogether = ListenTogetherStore(api: api, player: player)
         let lyricService = LyricsService(api: api, settings: settings)
-        lyrics = LyricsStore(service: lyricService)
+        let lyrics = LyricsStore(service: lyricService)
+        self.lyrics = lyrics
+        lyricsSynchronizer = DesktopLyricsSynchronizer(
+            player: player,
+            settings: settings,
+            lyrics: lyrics
+        )
         screenAwakeCoordinator = ScreenAwakeCoordinator()
         home = DesktopHomeStore(api: api, settings: settings)
 
@@ -80,14 +89,6 @@ final class DesktopAppModel {
             await startHeartModeOnLaunchIfNeeded()
         }
         _ = await (homeLoad, notificationLoad)
-        await synchronizeLyrics()
-    }
-
-    func synchronizeLyrics() async {
-        let song = player.currentSong
-        let lyricSong = song?.isPodcastProgram == true ? nil : song
-        await lyrics.load(for: lyricSong)
-        player.setNowPlayingLyrics(lyrics.lyrics, for: lyricSong?.id)
     }
 
     func refreshAll() async {
