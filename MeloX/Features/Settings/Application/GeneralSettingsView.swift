@@ -88,6 +88,15 @@ struct GeneralSettingsView: View {
                 Toggle("ui.settings.general.search_suggestions", isOn: $settings.searchSuggestionsEnabled)
             }
 
+            Section {
+                Toggle(
+                    "ui.settings.general.cache_page_content",
+                    isOn: $settings.automaticallyCachesPageContent
+                )
+            } footer: {
+                Text("ui.settings.general.cache_page_content.footer")
+            }
+
             if !settings.embeddedLibraryPages.isEmpty {
                 Section {
                     Toggle(

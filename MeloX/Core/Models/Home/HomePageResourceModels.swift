@@ -1,6 +1,6 @@
 import Foundation
 
-struct HomePageResource: Decodable, Identifiable {
+struct HomePageResource: Codable, Identifiable {
     let resourceType: String?
     let resourceID: String?
     let action: String?
@@ -78,7 +78,8 @@ struct HomePageResource: Decodable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case resourceType, resourceId, action, uiElement
+        case resourceType, action, uiElement
+        case resourceID = "resourceId"
         case extensionInfo = "resourceExtInfo"
     }
 
@@ -90,7 +91,7 @@ struct HomePageResource: Decodable, Identifiable {
         )
         resourceID = Self.decodeString(
             from: container,
-            forKey: .resourceId
+            forKey: .resourceID
         )
         action = try container.decodeIfPresent(
             String.self,
@@ -120,7 +121,7 @@ struct HomePageResource: Decodable, Identifiable {
     }
 }
 
-struct HomePageUIElement: Decodable {
+struct HomePageUIElement: Codable {
     let mainTitle: HomePageTitle?
     let subTitle: HomePageTitle?
     let image: HomePageImage?
@@ -152,7 +153,7 @@ struct HomePageUIElement: Decodable {
     }
 }
 
-struct HomePageTitle: Decodable {
+struct HomePageTitle: Codable {
     let title: String?
 
     var nonemptyTitle: String? {
@@ -165,7 +166,7 @@ struct HomePageTitle: Decodable {
     }
 }
 
-struct HomePageImage: Decodable {
+struct HomePageImage: Codable {
     let imageURL: String?
 
     enum CodingKeys: String, CodingKey {
@@ -173,7 +174,7 @@ struct HomePageImage: Decodable {
     }
 }
 
-struct HomePageResourceExtension: Decodable {
+struct HomePageResourceExtension: Codable {
     let artists: [Artist]
     let song: Song?
     let podcastProgram: PodcastProgram?
@@ -181,6 +182,14 @@ struct HomePageResourceExtension: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case artists, song, songData, djProgram, playCount
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(artists, forKey: .artists)
+        try container.encodeIfPresent(song, forKey: .song)
+        try container.encodeIfPresent(podcastProgram, forKey: .djProgram)
+        try container.encodeIfPresent(playCount, forKey: .playCount)
     }
 
     init(from decoder: Decoder) throws {

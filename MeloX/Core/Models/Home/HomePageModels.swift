@@ -22,7 +22,7 @@ struct HomePageResponse: Decodable {
     }
 }
 
-struct HomePagePayload: Decodable {
+struct HomePagePayload: Codable {
     let blocks: [HomePageBlock]
     let hasMore: Bool
     let cursor: String?
@@ -48,7 +48,7 @@ struct HomePagePayload: Decodable {
     }
 }
 
-struct HomePageBlock: Decodable, Identifiable {
+struct HomePageBlock: Codable, Identifiable {
     let blockCode: String
     let showType: String?
     let uiElement: HomePageUIElement?
@@ -126,7 +126,7 @@ struct HomePageBlock: Decodable, Identifiable {
     }
 }
 
-struct HomePageCreative: Decodable {
+struct HomePageCreative: Codable {
     let creativeType: String?
     let creativeID: String?
     let action: String?
@@ -134,7 +134,8 @@ struct HomePageCreative: Decodable {
     let resources: [HomePageResource]
 
     enum CodingKeys: String, CodingKey {
-        case creativeType, creativeId, action, uiElement, resources
+        case creativeType, action, uiElement, resources
+        case creativeID = "creativeId"
     }
 
     init(from decoder: Decoder) throws {
@@ -145,7 +146,7 @@ struct HomePageCreative: Decodable {
         )
         creativeID = Self.decodeString(
             from: container,
-            forKey: .creativeId
+            forKey: .creativeID
         )
         action = try container.decodeIfPresent(
             String.self,

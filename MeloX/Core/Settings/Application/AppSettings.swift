@@ -257,6 +257,7 @@ final class AppSettings {
         static let recognizesClipboardLinksOnLaunch =
             "recognizesClipboardLinksOnLaunch"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
+        static let automaticallyCachesPageContent = "automaticallyCachesPageContent"
         static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
         static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
         static let automaticCacheQuality = "automaticCacheQuality"
@@ -273,6 +274,12 @@ final class AppSettings {
 
     var cookie: String {
         didSet { defaults.set(cookie, forKey: Key.cookie) }
+    }
+
+    var automaticallyCachesPageContent: Bool {
+        didSet {
+            defaults.set(automaticallyCachesPageContent, forKey: Key.automaticallyCachesPageContent)
+        }
     }
 
     var quality: MusicQuality {
@@ -1782,6 +1789,9 @@ final class AppSettings {
             forKey: Key.recognizesClipboardLinksOnLaunch
         ) as? Bool ?? Self.defaultRecognizesClipboardLinksOnLaunch
         checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
+        automaticallyCachesPageContent = defaults.object(
+            forKey: Key.automaticallyCachesPageContent
+        ) as? Bool ?? true
         automaticallyCachesFrequentlyPlayedSongs = defaults.object(
             forKey: Key.automaticallyCachesFrequentlyPlayedSongs
         ) as? Bool ?? false

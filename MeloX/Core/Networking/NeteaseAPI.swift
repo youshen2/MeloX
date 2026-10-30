@@ -62,12 +62,16 @@ final class NeteaseAPI {
     @ObservationIgnored
     let client: NeteaseDirectClient
 
+    @ObservationIgnored
+    let pageContentCache: PageContentCache
+
     private var playbackQuality: MusicQuality {
         isCellularData ? settings.cellularQuality : settings.quality
     }
 
     init(settings: AppSettings, session: URLSession = .shared) {
         self.settings = settings
+        pageContentCache = PageContentCache(settings: settings)
         client = NeteaseDirectClient(settings: settings, session: session)
         pathMonitor.pathUpdateHandler = { [weak self] path in
             let isCellular = path.usesInterfaceType(.cellular)

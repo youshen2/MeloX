@@ -14,6 +14,8 @@ struct HomeRecommendedView: View {
     @State private var charts: [Playlist] = []
     @State private var loadedPrimaryContext:
         HomeRecommendedPrimaryContext?
+    @State private var displayedPrimaryContext: HomeRecommendedPrimaryContext?
+    @State private var lastSuccessfulRefresh: Date?
     @State private var hotSongsChart: Playlist?
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
@@ -243,11 +245,33 @@ struct HomeRecommendedView: View {
                 accountToken: settings.cookie.hashValue,
                 musicArea: settings.musicArea
             )
+            if displayedPrimaryContext != primaryContext {
+                payload = nil
+                charts = []
+                fallbacks = [:]
+                hotSongsChart = nil
+                loadedPrimaryContext = nil
+                lastSuccessfulRefresh = nil
+                if let snapshot: HomeContentSnapshot = await api.pageContentCache.value(
+                    for: HomeContentSnapshot.cacheKey(musicArea: settings.musicArea)
+                ) {
+                    payload = snapshot.payload
+                    charts = snapshot.charts
+                    fallbacks = snapshot.fallbacks
+                    hotSongsChart = Self.hotSongsChart(in: charts)
+                    phase = .loaded
+                    payloadVersion += 1
+                }
+                try Task.checkCancellation()
+                displayedPrimaryContext = primaryContext
+            }
             let newPayload: HomePagePayload
             let newCharts: [Playlist]
 
             if !refresh,
                loadedPrimaryContext == primaryContext,
+               let lastSuccessfulRefresh,
+               Date().timeIntervalSince(lastSuccessfulRefresh) < 300,
                let payload {
                 newPayload = payload
                 newCharts = charts
@@ -258,14 +282,17 @@ struct HomeRecommendedView: View {
                 async let loadedCharts = try? api.toplists()
                 newPayload = try await loadedHomePage
                 try Task.checkCancellation()
+                if newPayload.blocks.isEmpty, let payload, !payload.blocks.isEmpty {
+                    throw APIError.invalidResponse
+                }
 
                 payload = newPayload
                 loadedPrimaryContext = primaryContext
-                fallbacks = [:]
                 phase = .loaded
                 payloadVersion += 1
 
-                newCharts = await loadedCharts ?? []
+                newCharts = await loadedCharts ?? charts
+                lastSuccessfulRefresh = Date()
             }
             try Task.checkCancellation()
 
@@ -274,10 +301,12 @@ struct HomeRecommendedView: View {
             loadedPrimaryContext = primaryContext
             hotSongsChart = Self.hotSongsChart(in: newCharts)
             phase = .loaded
+            await persistContent()
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled else { return }
+            lastSuccessfulRefresh = nil
             if payload == nil {
                 phase = .failed(error.localizedDescription)
             } else {
@@ -325,7 +354,20 @@ struct HomeRecommendedView: View {
                 == requestedBlockIDs else {
             return
         }
-        fallbacks = newFallbacks
+        fallbacks.merge(newFallbacks) { _, updated in updated }
+        await persistContent()
+    }
+
+    private func persistContent() async {
+        guard let payload, !feed.sections.isEmpty,
+              displayedPrimaryContext == HomeRecommendedPrimaryContext(
+                accountToken: settings.cookie.hashValue,
+                musicArea: settings.musicArea
+              ) else { return }
+        await api.pageContentCache.store(
+            HomeContentSnapshot(payload: payload, charts: charts, fallbacks: fallbacks),
+            for: HomeContentSnapshot.cacheKey(musicArea: settings.musicArea)
+        )
     }
 
     private static func hotSongsChart(

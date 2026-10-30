@@ -1,6 +1,6 @@
 import Foundation
 
-struct AccountProfile: Decodable, Hashable, Identifiable {
+struct AccountProfile: Codable, Hashable, Identifiable {
     let id: Int
     let nickname: String
     let avatarURLString: String?
@@ -34,7 +34,7 @@ struct AccountProfile: Decodable, Hashable, Identifiable {
     }
 }
 
-struct AccountDetail: Hashable {
+struct AccountDetail: Codable, Hashable {
     let profile: AccountProfile
     let level: Int
     let listenSongs: Int

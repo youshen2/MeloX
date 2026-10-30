@@ -2150,3 +2150,5 @@
 "ui.library.artists.search" = "Search followed artists";
 "ui.library.artists.empty" = "No Followed Artists";
 "ui.library.error.favorite_artists" = "Could not load followed artists: %@";
+"ui.settings.general.cache_page_content" = "Cache Home and Library";
+"ui.settings.general.cache_page_content.footer" = "Save successfully loaded recommendations, library lists, and playlist details. Show cached content first, then refresh online. Clear it in Storage.";

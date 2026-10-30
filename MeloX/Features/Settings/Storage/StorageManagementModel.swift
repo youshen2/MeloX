@@ -46,7 +46,7 @@ final class StorageManagementModel {
             switch action {
             case .allCaches:
                 let networkBytes = usage.networkCacheBytes
-                StorageMaintenance.clearNetworkAndArtworkCaches()
+                await StorageMaintenance.clearNetworkAndArtworkCaches()
                 await player.clearPlaybackAnalysisCache()
                 let temporaryBytes =
                     try await StorageMaintenance
@@ -61,7 +61,7 @@ final class StorageManagementModel {
 
             case .networkCache:
                 let byteCount = usage.networkCacheBytes
-                StorageMaintenance.clearNetworkAndArtworkCaches()
+                await StorageMaintenance.clearNetworkAndArtworkCaches()
                 operationMessage = L10n.format(
                     "ui.settings.storage.operation.cleared_network_cache",
                     formattedSize(byteCount)

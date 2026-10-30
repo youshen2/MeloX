@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct PodcastHost: Decodable, Hashable, Identifiable {
+nonisolated struct PodcastHost: Codable, Hashable, Identifiable {
     let id: Int
     let nickname: String
     let avatarURLString: String?
@@ -39,7 +39,7 @@ nonisolated struct PodcastHost: Decodable, Hashable, Identifiable {
     }
 }
 
-nonisolated struct Podcast: Decodable, Hashable, Identifiable {
+nonisolated struct Podcast: Codable, Hashable, Identifiable {
     let id: Int
     let name: String
     let picURLString: String?
@@ -78,6 +78,24 @@ nonisolated struct Podcast: Decodable, Hashable, Identifiable {
         case host = "dj"
         case isSubscribed = "subed"
         case feeType = "radioFeeType"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(picURLString, forKey: .picURLString)
+        try container.encodeIfPresent(podcastDescription, forKey: .podcastDescription)
+        try container.encodeIfPresent(recommendationText, forKey: .recommendationText)
+        try container.encodeIfPresent(categoryID, forKey: .categoryID)
+        try container.encodeIfPresent(category, forKey: .category)
+        try container.encodeIfPresent(secondCategory, forKey: .secondCategory)
+        try container.encode(programCount, forKey: .programCount)
+        try container.encode(subscriberCount, forKey: .subscriberCount)
+        try container.encode(playCount, forKey: .playCount)
+        try container.encodeIfPresent(host, forKey: .host)
+        try container.encode(isSubscribed, forKey: .isSubscribed)
+        try container.encodeIfPresent(feeType, forKey: .feeType)
     }
 
     init(
@@ -244,7 +262,7 @@ struct PodcastCategory: Decodable, Hashable, Identifiable {
     }
 }
 
-struct PodcastProgramRadio: Decodable, Hashable {
+struct PodcastProgramRadio: Codable, Hashable {
     let id: Int
     let name: String
     let picURLString: String?
@@ -278,7 +296,7 @@ struct PodcastProgramRadio: Decodable, Hashable {
     }
 }
 
-struct PodcastProgram: Decodable, Hashable, Identifiable {
+struct PodcastProgram: Codable, Hashable, Identifiable {
     let id: Int
     let name: String
     let coverURLString: String?
@@ -366,7 +384,8 @@ struct PodcastProgram: Decodable, Hashable, Identifiable {
         case id, name
         case coverURLString = "coverUrl"
         case programDescription = "description"
-        case createTime, duration, listenerCount, likedCount, commentCount
+        case createTime, listenerCount, likedCount, commentCount
+        case durationMS = "duration"
         case serialNumber = "serialNum"
         case feeScope, radio
         case host = "dj"
@@ -393,7 +412,7 @@ struct PodcastProgram: Decodable, Hashable, Identifiable {
         )
         durationMS = try container.decodeIfPresent(
             Int.self,
-            forKey: .duration
+            forKey: .durationMS
         ) ?? 0
         listenerCount = try container.decodeIfPresent(
             Int.self,

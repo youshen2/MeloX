@@ -1,6 +1,6 @@
 import Foundation
 
-enum HomeMusicRegion: String {
+enum HomeMusicRegion: String, Codable {
     case all = "ALL"
     case chinese = "ZH"
     case western = "EA"

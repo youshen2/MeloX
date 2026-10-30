@@ -38,7 +38,7 @@ enum StorageMaintenance {
         let diskUsage = await measuredDiskUsage()
         return ManagedStorageUsage(
             downloadsBytes: diskUsage.downloadsBytes,
-            networkCacheBytes: networkCacheBytes,
+            networkCacheBytes: networkCacheBytes + diskUsage.pageContentCacheBytes,
             temporaryFilesBytes:
                 diskUsage.temporaryFilesBytes,
             databaseBytes: diskUsage.databaseBytes,
@@ -49,9 +49,10 @@ enum StorageMaintenance {
     }
 
     @MainActor
-    static func clearNetworkAndArtworkCaches() {
+    static func clearNetworkAndArtworkCaches() async {
         URLCache.shared.removeAllCachedResponses()
         ArtworkAccentColorProvider.clearCache()
+        await PageContentCache.clear()
     }
 
     nonisolated static func clearTemporaryFiles(
@@ -140,6 +141,10 @@ enum StorageMaintenance {
                     ),
                 fileManager: fileManager
             )
+            let pageContentCacheBytes = allocatedSize(
+                at: AppStorageLocations.pageContentCacheDirectory(fileManager: fileManager),
+                fileManager: fileManager
+            )
 
             var temporaryURLs =
                 AppStorageLocations.beatAnalysisDirectories(
@@ -184,6 +189,7 @@ enum StorageMaintenance {
                 downloadsBytes: downloadsBytes,
                 temporaryFilesBytes: temporaryFilesBytes,
                 databaseBytes: databaseBytes,
+                pageContentCacheBytes: pageContentCacheBytes,
                 deviceTotalBytes:
                     capacityValues?.volumeTotalCapacity
                         .map(Int64.init),
@@ -269,6 +275,7 @@ private nonisolated struct MeasuredDiskUsage: Sendable {
     let downloadsBytes: Int64
     let temporaryFilesBytes: Int64
     let databaseBytes: Int64
+    let pageContentCacheBytes: Int64
     let deviceTotalBytes: Int64?
     let deviceAvailableBytes: Int64?
 }

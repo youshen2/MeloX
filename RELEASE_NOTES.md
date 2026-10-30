@@ -4,10 +4,12 @@
 
 ### 简体中文
 
+- 新增首页推荐、音乐库和歌单信息自动缓存，再次打开时优先显示已有内容，网络刷新失败时保留缓存
 - 修复了播放队列中播放模式控件吸顶切换时，歌曲列表和滚动指示条位置跳动的问题（感谢 @Fab1e2000）
 
 ### English
 
+- Added automatic caching for home recommendations, library lists, and playlist details, with cached content shown first and preserved when network refreshes fail
 - Fixed jumps in the song list and scroll indicator when playback mode controls pin or unpin at the top of the queue (thanks to @Fab1e2000)
 
 ## macOS

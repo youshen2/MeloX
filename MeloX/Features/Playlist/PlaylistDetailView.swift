@@ -16,6 +16,7 @@ struct PlaylistDetailView: View {
     private var setTabViewBottomAccessorySuppressed
 
     @State private var playlist: Playlist?
+    @State private var contentAccountToken: Int?
     @State private var pendingRemoval: Song?
     @State private var isRemovingTrack = false
     @State private var removalError: String?
@@ -477,6 +478,7 @@ struct PlaylistDetailView: View {
                 self.playlist = playlist
                 loadedTrackOffset = endOffset
                 loadMoreTracksError = nil
+                await persistContent()
             }
             guard playlist.tracks.contains(where: { $0.id == songID }) else {
                 locateErrorMessage = L10n.string("ui.collection.locate_unavailable")
@@ -495,6 +497,7 @@ struct PlaylistDetailView: View {
     private func load(
         waitingForNavigationTransition: Bool = false
     ) async {
+        let accountToken = settings.cookie.hashValue
         songToLocate = nil
         trackLocator.reset()
         locateErrorMessage = nil
@@ -503,25 +506,47 @@ struct PlaylistDetailView: View {
         )
         defer { transitionDelay.cancel() }
 
-        phase = .loading
-        loadedTrackOffset = 0
+        if playlist == nil,
+           let snapshot: PlaylistContentSnapshot = await api.pageContentCache.value(
+               for: PlaylistContentSnapshot.cacheKey(id: id)
+           ) {
+            playlist = snapshot.playlist
+            contentAccountToken = accountToken
+            loadedTrackOffset = snapshot.loadedTrackOffset
+            phase = .loaded
+        }
+        if playlist == nil {
+            phase = .loading
+        }
         loadMoreTracksError = nil
         do {
+            let requestedTrackLimit = max(trackPageSize, loadedTrackOffset)
             let loadedPlaylist = try await api.playlist(
                 id: id,
-                trackLimit: trackPageSize
+                trackLimit: requestedTrackLimit
             )
+            guard loadedPlaylist.trackCount == 0 || !loadedPlaylist.tracks.isEmpty else {
+                throw APIError.invalidResponse
+            }
             try await transitionDelay.value
+            guard accountToken == settings.cookie.hashValue else { return }
             playlist = loadedPlaylist
+            contentAccountToken = accountToken
             loadedTrackOffset = min(
-                trackPageSize,
+                requestedTrackLimit,
                 loadedPlaylist.trackIDs.count
             )
             phase = .loaded
+            await persistContent()
         } catch is CancellationError {
             return
         } catch {
-            phase = .failed(error.localizedDescription)
+            if playlist == nil {
+                phase = .failed(error.localizedDescription)
+            } else {
+                phase = .loaded
+                loadMoreTracksError = error.localizedDescription
+            }
         }
     }
 
@@ -536,6 +561,7 @@ struct PlaylistDetailView: View {
                 loadedTrackOffset -= 1
             }
             self.playlist = updated
+            await persistContent()
         } catch {
             removalError = error.localizedDescription
         }
@@ -579,11 +605,20 @@ struct PlaylistDetailView: View {
             )
             playlist = updatedPlaylist
             loadedTrackOffset = page.nextOffset
+            await persistContent()
         } catch is CancellationError {
             return
         } catch {
             loadMoreTracksError = error.localizedDescription
         }
+    }
+
+    private func persistContent() async {
+        guard let playlist, contentAccountToken == settings.cookie.hashValue else { return }
+        await api.pageContentCache.store(
+            PlaylistContentSnapshot(playlist: playlist, loadedTrackOffset: loadedTrackOffset),
+            for: PlaylistContentSnapshot.cacheKey(id: id)
+        )
     }
 
     private func playAll(shuffled: Bool) async {

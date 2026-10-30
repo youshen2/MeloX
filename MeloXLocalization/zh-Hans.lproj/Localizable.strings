@@ -2150,3 +2150,5 @@
 "ui.library.artists.search" = "搜索已关注的歌手";
 "ui.library.artists.empty" = "暂无已关注的歌手";
 "ui.library.error.favorite_artists" = "歌手列表加载失败：%@";
+"ui.settings.general.cache_page_content" = "自动缓存首页与音乐库";
+"ui.settings.general.cache_page_content.footer" = "保存最近加载成功的推荐、音乐库和歌单信息。再次打开时先显示缓存，再联网更新；可在储存空间中清理。";

@@ -1,6 +1,6 @@
 import Foundation
 
-enum HomeRecommendationContent {
+enum HomeRecommendationContent: Codable {
     case playlists([Playlist])
     case songs([Song])
     case podcastPrograms([PodcastProgram])
@@ -29,12 +29,12 @@ enum HomeRecommendationContent {
     }
 }
 
-struct HomeRecommendationFallback {
+struct HomeRecommendationFallback: Codable {
     let title: HomeRecommendationTitle
     let content: HomeRecommendationContent
 }
 
-enum HomeRecommendationTitle {
+enum HomeRecommendationTitle: Codable {
     case standard
     case tailoredForSong(String)
     case userPlaylists(String)
@@ -92,7 +92,7 @@ struct HomeRecommendationSection: Identifiable {
     }
 }
 
-enum HomeRecommendationSlot: Int, CaseIterable, Identifiable {
+enum HomeRecommendationSlot: Int, Codable, CaseIterable, Identifiable {
     case recommendedPlaylists
     case recentlyTrending
     case tailoredRecommendation
