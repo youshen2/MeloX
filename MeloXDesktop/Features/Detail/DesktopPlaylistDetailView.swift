@@ -29,7 +29,9 @@ struct DesktopPlaylistDetailView: View {
             if let playlist {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 34) {
+                        // Keep one lazy container for the track rows so appending
+                        // a page does not remeasure nested lazy stacks.
+                        VStack(alignment: .leading, spacing: 34) {
                             DesktopCollectionHeader(
                                 artworkURL: playlist.artworkURL,
                                 kind: playlist.isOfficialToplist
@@ -69,27 +71,25 @@ struct DesktopPlaylistDetailView: View {
                             DesktopCollectionTrackList(
                                 songs: songs,
                                 sourceID: playlist.id,
-                                loadMoreToken: hasMoreTracks && songToLocate == nil
-                                    ? loadedTrackOffset
-                                    : nil,
-                                onLoadMore: {
-                                    await loadMoreTracks()
-                                },
+                                footer: hasMoreTracks ? {
+                                    AnyView(
+                                        DesktopCollectionPaginationFooter(
+                                            isLoading: isLoadingMoreTracks,
+                                            failureMessage: loadMoreTracksError,
+                                            loadToken: songToLocate == nil
+                                                ? loadedTrackOffset
+                                                : nil
+                                        ) {
+                                            await loadMoreTracks()
+                                        }
+                                    )
+                                } : nil,
                                 onRemoveSong: model.library.canDelete(playlist)
                                     && !isLoadingMoreTracks && songToLocate == nil
                                     ? { pendingRemoval = $0 }
                                     : nil,
                                 highlightedSongID: trackLocator.highlightedSongID
                             )
-
-                            if hasMoreTracks {
-                                DesktopCollectionPaginationFooter(
-                                    isLoading: isLoadingMoreTracks,
-                                    failureMessage: loadMoreTracksError
-                                ) {
-                                    await loadMoreTracks()
-                                }
-                            }
                         }
                         .padding(.horizontal, 42)
                         .padding(.vertical, 34)

@@ -273,8 +273,7 @@ struct DesktopCollectionTrackList: View {
     var showsAlbumColumn = true
     var usesTrackNumbers = false
     var groupsByDisc = false
-    var loadMoreToken: Int?
-    var onLoadMore: (() async -> Void)?
+    var footer: (() -> AnyView)? = nil
     var onRemoveSong: ((Song) -> Void)?
     var highlightedSongID: Int?
 
@@ -299,20 +298,24 @@ struct DesktopCollectionTrackList: View {
                         .padding(.bottom, 5)
 
                     ForEach(group.entries) { entry in
-                        row(entry, isLast: entry.id == entries.last?.id)
+                        row(entry)
                     }
                 }
             } else {
                 ForEach(entries) { entry in
-                    row(entry, isLast: entry.id == entries.last?.id)
+                    row(entry)
                 }
+            }
+
+            if let footer {
+                footer()
             }
         }
     }
 
     @ViewBuilder
-    private func row(_ entry: TrackEntry, isLast: Bool) -> some View {
-        let row = DesktopTrackRow(
+    private func row(_ entry: TrackEntry) -> some View {
+        DesktopTrackRow(
             song: entry.song,
             index: entry.index,
             songs: songs,
@@ -325,14 +328,6 @@ struct DesktopCollectionTrackList: View {
             isHighlighted: entry.id == highlightedSongID
         )
         .id(entry.id)
-
-        if isLast, let loadMoreToken, let onLoadMore {
-            row.task(id: loadMoreToken) {
-                await onLoadMore()
-            }
-        } else {
-            row
-        }
     }
 
     private func makeEntries() -> [TrackEntry] {
