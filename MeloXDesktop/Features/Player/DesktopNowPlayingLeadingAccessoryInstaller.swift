@@ -52,22 +52,18 @@ struct DesktopNowPlayingLeadingAccessoryInstaller: NSViewRepresentable {
     @MainActor
     final class Coordinator {
         private weak var installedWindow: NSWindow?
-        private let accessoryController: NSTitlebarAccessoryViewController
+        private var isPresented = false
+        private var accessoryController: NSTitlebarAccessoryViewController?
         private let hostingView: NSHostingView<DesktopNowPlayingLeadingAccessoryContent>
 
         init() {
             hostingView = NSHostingView(
                 rootView: DesktopNowPlayingLeadingAccessoryContent(
-                    isPresented: false,
                     close: {},
                     openMiniPlayer: {}
                 )
             )
             hostingView.frame = NSRect(x: 0, y: 0, width: 74, height: 36)
-
-            accessoryController = NSTitlebarAccessoryViewController()
-            accessoryController.layoutAttribute = .left
-            accessoryController.view = hostingView
         }
 
         func update(
@@ -75,33 +71,46 @@ struct DesktopNowPlayingLeadingAccessoryInstaller: NSViewRepresentable {
             close: @escaping () -> Void,
             openMiniPlayer: @escaping () -> Void
         ) {
+            self.isPresented = isPresented
             hostingView.rootView = DesktopNowPlayingLeadingAccessoryContent(
-                isPresented: isPresented,
                 close: close,
                 openMiniPlayer: openMiniPlayer
             )
+            reconcileInstallation()
         }
 
         func attach(to window: NSWindow?) {
-            guard let window else {
-                detach()
+            guard installedWindow !== window else {
+                reconcileInstallation()
                 return
             }
-
-            let isAlreadyInstalled = window.titlebarAccessoryViewControllers
-                .contains { $0 === accessoryController }
-            guard installedWindow !== window || !isAlreadyInstalled else {
-                return
-            }
-
             detach()
-            window.addTitlebarAccessoryViewController(accessoryController)
             installedWindow = window
+            reconcileInstallation()
         }
 
         func detach() {
-            accessoryController.removeFromParent()
+            accessoryController?.removeFromParent()
+            accessoryController = nil
             installedWindow = nil
+        }
+
+        private func reconcileInstallation() {
+            guard let window = installedWindow else { return }
+            let isInstalled = accessoryController.map { controller in
+                window.titlebarAccessoryViewControllers.contains { $0 === controller }
+            } ?? false
+
+            if isPresented, !isInstalled {
+                let controller = NSTitlebarAccessoryViewController()
+                controller.layoutAttribute = .left
+                controller.view = hostingView
+                window.addTitlebarAccessoryViewController(controller)
+                accessoryController = controller
+            } else if !isPresented {
+                accessoryController?.removeFromParent()
+                accessoryController = nil
+            }
         }
     }
 }
@@ -116,7 +125,6 @@ final class DesktopNowPlayingAccessoryWindowProbe: NSView {
 }
 
 private struct DesktopNowPlayingLeadingAccessoryContent: View {
-    let isPresented: Bool
     let close: () -> Void
     let openMiniPlayer: () -> Void
 
@@ -127,9 +135,6 @@ private struct DesktopNowPlayingLeadingAccessoryContent: View {
         )
         .frame(width: 74, height: 36)
         .environment(\.colorScheme, .dark)
-        .opacity(isPresented ? 1 : 0)
-        .allowsHitTesting(isPresented)
-        .accessibilityHidden(!isPresented)
         .transaction { transaction in
             transaction.animation = nil
         }

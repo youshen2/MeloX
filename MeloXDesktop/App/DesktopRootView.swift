@@ -59,15 +59,11 @@ struct DesktopRootView: View {
             for: .windowToolbar
         )
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        // Set the native full-screen toolbar policy before its host is created.
-        // The player's controls stay visible in the SwiftUI backdrop overlay.
-        .windowToolbarFullScreenVisibility(
-            ui.isNowPlayingPresented ? .onHover : .automatic
-        )
         .background {
             ZStack {
                 DesktopMainWindowConfiguration(
                     isPlayerSidePanelPresented: ui.inspector != nil,
+                    isPlayerPresented: ui.isNowPlayingPresented,
                     isFullScreen: $isWindowFullScreen
                 )
 

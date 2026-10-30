@@ -28,6 +28,7 @@ enum DesktopMainWindowMetrics {
 /// full-screen transitions; the panel and its background remain SwiftUI-owned.
 struct DesktopMainWindowConfiguration: NSViewRepresentable {
     let isPlayerSidePanelPresented: Bool
+    let isPlayerPresented: Bool
     @Binding var isFullScreen: Bool
 
     func makeCoordinator() -> Coordinator {
@@ -40,7 +41,8 @@ struct DesktopMainWindowConfiguration: NSViewRepresentable {
             coordinator?.attach(to: window)
         }
         context.coordinator.update(
-            isPlayerSidePanelPresented: isPlayerSidePanelPresented
+            isPlayerSidePanelPresented: isPlayerSidePanelPresented,
+            isPlayerPresented: isPlayerPresented
         )
         return probe
     }
@@ -50,7 +52,8 @@ struct DesktopMainWindowConfiguration: NSViewRepresentable {
         context: Context
     ) {
         context.coordinator.update(
-            isPlayerSidePanelPresented: isPlayerSidePanelPresented
+            isPlayerSidePanelPresented: isPlayerSidePanelPresented,
+            isPlayerPresented: isPlayerPresented
         )
         context.coordinator.attach(to: nsView.window)
     }
@@ -72,15 +75,18 @@ struct DesktopMainWindowConfiguration: NSViewRepresentable {
         private var isApplyingPresentationChange = false
         private var isFullScreen: Binding<Bool>
         private var fullScreenObservers: [NSObjectProtocol] = []
+        private let playerToolbar = DesktopPlayerToolbarController()
 
         init(isFullScreen: Binding<Bool>) {
             self.isFullScreen = isFullScreen
         }
 
         func update(
-            isPlayerSidePanelPresented: Bool
+            isPlayerSidePanelPresented: Bool,
+            isPlayerPresented: Bool
         ) {
             requestedPresentation = isPlayerSidePanelPresented
+            playerToolbar.update(isPlayerPresented: isPlayerPresented)
             applyPresentationChangeIfNeeded()
         }
 
@@ -92,12 +98,14 @@ struct DesktopMainWindowConfiguration: NSViewRepresentable {
 
             detach()
             installedWindow = window
+            playerToolbar.attach(to: window)
             observeFullScreenChanges()
             applyPresentationChangeIfNeeded()
             applyMinimumContentSize()
         }
 
         func detach() {
+            playerToolbar.detach()
             for observer in fullScreenObservers {
                 NotificationCenter.default.removeObserver(observer)
             }
