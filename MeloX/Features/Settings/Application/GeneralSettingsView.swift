@@ -39,6 +39,11 @@ struct GeneralSettingsView: View {
                         .tag(appearance)
                     }
                 }
+
+                Toggle(
+                    "ui.settings.general.compact_home_actions",
+                    isOn: $settings.compactHomeQuickActions
+                )
             } header: {
                 Text("ui.settings.general.appearance.section")
             } footer: {

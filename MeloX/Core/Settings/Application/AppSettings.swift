@@ -257,6 +257,7 @@ final class AppSettings {
         static let recognizesClipboardLinksOnLaunch =
             "recognizesClipboardLinksOnLaunch"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
+        static let compactHomeQuickActions = "compactHomeQuickActions"
         static let automaticallyCachesPageContent = "automaticallyCachesPageContent"
         static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
         static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
@@ -279,6 +280,12 @@ final class AppSettings {
     var automaticallyCachesPageContent: Bool {
         didSet {
             defaults.set(automaticallyCachesPageContent, forKey: Key.automaticallyCachesPageContent)
+        }
+    }
+
+    var compactHomeQuickActions: Bool {
+        didSet {
+            defaults.set(compactHomeQuickActions, forKey: Key.compactHomeQuickActions)
         }
     }
 
@@ -1789,6 +1796,9 @@ final class AppSettings {
             forKey: Key.recognizesClipboardLinksOnLaunch
         ) as? Bool ?? Self.defaultRecognizesClipboardLinksOnLaunch
         checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
+        compactHomeQuickActions = defaults.object(
+            forKey: Key.compactHomeQuickActions
+        ) as? Bool ?? true
         automaticallyCachesPageContent = defaults.object(
             forKey: Key.automaticallyCachesPageContent
         ) as? Bool ?? true

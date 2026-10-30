@@ -97,6 +97,9 @@ enum HomeQuickAction: String, CaseIterable, Identifiable {
 }
 
 struct HomeQuickActionsView: View {
+    @Environment(AppSettings.self) private var settings
+    @ScaledMetric(relativeTo: .body) private var compactCardWidth = 230.0
+
     let activeAction: HomeQuickAction?
     let perform: (HomeQuickAction) -> Void
 
@@ -112,13 +115,14 @@ struct HomeQuickActionsView: View {
                             title: action.title,
                             subtitle: action.subtitle,
                             systemImage: action.systemImage,
-                            colors: action.colors
+                            colors: action.colors,
+                            isCompact: settings.compactHomeQuickActions
                         )
                         .overlay {
                             if activeAction == action {
                                 ProgressView()
-                                    .controlSize(.large)
-                                    .padding(22)
+                                    .controlSize(settings.compactHomeQuickActions ? .regular : .large)
+                                    .padding(settings.compactHomeQuickActions ? 14 : 22)
                                     .background(.regularMaterial)
                                     .clipShape(.circle)
                             }
@@ -126,7 +130,9 @@ struct HomeQuickActionsView: View {
                     }
                     .containerRelativeFrame(.horizontal) {
                         length, _ in
-                        min(length * 0.86, 340)
+                        settings.compactHomeQuickActions
+                            ? min(length, compactCardWidth)
+                            : min(length * 0.86, 340)
                     }
                     .buttonStyle(.plain)
                     .disabled(activeAction != nil)

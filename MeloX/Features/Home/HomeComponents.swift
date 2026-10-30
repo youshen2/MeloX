@@ -6,8 +6,54 @@ struct HomeEditorialCard: View {
     let subtitle: String
     let systemImage: String
     let colors: [Color]
+    let isCompact: Bool
+
+    @ScaledMetric(relativeTo: .body) private var compactCardHeight = 132.0
 
     var body: some View {
+        Group {
+            if isCompact {
+                compactContent
+            } else {
+                standardContent
+            }
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var compactContent: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.title2.weight(.semibold))
+                .accessibilityHidden(true)
+
+            Spacer(minLength: 8)
+
+            Text(title)
+                .font(.headline)
+                .lineLimit(2)
+
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(2)
+        }
+        .foregroundStyle(.white)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: compactCardHeight)
+        .background {
+            LinearGradient(
+                colors: colors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .clipShape(.rect(cornerRadius: 14))
+    }
+
+    private var standardContent: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(eyebrow.uppercased())
                 .font(.caption.weight(.semibold))
@@ -47,8 +93,6 @@ struct HomeEditorialCard: View {
             .clipShape(.rect(cornerRadius: 14))
             .padding(.top, 8)
         }
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
     }
 }
 
