@@ -9,6 +9,7 @@ final class LibraryStore {
     private(set) var favoriteSongs: [Song] = []
     private(set) var favoritePlaylists: [Playlist] = []
     private(set) var favoriteAlbums: [Album] = []
+    private(set) var favoriteArtists: [Artist] = []
     private(set) var subscribedPodcasts: [Podcast] = []
     private(set) var recentSongs: [Song] = []
     private(set) var likedPlaylistID: Int?
@@ -94,8 +95,21 @@ final class LibraryStore {
         favoritePlaylists.contains { $0.id == playlist.id }
     }
 
+    func contains(artist: Artist) -> Bool {
+        favoriteArtists.contains { $0.id == artist.id }
+    }
+
     func contains(album: Album) -> Bool {
         favoriteAlbums.contains { $0.id == album.id }
+    }
+
+    func setArtistFollowed(_ artist: Artist, isFollowed: Bool) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        try await api.setArtistFollowed(id: artist.id, isFollowed: isFollowed)
+        favoriteArtists.removeAll { $0.id == artist.id }
+        if isFollowed {
+            favoriteArtists.insert(artist, at: 0)
+        }
     }
 
     func setAlbumSubscribed(
@@ -195,6 +209,16 @@ final class LibraryStore {
             } catch {
                 partialFailures.append(
                     L10n.format("ui.library.error.favorite_albums", error.localizedDescription)
+                )
+            }
+
+            do {
+                favoriteArtists = try await api.subscribedArtists()
+            } catch is CancellationError {
+                return
+            } catch {
+                partialFailures.append(
+                    L10n.format("ui.library.error.favorite_artists", error.localizedDescription)
                 )
             }
 
@@ -306,6 +330,22 @@ final class LibraryStore {
         guard favoriteSongPageLoadID == loadID else { return }
         favoriteSongPageLoadTask = nil
         favoriteSongPageLoadID = nil
+    }
+
+    func loadFavoriteSongForLocation(_ songID: Int) async -> Bool {
+        if favoriteSongs.contains(where: { $0.id == songID }) { return true }
+        let requestedIDs = favoriteSongIDs
+        guard let index = requestedIDs.firstIndex(of: songID) else { return false }
+
+        while favoriteSongsNextOffset <= index, hasMoreFavoriteSongs {
+            guard !Task.isCancelled else { return false }
+            let previousOffset = favoriteSongsNextOffset
+            await loadMoreFavoriteSongs()
+            guard !Task.isCancelled,
+                  favoriteSongIDs == requestedIDs,
+                  favoriteSongsNextOffset > previousOffset else { return false }
+        }
+        return favoriteSongs.contains(where: { $0.id == songID })
     }
 
     func loadRemainingFavoriteSongs() async {
@@ -552,6 +592,39 @@ final class LibraryStore {
         }
     }
 
+    func canDelete(_ playlist: Playlist) -> Bool {
+        guard isLoggedIn, let userID = profile?.id else { return false }
+        return playlist.creator?.userID == userID && playlist.id != likedPlaylistID
+    }
+
+    func deletePlaylist(_ playlist: Playlist) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        guard canDelete(playlist) else { throw LibraryOperationError.playlistIsNotOwned }
+        try await api.deletePlaylist(id: playlist.id)
+        favoritePlaylists.removeAll { $0.id == playlist.id }
+    }
+
+    func createPlaylist(name: String, isPrivate: Bool) async throws {
+        guard isLoggedIn, let profile else { throw APIError.notLoggedIn }
+        let created = try await api.createPlaylist(name: name, isPrivate: isPrivate)
+        let summary = Playlist(
+            id: created.id,
+            name: created.name,
+            coverURLString: created.coverURLString,
+            creator: UserSummary(userID: profile.id, nickname: profile.nickname)
+        )
+        favoritePlaylists.insert(summary, at: 0)
+    }
+
+    func remove(song: Song, from playlist: Playlist) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        guard canDelete(playlist) else { throw LibraryOperationError.playlistIsNotOwned }
+        try await api.removeSong(id: song.id, fromPlaylistID: playlist.id)
+        if let index = favoritePlaylists.firstIndex(where: { $0.id == playlist.id }) {
+            favoritePlaylists[index].removeSong(id: song.id)
+        }
+    }
+
     func add(song: Song, to playlist: Playlist) async throws {
         guard isLoggedIn else { throw APIError.notLoggedIn }
         guard playlist.creator?.userID == profile?.id else {
@@ -583,6 +656,7 @@ final class LibraryStore {
         favoriteSongs = []
         favoritePlaylists = []
         favoriteAlbums = []
+        favoriteArtists = []
         subscribedPodcasts = []
         recentSongs = []
         likedPlaylistID = nil

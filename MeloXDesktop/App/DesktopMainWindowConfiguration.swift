@@ -24,13 +24,14 @@ enum DesktopMainWindowMetrics {
 ///
 /// SwiftUI's inspector consumes space inside the current window. Apple Music
 /// instead grows its window first, then presents the panel in the newly added
-/// trailing area. The probe below only coordinates the native window frame;
-/// the panel and its background remain entirely SwiftUI-owned.
+/// trailing area. The probe coordinates the native window frame and reports
+/// full-screen transitions; the panel and its background remain SwiftUI-owned.
 struct DesktopMainWindowConfiguration: NSViewRepresentable {
     let isPlayerSidePanelPresented: Bool
+    @Binding var isFullScreen: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(isFullScreen: $isFullScreen)
     }
 
     func makeNSView(context: Context) -> DesktopMainWindowProbe {
@@ -69,6 +70,12 @@ struct DesktopMainWindowConfiguration: NSViewRepresentable {
         private var appliedPresentation = false
         private var presentationFrameAdjustment: FrameAdjustment?
         private var isApplyingPresentationChange = false
+        private var isFullScreen: Binding<Bool>
+        private var fullScreenObservers: [NSObjectProtocol] = []
+
+        init(isFullScreen: Binding<Bool>) {
+            self.isFullScreen = isFullScreen
+        }
 
         func update(
             isPlayerSidePanelPresented: Bool
@@ -85,14 +92,47 @@ struct DesktopMainWindowConfiguration: NSViewRepresentable {
 
             detach()
             installedWindow = window
+            observeFullScreenChanges()
             applyPresentationChangeIfNeeded()
             applyMinimumContentSize()
         }
 
         func detach() {
+            for observer in fullScreenObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            fullScreenObservers.removeAll()
             installedWindow = nil
             appliedPresentation = false
             presentationFrameAdjustment = nil
+        }
+
+        private func observeFullScreenChanges() {
+            guard let window = installedWindow else { return }
+            fullScreenObservers = [
+                NSWindow.didEnterFullScreenNotification,
+                NSWindow.didExitFullScreenNotification,
+            ].map { name in
+                NotificationCenter.default.addObserver(
+                    forName: name,
+                    object: window,
+                    queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        self?.publishFullScreenState()
+                    }
+                }
+            }
+            publishFullScreenState()
+        }
+
+        private func publishFullScreenState() {
+            // The initial attachment can occur inside a SwiftUI view update.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isFullScreen.wrappedValue =
+                    self.installedWindow?.styleMask.contains(.fullScreen) == true
+            }
         }
 
         private func applyPresentationChangeIfNeeded() {

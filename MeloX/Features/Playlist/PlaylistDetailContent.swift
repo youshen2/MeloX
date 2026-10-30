@@ -18,6 +18,8 @@ struct PlaylistDetailContent: View {
     let onRefresh: () async -> Void
     let onLoadMore: () async -> Void
     let onPlayAll: (Bool) async -> Void
+    var onRemoveSong: ((Song) -> Void)?
+    var highlightedSongID: Int?
 
     @Environment(LibraryStore.self) private var library
     private var usesToplistLayout: Bool {
@@ -78,7 +80,9 @@ struct PlaylistDetailContent: View {
                         loadMoreTracksError: loadMoreTracksError,
                         downloadSelection: downloadCoordinator,
                         onRetry: onRetry,
-                        onLoadMore: onLoadMore
+                        onLoadMore: onLoadMore,
+                        onRemoveSong: onRemoveSong,
+                        highlightedSongID: highlightedSongID
                     )
                 }
                 .padding(.bottom, 32)
@@ -125,6 +129,8 @@ struct MusicCollectionTrackContent: View {
     var downloadSelection: MusicCollectionDownloadCoordinator? = nil
     let onRetry: () -> Void
     var onLoadMore: () async -> Void = {}
+    var onRemoveSong: ((Song) -> Void)?
+    var highlightedSongID: Int?
 
     var body: some View {
         Group {
@@ -145,7 +151,9 @@ struct MusicCollectionTrackContent: View {
                         tracks: tracks,
                         sourceID: sourceID,
                         showsArtwork: showsArtwork,
-                        downloadSelection: downloadSelection
+                        onRemoveSong: onRemoveSong,
+                        downloadSelection: downloadSelection,
+                        highlightedSongID: highlightedSongID
                     )
 
                     if hasMoreTracks {

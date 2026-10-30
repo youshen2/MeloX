@@ -56,14 +56,16 @@ final class NeteaseDirectClient {
 
     func weapi<Response: Decodable>(
         _ uri: String,
-        data: [String: Any] = [:]
+        data: [String: Any] = [:],
+        retryEmptyResponse: Bool = true
     ) async throws -> Response {
         let path = uri.replacingOccurrences(of: "/api/", with: "/weapi/")
         guard let url = URL(string: "https://music.163.com\(path)") else {
             throw APIError.requestEncoding
         }
 
-        for attempt in 0..<3 {
+        let attempts = retryEmptyResponse ? 3 : 1
+        for attempt in 0..<attempts {
             var requestData = data
             requestData["csrf_token"] = csrfToken
             let json = try jsonString(requestData)
@@ -83,7 +85,7 @@ final class NeteaseDirectClient {
                     cookieHeaderOverride: processedWeapiCookieHeader(for: uri)
                 )
             } catch APIError.emptyResponse(let statusCode) {
-                guard attempt < 2 else {
+                guard attempt + 1 < attempts else {
                     throw APIError.emptyResponse(statusCode: statusCode)
                 }
                 try await Task.sleep(for: .milliseconds(180 * (attempt + 1)))
@@ -194,12 +196,18 @@ final class NeteaseDirectClient {
             cookieHeaderOverride ?? cookieHeader(os: cookieOS, appVersion: appVersion),
             forHTTPHeaderField: "Cookie"
         )
-        var components = URLComponents()
-        components.queryItems = form.map { URLQueryItem(name: $0.key, value: $0.value) }
-        request.httpBody = components.percentEncodedQuery?.data(using: .utf8)
+        request.httpBody = Self.formEncodedData(form)
 
         let (data, response) = try await session.data(for: request)
         return try decode(data: data, response: response)
+    }
+
+    // URL query encoding leaves '+' literal, but form decoders read it as a space.
+    // WEAPI params contain Base64, so literal plus signs must be percent-encoded.
+    static func formEncodedData(_ form: [String: String]) -> Data {
+        Data(form.keys.sorted().map { key in
+            "\(encodeURIComponent(key))=\(encodeURIComponent(form[key] ?? ""))"
+        }.joined(separator: "&").utf8)
     }
 
     private func decode<Response: Decodable>(

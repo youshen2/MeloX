@@ -1,26 +1,13 @@
-@preconcurrency import AVFoundation
+import AVFoundation
 
 @MainActor
 enum AudioSpatializationPolicy {
-    static func apply(
-        _ mode: SpatialAudioMode,
-        to item: AVPlayerItem
-    ) {
-        item.allowedAudioSpatializationFormats = allowedFormats(
-            for: mode
-        )
-    }
-
-    private static func allowedFormats(
-        for mode: SpatialAudioMode
-    ) -> AVAudioSpatializationFormats {
-        switch mode {
-        case .automatic:
-            .monoStereoAndMultichannel
-        case .multichannelOnly:
-            .multichannel
-        case .disabled:
-            []
+    static func apply(_ mode: SpatialAudioMode, to deck: AudioPlaybackDeck) {
+        let isEnabled = switch mode {
+        case .automatic: true
+        case .multichannelOnly: deck.channelCount > 2
+        case .disabled: false
         }
+        deck.setSpatializationEnabled(isEnabled)
     }
 }

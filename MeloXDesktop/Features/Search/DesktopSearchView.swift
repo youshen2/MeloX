@@ -8,19 +8,35 @@ private final class DesktopSearchStore {
     var kind: SearchKind = .songs
     var source: DesktopSearchSource = .catalog
     private(set) var payload: SearchPayload?
+    private(set) var suggestions: [String] = []
     private(set) var isSearching = false
     private(set) var errorMessage: String?
 
     @ObservationIgnored
     private var activeSearchID: UUID?
 
-    func search(using model: DesktopAppModel) async {
+    @ObservationIgnored
+    private var resultCache = SearchResultCache()
+
+    func search(using model: DesktopAppModel, debounced: Bool = false) async {
         let keyword = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !keyword.isEmpty else {
             activeSearchID = nil
+            resultCache.clear()
             isSearching = false
             payload = nil
             errorMessage = nil
+            return
+        }
+
+        let requestedKind = kind
+        let requestedSource = source
+        if requestedSource == .catalog,
+           let cached = resultCache.value(for: keyword, kind: requestedKind) {
+            activeSearchID = nil
+            payload = cached
+            errorMessage = nil
+            isSearching = false
             return
         }
 
@@ -35,11 +51,16 @@ private final class DesktopSearchStore {
         }
 
         do {
+            if debounced {
+                try await Task.sleep(for: .milliseconds(320))
+            }
+            try Task.checkCancellation()
+            guard activeSearchID == searchID else { return }
             let loadedPayload: SearchPayload
-            if source == .catalog {
+            if requestedSource == .catalog {
                 loadedPayload = try await model.api.search(
                     keyword,
-                    kind: kind,
+                    kind: requestedKind,
                     limit: 60
                 )
             } else {
@@ -48,13 +69,32 @@ private final class DesktopSearchStore {
                     model: model
                 )
             }
+            try Task.checkCancellation()
             guard activeSearchID == searchID else { return }
+            if requestedSource == .catalog {
+                resultCache.insert(loadedPayload, for: keyword, kind: requestedKind)
+            }
             payload = loadedPayload
         } catch is CancellationError {
             return
         } catch {
             guard activeSearchID == searchID else { return }
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadSuggestions(using model: DesktopAppModel) async {
+        suggestions = []
+        let keywords = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard model.settings.searchSuggestionsEnabled,
+              source == .catalog, !keywords.isEmpty else { return }
+        do {
+            try await Task.sleep(for: .milliseconds(300))
+            let loaded = try await model.api.searchSuggestions(keywords)
+            try Task.checkCancellation()
+            suggestions = loaded
+        } catch {
+            return
         }
     }
 
@@ -199,6 +239,14 @@ struct DesktopSearchView: View {
 
                         TextField("ui.search.prompt", text: $store.query)
                             .textFieldStyle(.plain)
+                            .textInputSuggestions(store.suggestions, id: \.self) { suggestion in
+                                Label {
+                                    Text(verbatim: suggestion)
+                                } icon: {
+                                    Image(systemName: "magnifyingglass")
+                                }
+                                .textInputCompletion(suggestion)
+                            }
                             .onSubmit {
                                 Task { await store.search(using: model) }
                             }
@@ -216,18 +264,14 @@ struct DesktopSearchView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 164)
                 }
             }
         }
+        .task(id: "\(model.settings.searchSuggestionsEnabled):\(store.source):\(store.query)") {
+            await store.loadSuggestions(using: model)
+        }
         .task(id: searchRequestID) {
-            guard !store.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                await store.search(using: model)
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(320))
-            guard !Task.isCancelled else { return }
-            await store.search(using: model)
+            await store.search(using: model, debounced: true)
         }
         .onChange(
             of: model.settings.isContentFeatureEnabled(.podcasts)

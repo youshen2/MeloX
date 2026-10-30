@@ -50,6 +50,7 @@ nonisolated struct Artist: Codable, Hashable, Identifiable {
     let picURL: String?
     let avatarURL: String?
     let aliases: [String]
+    let isFollowed: Bool
 
     var artworkURL: URL? {
         // 与参考项目一致，歌手头像优先使用正方形的 img1v1Url。
@@ -59,6 +60,7 @@ nonisolated struct Artist: Codable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, alias, picUrl, img1v1Url
+        case isFollowed = "followed"
     }
 
     init(
@@ -66,13 +68,15 @@ nonisolated struct Artist: Codable, Hashable, Identifiable {
         name: String,
         picURL: String? = nil,
         avatarURL: String? = nil,
-        aliases: [String] = []
+        aliases: [String] = [],
+        isFollowed: Bool = false
     ) {
         self.id = id
         self.name = name
         self.picURL = picURL
         self.avatarURL = avatarURL
         self.aliases = aliases
+        self.isFollowed = isFollowed
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +87,10 @@ nonisolated struct Artist: Codable, Hashable, Identifiable {
         picURL = try container.decodeIfPresent(String.self, forKey: .picUrl)
         avatarURL = try container.decodeIfPresent(String.self, forKey: .img1v1Url)
         aliases = try container.decodeIfPresent([String].self, forKey: .alias) ?? []
+        isFollowed = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .isFollowed
+        ) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -92,6 +100,7 @@ nonisolated struct Artist: Codable, Hashable, Identifiable {
         try container.encodeIfPresent(picURL, forKey: .picUrl)
         try container.encodeIfPresent(avatarURL, forKey: .img1v1Url)
         try container.encode(aliases, forKey: .alias)
+        try container.encode(isFollowed, forKey: .isFollowed)
     }
 }
 
@@ -363,18 +372,27 @@ struct Playlist: Codable, Hashable, Identifiable {
     let name: String
     let coverURLString: String?
     let playlistDescription: String?
-    let trackCount: Int
+    var trackCount: Int
     let playCount: Int
     let updateFrequency: String?
     let toplistType: String?
     let copywriter: String?
     let creator: UserSummary?
     var tracks: [Song]
-    let trackIDs: [TrackReference]
+    var trackIDs: [TrackReference]
     let subscribed: Bool
 
     var artworkURL: URL? {
         makeArtworkURL(from: coverURLString)
+    }
+
+    @discardableResult
+    mutating func removeSong(id songID: Int) -> Int? {
+        let index = trackIDs.firstIndex { $0.id == songID }
+        tracks.removeAll { $0.id == songID }
+        trackIDs.removeAll { $0.id == songID }
+        trackCount = max(trackCount - 1, 0)
+        return index
     }
 
     var isOfficialToplist: Bool {

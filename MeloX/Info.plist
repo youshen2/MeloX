@@ -44,6 +44,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>screen-capture</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

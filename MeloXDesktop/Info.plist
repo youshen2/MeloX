@@ -29,6 +29,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MeloX uses the microphone to identify nearby music on this Mac.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>MeloX captures system audio to identify music playing on this Mac, including through headphones. Only an audio fingerprint is sent for recognition.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

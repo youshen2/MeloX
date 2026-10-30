@@ -16,3 +16,6 @@ vendor/QRCode/build/
 /Tools/MacRelease/*.pfx
 /Tools/MacRelease/*.pem
 /Tools/MacRelease/*.key
+
+vendor/AudioStreaming/.build/
+vendor/AudioStreaming/.swiftpm/

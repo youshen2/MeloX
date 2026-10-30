@@ -7,6 +7,8 @@ enum SongRecognitionRecordingError: LocalizedError {
     case recordingFailed(String)
     case recordingTimedOut
     case conversionFailed
+    case captureUnavailable
+    case captureTimedOut
 
     var errorDescription: String? {
         switch self {
@@ -20,6 +22,10 @@ enum SongRecognitionRecordingError: LocalizedError {
             L10n.string("ui.recognition.error.recording_timed_out")
         case .conversionFailed:
             L10n.string("ui.recognition.error.conversion_failed")
+        case .captureUnavailable:
+            L10n.string("ui.recognition.error.capture_unavailable")
+        case .captureTimedOut:
+            L10n.string("ui.recognition.error.capture_timed_out")
         }
     }
 
@@ -50,12 +56,9 @@ final class SongRecognitionAudioRecorder {
     private var isTapInstalled = false
     private var isSessionActive = false
     private var shouldPreservePlaybackSession = false
+    private var audioCapture: (any SongRecognitionAudioCapture)?
 
-    func requestPermission() async throws {
-        try await ensureMicrophonePermission()
-    }
-
-    func start(maximumDuration: Int?) async throws {
+    func start(maximumDuration: Int?, source: SongRecognitionAudioSource) async throws {
         stop()
         resetCapture()
         shouldPreservePlaybackSession = false
@@ -63,6 +66,23 @@ final class SongRecognitionAudioRecorder {
         if let maximumDuration,
            maximumDuration <= 0 {
             throw SongRecognitionRecordingError.conversionFailed
+        }
+
+        if source != .microphone {
+            let recordingBuffer = makeSampleBuffer(
+                sampleRate: SongRecognitionCapturedAudioBuffer.sampleRate,
+                maximumDuration: maximumDuration
+            )
+            let buffer = SongRecognitionCapturedAudioBuffer(recordingBuffer: recordingBuffer)
+            let capture = try makeAudioCapture(source: source, buffer: buffer)
+            audioCapture = capture
+            do { try await capture.start() }
+            catch {
+                stop()
+                resetCapture()
+                throw error
+            }
+            return
         }
 
         try await ensureMicrophonePermission()
@@ -99,24 +119,11 @@ final class SongRecognitionAudioRecorder {
             throw SongRecognitionRecordingError.microphoneUnavailable
         }
 
-        let retainedDuration =
-            maximumDuration ?? Self.continuousWindowDuration
-        let retainedFrameCount = Int(
-            (Double(retainedDuration) * inputFormat.sampleRate)
-                .rounded(.up)
-        )
-        let recordingBuffer = SongRecognitionSampleBuffer(
-            retainedFrameCount: retainedFrameCount,
-            stoppingFrameCount: maximumDuration.map {
-                Int(
-                    (Double($0) * inputFormat.sampleRate)
-                        .rounded(.up)
-                )
-            }
+        let recordingBuffer = makeSampleBuffer(
+            sampleRate: inputFormat.sampleRate,
+            maximumDuration: maximumDuration
         )
 
-        sampleBuffer = recordingBuffer
-        sourceSampleRate = inputFormat.sampleRate
         engine = recordingEngine
 
         inputNode.installTap(
@@ -149,6 +156,7 @@ final class SongRecognitionAudioRecorder {
     }
 
     func snapshot() throws -> SongRecognitionAudioSnapshot? {
+        if let failure = audioCapture?.failure { throw failure }
         guard let sampleBuffer,
               sourceSampleRate > 0 else {
             return nil
@@ -204,6 +212,8 @@ final class SongRecognitionAudioRecorder {
     }
 
     private func stopEngine() {
+        audioCapture?.stop()
+        audioCapture = nil
         guard let engine else { return }
         if isTapInstalled {
             engine.inputNode.removeTap(onBus: 0)
@@ -231,6 +241,30 @@ final class SongRecognitionAudioRecorder {
     private func resetCapture() {
         sampleBuffer = nil
         sourceSampleRate = 0
+    }
+
+    private func makeSampleBuffer(sampleRate: Double, maximumDuration: Int?) -> SongRecognitionSampleBuffer {
+        let duration = maximumDuration ?? Self.continuousWindowDuration
+        let buffer = SongRecognitionSampleBuffer(
+            retainedFrameCount: Int((Double(duration) * sampleRate).rounded(.up)),
+            stoppingFrameCount: maximumDuration.map { Int((Double($0) * sampleRate).rounded(.up)) }
+        )
+        sourceSampleRate = sampleRate
+        sampleBuffer = buffer
+        return buffer
+    }
+
+    private func makeAudioCapture(
+        source: SongRecognitionAudioSource,
+        buffer: SongRecognitionCapturedAudioBuffer
+    ) throws -> any SongRecognitionAudioCapture {
+        #if canImport(ScreenCaptureKit)
+        if #available(iOS 27, *) {
+            return SongRecognitionSystemAudioCapture(buffer: buffer, capturesSystemAudio: source == .systemAudio)
+        }
+        #endif
+        guard source == .appAudio else { throw SongRecognitionRecordingError.captureUnavailable }
+        return SongRecognitionAppAudioCapture(buffer: buffer)
     }
 
     private func ensureMicrophonePermission() async throws {

@@ -3,6 +3,7 @@ import SwiftUI
 enum NowPlayingLyricsPresentation: Equatable {
     case portrait
     case landscape
+    case tablet
 }
 
 struct NowPlayingLyricsPage: View {
@@ -19,6 +20,7 @@ struct NowPlayingLyricsPage: View {
     let artworkNamespace: Namespace.ID
     let usesArtworkTransition: Bool
     let showsSongHeader: Bool
+    let focusAnchorOffset: CGFloat?
     let onInterfaceInteraction: (() -> Void)?
     let onInterfaceVisibilityChange: ((Bool) -> Void)?
     let onInitialFocusPrepared: (() -> Void)?
@@ -34,6 +36,7 @@ struct NowPlayingLyricsPage: View {
         artworkNamespace: Namespace.ID,
         usesArtworkTransition: Bool = true,
         showsSongHeader: Bool = true,
+        focusAnchorOffset: CGFloat? = nil,
         onInterfaceInteraction: (() -> Void)? = nil,
         onInterfaceVisibilityChange: ((Bool) -> Void)? = nil,
         onInitialFocusPrepared: (() -> Void)? = nil
@@ -48,6 +51,7 @@ struct NowPlayingLyricsPage: View {
         self.artworkNamespace = artworkNamespace
         self.usesArtworkTransition = usesArtworkTransition
         self.showsSongHeader = showsSongHeader
+        self.focusAnchorOffset = focusAnchorOffset
         self.onInterfaceInteraction = onInterfaceInteraction
         self.onInterfaceVisibilityChange = onInterfaceVisibilityChange
         self.onInitialFocusPrepared = onInitialFocusPrepared
@@ -91,6 +95,7 @@ struct NowPlayingLyricsPage: View {
                 isActive: isActive,
                 isInterfaceHidden: isInterfaceHidden,
                 bottomOverlayHeight: appleMusicBottomOverlayHeight,
+                focusAnchorOffset: focusAnchorOffset,
                 onInterfaceInteraction: onInterfaceInteraction,
                 onInterfaceVisibilityChange:
                     onInterfaceVisibilityChange,
@@ -119,6 +124,8 @@ struct NowPlayingLyricsPage: View {
             NowPlayingBottomControls.overlayHeight
         case .landscape:
             50
+        case .tablet:
+            0
         }
     }
 

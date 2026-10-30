@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2700"
+   LastUpgradeVersion = "2710"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -46,7 +46,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B10000000000000000000001"
             BuildableName = "MeloX Watch App.app"
-            BlueprintName = "MeloX Watch App"
             ReferencedContainer = "container:MeloX.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -63,7 +62,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B10000000000000000000001"
             BuildableName = "MeloX Watch App.app"
-            BlueprintName = "MeloX Watch App"
             ReferencedContainer = "container:MeloX.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

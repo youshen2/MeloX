@@ -1,10 +1,8 @@
-import AVFoundation
+import Foundation
 
 @MainActor
 enum AudioPlaybackSessionConfigurator {
     static func activate() throws {
-        // macOS owns the output route and audio-session lifetime. Preparing an
-        // AVPlayer is sufficient and deliberately avoids iOS AVAudioSession
-        // compatibility code in the desktop target.
+        // macOS manages the output route and the audio device lifetime.
     }
 }

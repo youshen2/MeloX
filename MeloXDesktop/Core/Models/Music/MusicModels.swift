@@ -381,18 +381,27 @@ struct Playlist: Codable, Hashable, Identifiable {
     let name: String
     let coverURLString: String?
     let playlistDescription: String?
-    let trackCount: Int
+    var trackCount: Int
     let playCount: Int
     let updateFrequency: String?
     let toplistType: String?
     let copywriter: String?
     let creator: UserSummary?
     var tracks: [Song]
-    let trackIDs: [TrackReference]
+    var trackIDs: [TrackReference]
     let subscribed: Bool
 
     var artworkURL: URL? {
         makeArtworkURL(from: coverURLString)
+    }
+
+    @discardableResult
+    mutating func removeSong(id songID: Int) -> Int? {
+        let index = trackIDs.firstIndex { $0.id == songID }
+        tracks.removeAll { $0.id == songID }
+        trackIDs.removeAll { $0.id == songID }
+        trackCount = max(trackCount - 1, 0)
+        return index
     }
 
     var isOfficialToplist: Bool {

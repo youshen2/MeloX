@@ -34,6 +34,7 @@ final class SongRecognitionStore {
     private(set) var phase: SongRecognitionPhase = .ready
     private(set) var results: [SongRecognitionResult] = []
     private(set) var isContinuous = false
+    private(set) var audioSource: SongRecognitionAudioSource = .microphone
 
     @ObservationIgnored
     private let recorder = SongRecognitionAudioRecorder()
@@ -50,23 +51,30 @@ final class SongRecognitionStore {
 
     func start(
         api: NeteaseAPI,
-        duration: SongRecognitionDuration
+        duration: SongRecognitionDuration,
+        source: SongRecognitionAudioSource
     ) {
         guard !phase.isWorking else { return }
 
-        recognitionTask?.cancel()
+        let previousTask = recognitionTask
+        previousTask?.cancel()
         recorder.cancel()
         generation &+= 1
         let currentGeneration = generation
         results = []
         isContinuous = duration.isContinuous
+        audioSource = source
         phase = .requestingPermission
 
         recognitionTask = Task { @MainActor [weak self] in
+            // Let an earlier asynchronous capture startup finish its cleanup.
+            await previousTask?.value
             guard let self else { return }
+            guard !Task.isCancelled, generation == currentGeneration else { return }
             await recognize(
                 api: api,
                 duration: duration,
+                source: source,
                 generation: currentGeneration
             )
         }
@@ -77,7 +85,6 @@ final class SongRecognitionStore {
 
         generation &+= 1
         recognitionTask?.cancel()
-        recognitionTask = nil
         recorder.cancel()
         phase = results.isEmpty ? .noMatch : .results
     }
@@ -91,7 +98,6 @@ final class SongRecognitionStore {
         let wasWorking = phase.isWorking
         generation &+= 1
         recognitionTask?.cancel()
-        recognitionTask = nil
         recorder.cancel()
         if wasWorking {
             phase = .ready
@@ -101,6 +107,7 @@ final class SongRecognitionStore {
     private func recognize(
         api: NeteaseAPI,
         duration: SongRecognitionDuration,
+        source: SongRecognitionAudioSource,
         generation currentGeneration: Int
     ) async {
         defer {
@@ -110,14 +117,15 @@ final class SongRecognitionStore {
         }
 
         do {
-            try await recorder.requestPermission()
+            try await recorder.start(
+                maximumDuration: duration.maximumDuration,
+                source: source
+            )
+            defer {
+                if generation == currentGeneration { recorder.stop() }
+            }
             try Task.checkCancellation()
             guard generation == currentGeneration else { return }
-
-            try await recorder.start(
-                maximumDuration: duration.maximumDuration
-            )
-            defer { recorder.stop() }
 
             phase = .listening
             var nextQueryDuration = min(
@@ -224,7 +232,9 @@ final class SongRecognitionStore {
                 return snapshot
             }
             guard clock.now < deadline else {
-                throw SongRecognitionRecordingError.recordingTimedOut
+                throw audioSource == .systemAudio
+                    ? SongRecognitionRecordingError.systemAudioTimedOut
+                    : SongRecognitionRecordingError.recordingTimedOut
             }
             try await Task.sleep(for: .milliseconds(100))
         }

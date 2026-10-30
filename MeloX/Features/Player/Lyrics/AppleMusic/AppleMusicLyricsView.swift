@@ -78,6 +78,7 @@ struct AppleMusicLyricsView: View {
     let isActive: Bool
     let isInterfaceHidden: Bool
     let bottomOverlayHeight: CGFloat
+    let focusAnchorOffset: CGFloat?
     let onInterfaceInteraction: (() -> Void)?
     let onInterfaceVisibilityChange: ((Bool) -> Void)?
     let onInitialFocusPrepared: (() -> Void)?
@@ -125,6 +126,7 @@ struct AppleMusicLyricsView: View {
         isActive: Bool = true,
         isInterfaceHidden: Bool = false,
         bottomOverlayHeight: CGFloat = 0,
+        focusAnchorOffset: CGFloat? = nil,
         onInterfaceInteraction: (() -> Void)? = nil,
         onInterfaceVisibilityChange: ((Bool) -> Void)? = nil,
         onInitialFocusPrepared: (() -> Void)? = nil
@@ -135,6 +137,7 @@ struct AppleMusicLyricsView: View {
         self.isActive = isActive
         self.isInterfaceHidden = isInterfaceHidden
         self.bottomOverlayHeight = bottomOverlayHeight
+        self.focusAnchorOffset = focusAnchorOffset
         self.onInterfaceInteraction = onInterfaceInteraction
         self.onInterfaceVisibilityChange = onInterfaceVisibilityChange
         self.onInitialFocusPrepared = onInitialFocusPrepared
@@ -1443,6 +1446,24 @@ struct AppleMusicLyricsView: View {
 
     private func lyricsFocusPosition(for viewportHeight: CGFloat) -> CGFloat {
         guard viewportHeight > 0 else { return preferredLyricsFocusPosition }
+        if let focusAnchorOffset {
+            let focusedID = requestedFocusLyricID
+                ?? visualCascadeFocusLyricID
+                ?? highlightedLyricID
+            let focusedHeight = focusedID.flatMap {
+                lyricGeometryCache.frames[$0]?.height
+                    ?? lyricGeometryCache.layoutHeights[$0]
+            } ?? UIFont.systemFont(
+                ofSize: CGFloat(resolvedLyricsFontSize),
+                weight: resolvedLyricsFontWeight.uiKitWeight
+            ).lineHeight
+            // Align the focused row's center with the artwork, as on desktop.
+            return min(max(
+                (focusAnchorOffset - focusedHeight * 0.5)
+                    / max(viewportHeight - focusedHeight, 1),
+                0
+            ), 1)
+        }
         let referenceHeight = referenceLyricsViewportHeight(
             for: viewportHeight
         )
@@ -1965,23 +1986,6 @@ struct AppleMusicLyricsView: View {
         )
     }
 
-    private func waitForLyricFrame(
-        for id: LyricLine.ID
-    ) async -> CGRect? {
-        for attempt in 0..<30 {
-            if let frame = lyricGeometryCache.frames[id] {
-                return frame
-            }
-            guard !Task.isCancelled, attempt < 29 else { return nil }
-            do {
-                try await Task.sleep(for: .milliseconds(16))
-            } catch {
-                return nil
-            }
-        }
-        return nil
-    }
-
     private func waitForPreparedFocus(
         id: LyricLine.ID,
         viewportAnchorY: CGFloat,
@@ -2035,6 +2039,15 @@ struct AppleMusicLyricsView: View {
                 viewportHeight: viewportHeight,
                 animated: false
             )
+            return
+        }
+        let needsImmediateCatchUp = remainingFocusDuration(for: highlightedLyricID)
+            .map { $0 <= settings.lyricsFocusSnapThreshold } == true
+        let interruptedPreparation = lyricMovementTransition.map {
+            $0.startedAt == nil && $0.focusID != highlightedLyricID
+        } == true
+        if needsImmediateCatchUp || interruptedPreparation {
+            completeCascadeMovement(to: highlightedLyricID)
             return
         }
         let isInterludeHandoff = visibleInterludeID.flatMap {
@@ -2112,17 +2125,10 @@ struct AppleMusicLyricsView: View {
             )
             return
         }
-        let remainingDurationAtTransition = remainingFocusDuration(
-            for: highlightedLyricID
-        )
-        guard let nextFocusFrame = await waitForLyricFrame(
-            for: highlightedLyricID
-        ) else {
-            guard !Task.isCancelled else { return }
-            await moveFocusWithoutCascade(
-                to: highlightedLyricID,
-                viewportHeight: viewportHeight
-            )
+        guard let nextFocusFrame = lyricGeometryCache.frames[highlightedLyricID] else {
+            // An unmounted target cannot supply geometry until we scroll.
+            // Align it now instead of restarting a wait on every short line.
+            completeCascadeMovement(to: highlightedLyricID)
             return
         }
 
@@ -2414,7 +2420,7 @@ struct AppleMusicLyricsView: View {
             prefersBounce: prefersCascadeBounce,
             snapThreshold:
                 settings.effectiveAppleMusicLyricsSnapThreshold,
-            remainingDuration: remainingDurationAtTransition
+            remainingDuration: remainingFocusDuration(for: highlightedLyricID)
         ) else {
             completeCascadeMovement(to: highlightedLyricID)
             return
@@ -2644,7 +2650,9 @@ struct AppleMusicLyricsView: View {
 
         let startedTransition = preparedTransition.starting(
             with: movementAnimations,
-            at: .now
+            at: .now,
+            maximumDuration: remainingFocusDuration(for: highlightedLyricID)
+                .map { $0 * 0.8 }
         )
         var movementTransaction = Transaction(animation: nil)
         movementTransaction.disablesAnimations = true
@@ -2742,7 +2750,9 @@ struct AppleMusicLyricsView: View {
         startFocusColorTransition(to: highlightedLyricID)
         let startedTransition = transition.starting(
             with: animationByID,
-            at: .now
+            at: .now,
+            maximumDuration: remainingFocusDuration(for: highlightedLyricID)
+                .map { $0 * 0.8 }
         )
         var movementTransaction = Transaction(animation: nil)
         movementTransaction.disablesAnimations = true

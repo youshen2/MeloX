@@ -84,6 +84,10 @@ struct GeneralSettingsView: View {
                 )
             }
 
+            Section("ui.navigation.search") {
+                Toggle("ui.settings.general.search_suggestions", isOn: $settings.searchSuggestionsEnabled)
+            }
+
             if !settings.embeddedLibraryPages.isEmpty {
                 Section {
                     Toggle(

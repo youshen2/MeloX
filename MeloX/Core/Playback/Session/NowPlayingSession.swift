@@ -10,23 +10,20 @@ final class NowPlayingSession {
     var onPrevious: (() -> Void)?
     var onSeek: ((TimeInterval) -> Void)?
 
-    private let playbackSession: MPNowPlayingSession
     private var commandTargets: [(MPRemoteCommand, Any)] = []
     private var nowPlayingInfo: [String: Any] = [:]
     private var artworkTask: Task<Void, Never>?
     private var representedSongID: Int?
 
     private var nowPlayingCenter: MPNowPlayingInfoCenter {
-        playbackSession.nowPlayingInfoCenter
+        .default()
     }
 
     private var commandCenter: MPRemoteCommandCenter {
-        playbackSession.remoteCommandCenter
+        .shared()
     }
 
-    init(players: [AVPlayer]) {
-        playbackSession = MPNowPlayingSession(players: players)
-        playbackSession.automaticallyPublishesNowPlayingInfo = false
+    init() {
         installRemoteCommands()
     }
 
@@ -44,7 +41,6 @@ final class NowPlayingSession {
         queueCount: Int,
         lyricsDisplaySettings: NowPlayingLyricsDisplaySettings
     ) {
-        playbackSession.becomeActiveIfPossible(completion: nil)
         representedSongID = song.id
         artworkTask?.cancel()
         let metadata = NowPlayingLyricsFormatter.metadata(

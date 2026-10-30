@@ -11,8 +11,12 @@ struct DesktopTrackRow: View {
     var showsArtwork = false
     var showsAlbumColumn = true
     var displayNumber: String?
+    var onRemoveSong: ((Song) -> Void)?
+    var isHighlighted = false
 
     @State private var isHovered = false
+    @State private var showsPlaylistCreation = false
+    @State private var playlistError: String?
 
     private var isCurrent: Bool {
         model.player.currentSong?.id == song.id
@@ -90,7 +94,9 @@ struct DesktopTrackRow: View {
         .padding(.horizontal, 12)
         .frame(minHeight: showsArtwork ? 54 : 46)
         .background(
-            isHovered ? Color.primary.opacity(0.045) : .clear,
+            isHighlighted
+                ? Color.accentColor.opacity(0.16)
+                : isHovered ? Color.primary.opacity(0.045) : .clear,
             in: .rect(cornerRadius: 8)
         )
         .contentShape(.rect)
@@ -105,6 +111,19 @@ struct DesktopTrackRow: View {
             }
         }
         .contextMenu { songMenuContent }
+        .sheet(isPresented: $showsPlaylistCreation) {
+            PlaylistCreationSheet { name, isPrivate in
+                try await model.library.createPlaylist(name: name, isPrivate: isPrivate)
+            }
+        }
+        .alert("ui.playlists.add_failed", isPresented: Binding(
+            get: { playlistError != nil },
+            set: { if !$0 { playlistError = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { playlistError = nil }
+        } message: {
+            Text(playlistError ?? "")
+        }
     }
 
     private var songMenu: some View {
@@ -130,14 +149,29 @@ struct DesktopTrackRow: View {
         }
 
         Menu("ui.playlists.add_to", systemImage: "text.badge.plus") {
-            if model.library.favoritePlaylists.isEmpty {
+            Button("ui.playlists.create.title", systemImage: "plus") { showsPlaylistCreation = true }
+                .disabled(!model.library.isLoggedIn)
+            Divider()
+            if model.library.ownedPlaylists.isEmpty {
                 Text("ui.playlists.none_available")
             } else {
-                ForEach(model.library.favoritePlaylists) { playlist in
+                ForEach(model.library.ownedPlaylists) { playlist in
                     Button(playlist.name) {
-                        Task { try? await model.library.add(song: song, to: playlist) }
+                        Task {
+                            do {
+                                try await model.library.add(song: song, to: playlist)
+                            } catch {
+                                playlistError = error.localizedDescription
+                            }
+                        }
                     }
                 }
+            }
+        }
+
+        if let onRemoveSong {
+            Button("ui.playlists.remove_song", systemImage: "minus.circle", role: .destructive) {
+                onRemoveSong(song)
             }
         }
 

@@ -149,6 +149,13 @@ nonisolated final class PlaybackAudioSpectrumAnalyzer {
         sharedSpectrum.publish(.zero)
     }
 
+    func process(buffer: AVAudioPCMBuffer) {
+        if sampleRate != buffer.format.sampleRate || channelCount != Int(buffer.format.channelCount) {
+            prepare(sampleRate: buffer.format.sampleRate, channelCount: Int(buffer.format.channelCount))
+        }
+        process(bufferList: buffer.mutableAudioBufferList, frameCount: Int(buffer.frameLength))
+    }
+
     func process(
         bufferList: UnsafeMutablePointer<AudioBufferList>,
         frameCount: Int

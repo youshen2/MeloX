@@ -1,12 +1,13 @@
 import ActivityKit
 import Foundation
 
-enum LyricsLiveActivityCompactTextSize:
+nonisolated enum LyricsLiveActivityCompactTextSize:
     String,
     Codable,
     Hashable,
     CaseIterable,
-    Identifiable {
+    Identifiable,
+    Sendable {
     case small
     case standard
     case large
@@ -22,7 +23,7 @@ enum LyricsLiveActivityCompactTextSize:
     }
 }
 
-struct LyricsLiveActivityPresentation: Codable, Hashable {
+nonisolated struct LyricsLiveActivityPresentation: Codable, Hashable, Sendable {
     let showsArtwork: Bool
     let showsNextLyric: Bool
     let showsProgress: Bool
@@ -32,10 +33,10 @@ struct LyricsLiveActivityPresentation: Codable, Hashable {
     let scrollPause: TimeInterval
 }
 
-struct LyricsLiveActivityAttributes: ActivityAttributes {
+nonisolated struct LyricsLiveActivityAttributes: ActivityAttributes, Sendable {
     static let currentSchemaVersion = 2
 
-    struct ContentState: Codable, Hashable {
+    nonisolated struct ContentState: Codable, Hashable, Sendable {
         let title: String
         let subtitle: String
         let compactText: String

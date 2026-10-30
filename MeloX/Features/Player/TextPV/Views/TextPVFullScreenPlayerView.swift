@@ -13,21 +13,23 @@ struct TextPVFullScreenPlayerView: View {
     let onToggleInterface: () -> Void
 
     var body: some View {
-        ZStack {
-            TextPVLyricsView(
-                lyrics: lyrics,
-                errorMessage: errorMessage,
-                highlightedLyricID: highlightedLyricID,
-                onToggleInterface: onToggleInterface
-            )
-            .ignoresSafeArea()
-
-            GeometryReader { proxy in
-                playerChrome(isLandscape: proxy.size.width > proxy.size.height)
+        Group {
+            if #available(iOS 27.1, *) {
+                ArrangementView {
+                    chrome
+                } secondary: {
+                    lyricsContent
+                }
+                .arrangementViewStyle(.overlay)
+            } else {
+                ZStack {
+                    lyricsContent
+                    chrome
+                }
             }
-            .opacity(showsControls ? 1 : 0)
-            .allowsHitTesting(showsControls)
-            .accessibilityHidden(!showsControls)
+        }
+        .background {
+            Color.black.ignoresSafeArea()
         }
         .accessibilityAction(
             named: showsControls
@@ -38,22 +40,52 @@ struct TextPVFullScreenPlayerView: View {
         }
     }
 
+    private var lyricsContent: some View {
+        TextPVLyricsView(
+            lyrics: lyrics,
+            errorMessage: errorMessage,
+            highlightedLyricID: highlightedLyricID,
+            onToggleInterface: onToggleInterface
+        )
+    }
+
+    private var chrome: some View {
+        GeometryReader { proxy in
+            playerChrome(isLandscape: proxy.size.width > proxy.size.height)
+        }
+        .opacity(showsControls ? 1 : 0)
+        .allowsHitTesting(showsControls)
+        .accessibilityHidden(!showsControls)
+    }
+
     private func playerChrome(isLandscape: Bool) -> some View {
         ZStack {
             controlBackground(isLandscape: isLandscape)
 
-            VStack(spacing: 0) {
-                dismissalHandle
+            ViewThatFits(in: .vertical) {
+                chromeControls(isLandscape: isLandscape)
 
-                Spacer(minLength: 0)
-
-                controls
-                    .frame(maxWidth: isLandscape ? 680 : .infinity)
-                    .frame(maxWidth: .infinity)
+                ScrollView {
+                    chromeControls(isLandscape: isLandscape)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.hidden)
             }
             .padding(.horizontal, isLandscape ? 32 : 28)
             .safeAreaPadding(.top, 4)
             .safeAreaPadding(.bottom, 8)
+        }
+    }
+
+    private func chromeControls(isLandscape: Bool) -> some View {
+        VStack(spacing: 0) {
+            dismissalHandle
+
+            Spacer(minLength: 0)
+
+            controls
+                .frame(maxWidth: isLandscape ? 680 : .infinity)
+                .frame(maxWidth: .infinity)
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-/// An actual AVPlayer timeline reading. A zero rate means media time is not
+/// A decoded audio timeline reading. A zero rate means media time is not
 /// advancing, including pauses, buffering, and completed seeks before resume.
 struct AudioPlaybackClockSample: Equatable, Sendable {
     enum Origin: Equatable, Sendable {

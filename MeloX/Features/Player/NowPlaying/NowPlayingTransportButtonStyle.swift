@@ -2,12 +2,14 @@ import SwiftUI
 
 struct NowPlayingTransportButtonStyle: ButtonStyle {
     let reducesMotion: Bool
+    var diameter: CGFloat = 64
 
     func makeBody(configuration: Configuration) -> some View {
         NowPlayingTransportButtonStyleBody(
             label: configuration.label,
             isPressed: configuration.isPressed,
-            reducesMotion: reducesMotion
+            reducesMotion: reducesMotion,
+            diameter: diameter
         )
     }
 }
@@ -16,6 +18,7 @@ private struct NowPlayingTransportButtonStyleBody<Label: View>: View {
     let label: Label
     let isPressed: Bool
     let reducesMotion: Bool
+    let diameter: CGFloat
 
     @State private var iconScale: CGFloat = 1
     @State private var highlightScale =
@@ -31,8 +34,8 @@ private struct NowPlayingTransportButtonStyleBody<Label: View>: View {
                     )
                 )
                 .frame(
-                    width: NowPlayingTransportButtonAnimation.diameter,
-                    height: NowPlayingTransportButtonAnimation.diameter
+                    width: diameter,
+                    height: diameter
                 )
                 .scaleEffect(highlightScale)
                 .opacity(highlightOpacity)
@@ -41,8 +44,8 @@ private struct NowPlayingTransportButtonStyleBody<Label: View>: View {
                 .scaleEffect(iconScale)
         }
         .frame(
-            width: NowPlayingTransportButtonAnimation.diameter,
-            height: NowPlayingTransportButtonAnimation.diameter
+            width: diameter,
+            height: diameter
         )
         .contentShape(.circle)
         .onAppear {
@@ -121,7 +124,6 @@ private struct NowPlayingTransportButtonStyleBody<Label: View>: View {
 }
 
 private enum NowPlayingTransportButtonAnimation {
-    static let diameter: CGFloat = 64
     static let pressedIconScale: CGFloat = 0.8
     static let pressedHighlightScale: CGFloat = 0.86
     static let highlightOpacity = 0.1

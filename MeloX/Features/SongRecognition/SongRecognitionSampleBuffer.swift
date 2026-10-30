@@ -65,7 +65,9 @@ nonisolated final class SongRecognitionSampleBuffer:
                 } else {
                     var mixedSample: Float = 0
                     for channel in 0..<channelCount {
-                        mixedSample += channelData[channel][frame]
+                        mixedSample += buffer.format.isInterleaved
+                            ? channelData[0][frame * channelCount + channel]
+                            : channelData[channel][frame]
                     }
                     sample = mixedSample / Float(channelCount)
                 }

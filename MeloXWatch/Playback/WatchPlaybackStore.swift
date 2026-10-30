@@ -17,12 +17,10 @@ final class WatchPlaybackStore: ObservableObject {
         WatchStreamingQuality?
 
     private let api: WatchNeteaseAPI
-    private let player = AVPlayer()
-    private var timeObserver: Any?
-    private var endObserver: NSObjectProtocol?
+    private let player = WatchAudioPlaybackEngine()
+    private var clockTask: Task<Void, Never>?
     private var interruptionObserver: NSObjectProtocol?
     private var loadGeneration = 0
-    private var progressUpdatedAt = Date()
     private var lastPersistenceDate = Date.distantPast
     private var wasPlayingBeforeInterruption = false
 
@@ -48,10 +46,6 @@ final class WatchPlaybackStore: ObservableObject {
             forKey: WatchPreferenceKey.volume
         )
         player.volume = Float(volume)
-        player.automaticallyWaitsToMinimizeStalling = true
-        if #available(watchOS 26.0, *) {
-            player.networkResourcePriority = .high
-        }
         restorePersistedSession()
         configureAudioSession()
         observePlayer()
@@ -87,7 +81,7 @@ final class WatchPlaybackStore: ObservableObject {
 
     func togglePlayback() {
         guard currentSong != nil else { return }
-        if player.currentItem == nil {
+        if !player.hasCurrentItem {
             let restoredPosition = progress
             Task {
                 await loadCurrentSong(
@@ -100,12 +94,10 @@ final class WatchPlaybackStore: ObservableObject {
             player.pause()
             isPlaying = false
             progress = pausedPosition
-            progressUpdatedAt = Date()
             persistSession()
         } else {
             player.play()
-            isPlaying = true
-            progressUpdatedAt = Date()
+            isPlaying = player.isPlaying
         }
     }
 
@@ -148,13 +140,8 @@ final class WatchPlaybackStore: ObservableObject {
 
     func seek(to seconds: TimeInterval) {
         let target = max(0, min(seconds, duration))
-        player.seek(
-            to: CMTime(seconds: target, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        )
-        progress = target
-        progressUpdatedAt = Date()
+        player.seek(to: target)
+        progress = player.currentTime
         persistSession()
     }
 
@@ -201,11 +188,7 @@ final class WatchPlaybackStore: ObservableObject {
     }
 
     func position(at date: Date) -> TimeInterval {
-        guard isPlaying else { return progress }
-        let estimate = progress
-            + max(date.timeIntervalSince(progressUpdatedAt), 0)
-        guard duration > 0 else { return max(estimate, 0) }
-        return min(max(estimate, 0), duration)
+        player.hasCurrentItem ? player.currentTime : progress
     }
 
     func reloadForSelectedQuality() async {
@@ -236,6 +219,8 @@ final class WatchPlaybackStore: ObservableObject {
         loadGeneration += 1
         let generation = loadGeneration
         isLoading = true
+        isPlaying = false
+        player.unload()
         errorMessage = nil
         effectiveStreamingQuality = nil
 
@@ -251,34 +236,15 @@ final class WatchPlaybackStore: ObservableObject {
             )
             guard generation == loadGeneration else { return }
             effectiveStreamingQuality = source.quality
-            let item = AVPlayerItem(url: source.url)
-            item.preferredForwardBufferDuration =
-                source.quality?.prefersExtendedBuffering == true ? 16 : 8
-            player.replaceCurrentItem(with: item)
             duration = currentSong.duration
-            let targetPosition = min(
-                max(restorePosition ?? 0, 0),
-                max(duration, 0)
-            )
+            let targetPosition = min(max(restorePosition ?? 0, 0), max(duration, 0))
             progress = targetPosition
-            progressUpdatedAt = Date()
-            if targetPosition > 0 {
-                await player.seek(
-                    to: CMTime(
-                        seconds: targetPosition,
-                        preferredTimescale: 600
-                    ),
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero
-                )
-            }
+            try await player.load(source.url, startAt: targetPosition, autoplay: autoplay)
+            guard generation == loadGeneration else { return }
+            duration = player.duration
+            progress = player.currentTime
             isLoading = false
-            if autoplay {
-                player.play()
-                isPlaying = true
-            } else {
-                isPlaying = false
-            }
+            isPlaying = player.isPlaying
             persistSession()
         } catch {
             guard generation == loadGeneration else { return }
@@ -302,40 +268,40 @@ final class WatchPlaybackStore: ObservableObject {
         }
     }
 
+    deinit {
+        clockTask?.cancel()
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+    }
+
     private func observePlayer() {
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.25, preferredTimescale: 600),
-            queue: .main
-        ) { time in
-            Task { @MainActor [weak self] in
+        clockTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(100)) }
+                catch { return }
                 guard let self else { return }
-                self.progress = max(time.seconds, 0)
-                self.progressUpdatedAt = Date()
-                if let itemDuration = self.player.currentItem?.duration.seconds,
-                   itemDuration.isFinite,
-                   itemDuration > 0 {
-                    self.duration = itemDuration
-                }
-                self.isPlaying = self.player.timeControlStatus == .playing
-                if Date().timeIntervalSince(self.lastPersistenceDate) >= 5 {
-                    self.persistSession()
-                }
+                guard self.player.hasCurrentItem,
+                      self.player.isPlaying || self.isPlaying else { continue }
+                self.progress = self.player.currentTime
+                self.duration = self.player.duration
+                self.isPlaying = self.player.isPlaying
+                if Date().timeIntervalSince(self.lastPersistenceDate) >= 5 { self.persistSession() }
             }
         }
-        endObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: nil,
-            queue: .main
-        ) { _ in
+        player.onEnded = { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                self.isPlaying = false
                 if self.repeatMode == .one {
                     self.seek(to: 0)
                     self.player.play()
-                } else {
-                    await self.next()
-                }
+                    self.isPlaying = self.player.isPlaying
+                } else { await self.next() }
             }
+        }
+        player.onFailure = { [weak self] error in
+            self?.isPlaying = false
+            self?.isLoading = false
+            self?.errorMessage = error.localizedDescription
         }
     }
 
@@ -375,7 +341,7 @@ final class WatchPlaybackStore: ObservableObject {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             progress = position(at: Date())
-            progressUpdatedAt = Date()
+
             player.pause()
             isPlaying = false
         case .ended:
@@ -389,8 +355,8 @@ final class WatchPlaybackStore: ObservableObject {
                 forKey: WatchPreferenceKey.resumesAfterInterruption
                ) {
                 player.play()
-                isPlaying = true
-                progressUpdatedAt = Date()
+                isPlaying = player.isPlaying
+
             }
             wasPlayingBeforeInterruption = false
         @unknown default:
@@ -422,7 +388,7 @@ final class WatchPlaybackStore: ObservableObject {
         currentSong = playbackQueue.currentSong
         duration = currentSong?.duration ?? 0
         progress = min(max(session.progress, 0), duration)
-        progressUpdatedAt = Date()
+
         repeatMode =
             WatchRepeatMode(rawValue: session.repeatMode) ?? .off
     }

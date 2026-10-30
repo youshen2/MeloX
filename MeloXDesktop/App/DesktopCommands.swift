@@ -91,6 +91,12 @@ private struct DesktopNavigationCommands: Commands {
                 Button("ui.navigation.podcasts") { model.ui.selection = .radio }
                     .keyboardShortcut("3", modifiers: .command)
             }
+
+            Divider()
+
+            Button("ui.recognition.title") { model.ui.sheet = .recognition }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(model.ui.sheet != nil)
         }
     }
 }

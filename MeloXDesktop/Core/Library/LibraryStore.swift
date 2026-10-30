@@ -316,6 +316,22 @@ final class LibraryStore {
         favoriteSongPageLoadID = nil
     }
 
+    func loadFavoriteSongForLocation(_ songID: Int) async -> Bool {
+        if favoriteSongs.contains(where: { $0.id == songID }) { return true }
+        let requestedIDs = favoriteSongIDs
+        guard let index = requestedIDs.firstIndex(of: songID) else { return false }
+
+        while favoriteSongsNextOffset <= index, hasMoreFavoriteSongs {
+            guard !Task.isCancelled else { return false }
+            let previousOffset = favoriteSongsNextOffset
+            await loadMoreFavoriteSongs()
+            guard !Task.isCancelled,
+                  favoriteSongIDs == requestedIDs,
+                  favoriteSongsNextOffset > previousOffset else { return false }
+        }
+        return favoriteSongs.contains(where: { $0.id == songID })
+    }
+
     func loadRemainingFavoriteSongs() async {
         while hasMoreFavoriteSongs {
             guard !Task.isCancelled else { return }
@@ -531,22 +547,12 @@ final class LibraryStore {
         }
     }
 
-    func setArtistFollowed(
-        _ artist: Artist,
-        isFollowed: Bool
-    ) async throws {
+    func setArtistFollowed(_ artist: Artist, isFollowed: Bool) async throws {
         guard isLoggedIn else { throw APIError.notLoggedIn }
-
-        let previousArtists = favoriteArtists
-        setLocalArtist(artist, isFollowed: isFollowed)
-        do {
-            try await api.setArtistFollowed(
-                id: artist.id,
-                isFollowed: isFollowed
-            )
-        } catch {
-            favoriteArtists = previousArtists
-            throw error
+        try await api.setArtistFollowed(id: artist.id, isFollowed: isFollowed)
+        favoriteArtists.removeAll { $0.id == artist.id }
+        if isFollowed {
+            favoriteArtists.insert(artist, at: 0)
         }
     }
 
@@ -595,6 +601,39 @@ final class LibraryStore {
             subscribedPodcastsNextOffset = previousNextOffset
             hasMoreSubscribedPodcasts = previousHasMore
             throw error
+        }
+    }
+
+    func canDelete(_ playlist: Playlist) -> Bool {
+        guard isLoggedIn, let userID = profile?.id else { return false }
+        return playlist.creator?.userID == userID && playlist.id != likedPlaylistID
+    }
+
+    func deletePlaylist(_ playlist: Playlist) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        guard canDelete(playlist) else { throw LibraryOperationError.playlistIsNotOwned }
+        try await api.deletePlaylist(id: playlist.id)
+        favoritePlaylists.removeAll { $0.id == playlist.id }
+    }
+
+    func createPlaylist(name: String, isPrivate: Bool) async throws {
+        guard isLoggedIn, let profile else { throw APIError.notLoggedIn }
+        let created = try await api.createPlaylist(name: name, isPrivate: isPrivate)
+        let summary = Playlist(
+            id: created.id,
+            name: created.name,
+            coverURLString: created.coverURLString,
+            creator: UserSummary(userID: profile.id, nickname: profile.nickname)
+        )
+        favoritePlaylists.insert(summary, at: 0)
+    }
+
+    func remove(song: Song, from playlist: Playlist) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        guard canDelete(playlist) else { throw LibraryOperationError.playlistIsNotOwned }
+        try await api.removeSong(id: song.id, fromPlaylistID: playlist.id)
+        if let index = favoritePlaylists.firstIndex(where: { $0.id == playlist.id }) {
+            favoritePlaylists[index].removeSong(id: song.id)
         }
     }
 
@@ -680,16 +719,6 @@ final class LibraryStore {
         favoriteAlbums.removeAll { $0.id == album.id }
         if isSubscribed {
             favoriteAlbums.insert(album, at: 0)
-        }
-    }
-
-    private func setLocalArtist(
-        _ artist: Artist,
-        isFollowed: Bool
-    ) {
-        favoriteArtists.removeAll { $0.id == artist.id }
-        if isFollowed {
-            favoriteArtists.insert(artist, at: 0)
         }
     }
 

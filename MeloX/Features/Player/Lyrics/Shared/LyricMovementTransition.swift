@@ -11,6 +11,7 @@ struct LyricMovementAnimationConfiguration: Equatable {
     let springModel: LyricMovementSpringModel
     let initialVelocity: Double
     let presentationDuration: TimeInterval
+    let timeScale: Double
 
     init(
         delay: TimeInterval,
@@ -48,19 +49,21 @@ struct LyricMovementAnimationConfiguration: Equatable {
         delay: TimeInterval,
         duration: TimeInterval,
         springModel: LyricMovementSpringModel,
-        initialVelocity: Double = 0
+        initialVelocity: Double = 0,
+        timeScale: Double = 1
     ) {
         let resolvedDuration = duration.isFinite ? max(duration, 0) : 0
         self.delay = delay.isFinite ? max(delay, 0) : 0
         self.duration = resolvedDuration
         self.springModel = springModel
+        self.timeScale = timeScale
         let resolvedInitialVelocity = initialVelocity.isFinite
             ? initialVelocity
             : 0
         self.initialVelocity = resolvedInitialVelocity
         switch springModel {
         case .durationBounce:
-            presentationDuration = resolvedDuration
+            presentationDuration = resolvedDuration / timeScale
         case let .physical(parameters):
             let spring = Spring(
                 mass: parameters.mass,
@@ -74,8 +77,8 @@ struct LyricMovementAnimationConfiguration: Equatable {
                 epsilon: 0.001
             )
             presentationDuration = settlingDuration.isFinite
-                ? max(settlingDuration, 0)
-                : resolvedDuration
+                ? max(settlingDuration, 0) / timeScale
+                : resolvedDuration / timeScale
         }
     }
 
@@ -91,6 +94,18 @@ struct LyricMovementAnimationConfiguration: Equatable {
             return 0
         }
         return bounce
+    }
+
+    fileprivate func scaledTiming(by scale: Double) -> Self {
+        // Keep the solver curve intact. Scaling its display clock also keeps
+        // rendering, interruption sampling and completion on one deadline.
+        Self(
+            delay: delay * scale,
+            duration: duration,
+            springModel: springModel,
+            initialVelocity: initialVelocity,
+            timeScale: timeScale / scale
+        )
     }
 
     var resolvedSpring: Spring {
@@ -190,6 +205,7 @@ enum LyricMovementPhase: Equatable {
         }
 
         let animationElapsed = max(elapsed - configuration.delay, 0)
+            * configuration.timeScale
         let spring = configuration.resolvedSpring
         let progress = spring.value(
             target: 1,
@@ -203,7 +219,7 @@ enum LyricMovementPhase: Equatable {
         )
         let distance = destinationOffset - initialOffset
         let offset = initialOffset + distance * CGFloat(progress)
-        let velocity = distance * CGFloat(progressVelocity)
+        let velocity = distance * CGFloat(progressVelocity * configuration.timeScale)
         return LyricMovementPresentation(
             offset: offset.isFinite ? offset : destinationOffset,
             velocity: velocity.isFinite ? velocity : 0
@@ -243,8 +259,20 @@ struct LyricMovementTransition: Equatable {
         with animationByID: [
             LyricLine.ID: LyricMovementAnimationConfiguration
         ],
-        at date: Date
+        at date: Date,
+        maximumDuration: TimeInterval? = nil
     ) -> Self {
+        var animationByID = animationByID
+        if let maximumDuration, maximumDuration.isFinite {
+            if maximumDuration <= 0 {
+                animationByID.removeAll()
+            } else if let longestDuration = animationByID.values.map({
+                $0.delay + $0.presentationDuration
+            }).max(), longestDuration > maximumDuration {
+                let scale = maximumDuration / longestDuration
+                animationByID = animationByID.mapValues { $0.scaledTiming(by: scale) }
+            }
+        }
         let animatedInitialOffsets = initialOffsetsByID.filter {
             animationByID[$0.key] != nil
         }

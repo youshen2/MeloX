@@ -43,7 +43,7 @@ enum NowPlayingPageTransition {
             )
         case .lyrics:
             return .asymmetric(
-                insertion: .identity,
+                insertion: .opacity,
                 removal:
                     offsetAndOpacity(y: lyricsEntranceOffset)
                     .animation(motion.outgoing.animation)

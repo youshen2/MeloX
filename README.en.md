@@ -151,6 +151,7 @@ The watch app currently supports independent sign-in, search, daily recommendati
 - Personal playlists
 - Listened-podcast recommendations
 
+- Search suggestions and text completion
 - Song search
 - Album search
 - Artist search
@@ -160,6 +161,7 @@ The watch app currently supports independent sign-in, search, daily recommendati
 - Playlist details
 - Album details
 - Artist details
+- Artist follow controls and a followed artists library
 - Song wiki
 - Song comments
 - Comment replies
@@ -180,7 +182,10 @@ The watch app currently supports independent sign-in, search, daily recommendati
 - Liked songs
 - Saved playlists
 - Saved albums
+- Create public and private playlists
+- Delete owned playlists
 - Add songs to playlists
+- Remove songs from owned playlists
 - Playback history
 - NetEase Cloud Music listening-record sync
 - NetEase Cloud Music listening-time sync
@@ -304,7 +309,7 @@ MeloX uses a fixed 32-second window and an FP16 Core ML ML Program. MeloX perfor
 
 ## Requirements
 
-- Xcode 26.6 or later
+- Xcode 27.1 or later
 - iOS / iPadOS 26.0 or later
 - macOS 15.0 or later
 - watchOS 10.0 or later (the watch app remains under development)
@@ -391,6 +396,7 @@ Thanks to the following shareholder for supporting MeloX. The list is for acknow
 - [WXRIW/Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper): reference for NetEase YRC word-synced lyric parsing.
 - [qier222/YesPlayMusic](https://github.com/qier222/YesPlayMusic): reference for NetEase Cloud Music APIs and player behavior.
 - [DanteAlighieri13210914/pv-tool](https://github.com/DanteAlighieri13210914/pv-tool): original Text PV templates and visual effects.
+- [dimitris-c/AudioStreaming](https://github.com/dimitris-c/AudioStreaming): Audio streaming engine for iOS and macOS.
 - [mjhydri/BeatNet](https://github.com/mjhydri/BeatNet): beat, downbeat, and tempo analysis model used by AutoMix.
 
 The code and resources from these projects remain subject to their original licenses.

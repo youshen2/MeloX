@@ -5,6 +5,12 @@ struct LibraryPlaylistsView: View {
 
     @Environment(LibraryStore.self) private var library
 
+    @State private var showsCreation = false
+    @State private var pendingDeletion: Playlist?
+    @State private var isDeletingPlaylist = false
+    @State private var deletionError: String?
+
+
     var body: some View {
         List {
             if !isSearching, let userID = library.profile?.id {
@@ -34,7 +40,11 @@ struct LibraryPlaylistsView: View {
                         for: MusicRoute.playlist(playlist)
                     )
                     .swipeActions(edge: .trailing) {
-                        if library.canUnsubscribe(playlist) {
+                        if library.canDelete(playlist) {
+                            Button(role: .destructive) { pendingDeletion = playlist } label: {
+                                Label("ui.playlists.delete.action", systemImage: "trash")
+                            }
+                        } else if library.canUnsubscribe(playlist) {
                             Button(role: .destructive) {
                                 library.toggle(playlist: playlist)
                             } label: {
@@ -49,6 +59,44 @@ struct LibraryPlaylistsView: View {
             }
         }
         .listStyle(.plain)
+        .disabled(isDeletingPlaylist)
+        .confirmationDialog(
+            "ui.playlists.delete.title",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDeletion
+        ) { playlist in
+            Button("ui.playlists.delete.action", role: .destructive) {
+                Task { await deletePlaylist(playlist) }
+            }
+            Button("ui.common.cancel", role: .cancel) {}
+        } message: { playlist in
+            Text(L10n.format("ui.playlists.delete.message", playlist.name))
+        }
+        .alert("ui.library.error.title", isPresented: Binding(
+            get: { deletionError != nil },
+            set: { if !$0 { deletionError = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { deletionError = nil }
+        } message: {
+            Text(deletionError ?? "")
+        }
+
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("ui.playlists.create.title", systemImage: "plus") { showsCreation = true }
+                    .disabled(!library.isLoggedIn)
+            }
+        }
+        .sheet(isPresented: $showsCreation) {
+            PlaylistCreationSheet { name, isPrivate in
+                try await library.createPlaylist(name: name, isPrivate: isPrivate)
+            }
+            .presentationDetents([.medium])
+        }
         .refreshable {
             await library.refresh(force: true)
         }
@@ -71,6 +119,16 @@ struct LibraryPlaylistsView: View {
                 }
             }
             .allowsHitTesting(false)
+        }
+    }
+
+    private func deletePlaylist(_ playlist: Playlist) async {
+        isDeletingPlaylist = true
+        defer { isDeletingPlaylist = false }
+        do {
+            try await library.deletePlaylist(playlist)
+        } catch {
+            deletionError = error.localizedDescription
         }
     }
 

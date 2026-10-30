@@ -194,6 +194,17 @@ private struct DesktopGeneralSettingsView: View {
                     Text("ui.category.korean").tag("KR")
                     Text("ui.category.japanese").tag("JP")
                 }
+            }
+
+            Section("ui.recognition.title") {
+                Picker("ui.desktop.recognition.source", selection: $recognition.audioSource) {
+                    ForEach(SongRecognitionAudioSource.allCases) { source in
+                        Label(source.title, systemImage: source.systemImage).tag(source)
+                    }
+                }
+                Text(recognition.audioSource.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Picker("ui.settings.content.recognition_duration", selection: $recognition.duration) {
                     ForEach(SongRecognitionDuration.allCases) { duration in
                         Text(
@@ -242,6 +253,7 @@ private struct DesktopGeneralSettingsView: View {
             Section("ui.desktop.settings.launch") {
                 Toggle("ui.about.check_updates_on_launch", isOn: $settings.checksUpdatesOnLaunch)
                 Toggle("ui.desktop.settings.launch.clipboard", isOn: $settings.recognizesClipboardLinksOnLaunch)
+                Toggle("ui.settings.general.search_suggestions", isOn: $settings.searchSuggestionsEnabled)
                 Toggle("ui.settings.playback.start_heart_mode", isOn: $settings.startsHeartModeOnLaunch)
             }
         }

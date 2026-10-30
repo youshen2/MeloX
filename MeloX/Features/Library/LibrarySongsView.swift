@@ -5,6 +5,7 @@ struct LibrarySongsView: View {
 
     @Environment(LibraryStore.self) private var library
     @Environment(PlayerStore.self) private var player
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var searchReloadToken = 0
     @State private var searchPreparationID: UUID?
@@ -12,52 +13,95 @@ struct LibrarySongsView: View {
     @State private var heartModeErrorMessage: String?
     @State private var isPreparingPlayback = false
     @State private var playbackErrorMessage: String?
+    @State private var trackLocator = MusicCollectionTrackLocator()
+    @State private var songToLocate: Int?
+    @State private var locateErrorMessage: String?
 
     var body: some View {
-        List {
-            if !displayedSongs.isEmpty {
-                Button(action: playDisplayedSongs) {
-                    HStack {
-                        Label(
-                            isSearching
-                                ? L10n.string("ui.common.play_search_results")
-                                : L10n.string("ui.common.play_all"),
-                            systemImage: "play.fill"
-                        )
-                        Spacer()
-                        if isPreparingPlayback {
-                            ProgressView()
-                                .controlSize(.small)
+        ScrollViewReader { proxy in
+            List {
+                if !displayedSongs.isEmpty {
+                    Button(action: playDisplayedSongs) {
+                        HStack {
+                            Label(
+                                isSearching
+                                    ? L10n.string("ui.common.play_search_results")
+                                    : L10n.string("ui.common.play_all"),
+                                systemImage: "play.fill"
+                            )
+                            Spacer()
+                            if isPreparingPlayback {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
+                    .disabled(isPreparingPlayback)
+
+                    if !isSearching {
+                        heartModeButton
+                    }
+                }
+
+                ForEach(displayedSongs) { song in
+                    Button {
+                        Task { await player.play(song, in: displayedSongs) }
+                    } label: {
+                        TrackRowView(song: song, showsArtwork: true)
+                    }
+                    .buttonStyle(.plain)
+                    .id(song.id)
+                    .listRowBackground(
+                        trackLocator.highlightedSongID == song.id
+                            ? Color.accentColor.opacity(0.16) : nil
+                    )
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            library.toggle(song: song)
+                        } label: {
+                            Label("ui.common.unfavorite", systemImage: "heart.slash")
                         }
                     }
                 }
-                .disabled(isPreparingPlayback)
 
-                if !isSearching {
-                    heartModeButton
-                }
+                paginationFooter
             }
-
-            ForEach(displayedSongs) { song in
-                Button {
-                    Task { await player.play(song, in: displayedSongs) }
-                } label: {
-                    TrackRowView(song: song, showsArtwork: true)
-                }
-                .buttonStyle(.plain)
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        library.toggle(song: song)
-                    } label: {
-                        Label("ui.common.unfavorite", systemImage: "heart.slash")
-                    }
-                }
+            .task(id: songToLocate) {
+                if let songToLocate { await locateSong(songToLocate) }
             }
-
-            paginationFooter
+            .task(id: trackLocator.request) {
+                await trackLocator.scroll(using: proxy, reduceMotion: reduceMotion)
+            }
         }
         .listStyle(.plain)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if songToLocate != nil {
+                    ProgressView()
+                        .accessibilityLabel("ui.collection.locating_playing")
+                }
+                Menu {
+                    Button("ui.collection.locate_playing", systemImage: "scope") {
+                        songToLocate = currentSongID
+                    }
+                    .disabled(currentSongID == nil || songToLocate != nil || isPreparingSearchResults)
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .accessibilityLabel("ui.common.more")
+            }
+        }
+        .alert("ui.collection.locate_failed", isPresented: Binding(
+            get: { locateErrorMessage != nil },
+            set: { if !$0 { locateErrorMessage = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { locateErrorMessage = nil }
+        } message: {
+            Text(locateErrorMessage ?? "")
+        }
         .refreshable {
+            songToLocate = nil
+            trackLocator.reset()
             await library.refresh(force: true)
             if isSearching {
                 await prepareSearchResults(debounced: false)
@@ -112,6 +156,28 @@ struct LibrarySongsView: View {
 
     private var normalizedSearchQuery: String {
         normalizedLibrarySearchQuery(searchQuery)
+    }
+
+    private var currentSongID: Int? {
+        guard let song = player.currentSong, library.contains(song: song),
+              !filterMusicCollectionTracks([song], query: normalizedSearchQuery).isEmpty else {
+            return nil
+        }
+        return song.id
+    }
+
+    private func locateSong(_ songID: Int) async {
+        defer { songToLocate = nil }
+        locateErrorMessage = nil
+        let isLoaded = await library.loadFavoriteSongForLocation(songID)
+        guard !Task.isCancelled else { return }
+        guard isLoaded else {
+            locateErrorMessage = library.favoriteSongsLoadMoreError
+                ?? L10n.string("ui.collection.locate_unavailable")
+            return
+        }
+        guard displayedSongs.contains(where: { $0.id == songID }) else { return }
+        trackLocator.locate(songID)
     }
 
     private var isSearching: Bool {

@@ -152,13 +152,17 @@ struct LyricGlowTextRenderer: TextRenderer {
             context.translateBy(x: -displayPadding.leading, y: 0)
         }
 
+        let drawingScale = LyricLineFitting.drawingScale(
+            for: layout,
+            constrainedWidth: layoutConfiguration.constrainedWidth,
+            trailingSafety: style.longSyllableExpansionPadding
+        )
         for line in layout {
             var lineContext = context
             if let transform = LyricLineFitting.drawingTransform(
                 for: line,
-                constrainedWidth: layoutConfiguration.constrainedWidth,
-                centersLine: layoutConfiguration.centersLines,
-                trailingSafety: style.longSyllableExpansionPadding
+                scale: drawingScale,
+                centersLine: layoutConfiguration.centersLines
             ) {
                 lineContext.addFilter(
                     .projectionTransform(ProjectionTransform(transform))

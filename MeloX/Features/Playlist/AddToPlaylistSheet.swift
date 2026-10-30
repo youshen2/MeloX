@@ -6,6 +6,7 @@ struct AddToPlaylistSheet: View {
 
     let song: Song
 
+    @State private var showsCreation = false
     @State private var addingToPlaylistID: Playlist.ID?
     @State private var errorMessage: String?
 
@@ -15,12 +16,22 @@ struct AddToPlaylistSheet: View {
                 .navigationTitle("ui.playlists.add_to")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("ui.playlists.create.title", systemImage: "plus") { showsCreation = true }
+                            .disabled(!library.isLoggedIn || addingToPlaylistID != nil)
+                    }
                     ToolbarItem(placement: .cancellationAction) {
                         Button("ui.common.cancel") {
                             dismiss()
                         }
                     }
                 }
+        }
+        .sheet(isPresented: $showsCreation) {
+            PlaylistCreationSheet { name, isPrivate in
+                try await library.createPlaylist(name: name, isPrivate: isPrivate)
+            }
+            .presentationDetents([.medium])
         }
         .interactiveDismissDisabled(addingToPlaylistID != nil)
         .alert(

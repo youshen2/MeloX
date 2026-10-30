@@ -19,6 +19,7 @@ struct DesktopSidebar: View {
         .songs,
         .playlists,
         .albums,
+        .artists,
         .podcasts,
         .downloads,
         .cloud,

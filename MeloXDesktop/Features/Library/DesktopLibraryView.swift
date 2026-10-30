@@ -3,36 +3,100 @@ import UniformTypeIdentifiers
 
 struct DesktopLibraryView: View {
     @Environment(DesktopAppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let section: DesktopSection
+
+    @State private var showsCreation = false
+    @State private var pendingDeletion: Playlist?
+    @State private var isDeletingPlaylist = false
+    @State private var deletionError: String?
 
     @State private var showsImporter = false
     @State private var isPreparingPlayback = false
     @State private var playbackErrorMessage: String?
+    @State private var trackLocator = DesktopCollectionTrackLocator()
+    @State private var songToLocate: Int?
+    @State private var locateErrorMessage: String?
 
     private let columns = [
         GridItem(.adaptive(minimum: 145, maximum: 205), spacing: 20)
     ]
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(section.title)
-                        .font(.system(size: 32, weight: .bold))
-                    Spacer()
-                    headerActions
-                }
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 22) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(section.title)
+                            .font(.system(size: 32, weight: .bold))
+                        Spacer()
+                        headerActions
+                    }
 
-                content
+                    content
+                }
+                .padding(.horizontal, 34)
+                .padding(.vertical, 28)
             }
-            .padding(.horizontal, 34)
-            .padding(.vertical, 28)
+            .task(id: songToLocate) {
+                if let songToLocate { await locateSong(songToLocate) }
+            }
+            .task(id: trackLocator.request) {
+                await trackLocator.scroll(using: proxy, reduceMotion: reduceMotion)
+            }
         }
+        .onChange(of: section) {
+            songToLocate = nil
+            trackLocator.reset()
+        }
+        .desktopLoadingStatus(
+            L10n.string("ui.collection.locating_playing"),
+            isPresented: songToLocate != nil
+        )
         .navigationTitle(section.title)
+        .alert("ui.collection.locate_failed", isPresented: Binding(
+            get: { locateErrorMessage != nil },
+            set: { if !$0 { locateErrorMessage = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { locateErrorMessage = nil }
+        } message: {
+            Text(locateErrorMessage ?? "")
+        }
+        .disabled(isDeletingPlaylist)
+        .confirmationDialog(
+            "ui.playlists.delete.title",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDeletion
+        ) { playlist in
+            Button("ui.playlists.delete.action", role: .destructive) {
+                Task { await deletePlaylist(playlist) }
+            }
+            Button("ui.common.cancel", role: .cancel) {}
+        } message: { playlist in
+            Text(L10n.format("ui.playlists.delete.message", playlist.name))
+        }
+        .alert("ui.library.error.title", isPresented: Binding(
+            get: { deletionError != nil },
+            set: { if !$0 { deletionError = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { deletionError = nil }
+        } message: {
+            Text(deletionError ?? "")
+        }
+
         .task {
             await model.library.refresh()
             if section == .cloud {
                 await model.cloud.refresh()
+            }
+        }
+        .sheet(isPresented: $showsCreation) {
+            PlaylistCreationSheet { name, isPrivate in
+                try await model.library.createPlaylist(name: name, isPrivate: isPrivate)
             }
         }
         .fileImporter(
@@ -69,10 +133,30 @@ struct DesktopLibraryView: View {
         }
     }
 
+    private func deletePlaylist(_ playlist: Playlist) async {
+        isDeletingPlaylist = true
+        defer { isDeletingPlaylist = false }
+        do {
+            try await model.library.deletePlaylist(playlist)
+        } catch {
+            deletionError = error.localizedDescription
+        }
+    }
+
     @ViewBuilder
     private var headerActions: some View {
         switch section {
         case .songs:
+            Menu {
+                Button("ui.collection.locate_playing", systemImage: "scope") {
+                    songToLocate = currentSongID
+                }
+                .disabled(currentSongID == nil || songToLocate != nil)
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .help(L10n.string("ui.common.more"))
+
             Button(action: playFavoriteSongs) {
                 HStack(spacing: 7) {
                     Label("ui.common.play_all", systemImage: "play.fill")
@@ -91,6 +175,9 @@ struct DesktopLibraryView: View {
                 Task { await model.player.playAll(model.downloads.downloadedSongs) }
             }
             .disabled(model.downloads.downloadedSongs.isEmpty)
+        case .playlists:
+            Button("ui.playlists.create.title", systemImage: "plus") { showsCreation = true }
+                .disabled(!model.library.isLoggedIn)
         case .cloud:
             Button("ui.cloud.upload_music", systemImage: "plus") { showsImporter = true }
         default:
@@ -115,6 +202,8 @@ struct DesktopLibraryView: View {
                 cloudList
             case .playlists:
                 playlistGrid
+            case .artists:
+                artistGrid
             case .albums:
                 albumGrid
             case .podcasts:
@@ -160,6 +249,8 @@ struct DesktopLibraryView: View {
         case .playlists:
             model.library.phase == .loading
                 && model.library.favoritePlaylists.isEmpty
+        case .artists:
+            model.library.phase == .loading && model.library.favoriteArtists.isEmpty
         case .albums:
             model.library.phase == .loading
                 && model.library.favoriteAlbums.isEmpty
@@ -189,8 +280,11 @@ struct DesktopLibraryView: View {
                         song: song,
                         index: index,
                         songs: songs,
-                        showsArtwork: true
+                        showsArtwork: true,
+                        isHighlighted: section == .songs
+                            && trackLocator.highlightedSongID == song.id
                     )
+                    .id(song.id)
 
                     if song.id == songs.last?.id,
                        let loadMoreToken,
@@ -222,6 +316,33 @@ struct DesktopLibraryView: View {
                         showsPlayCount: model.settings.showPlayCount,
                         action: { model.ui.navigate(to: .playlist(playlist.id)) },
                         playAction: { play(playlist) }
+                    )
+                    .contextMenu {
+                        if model.library.canDelete(playlist) {
+                            Button("ui.playlists.delete.action", systemImage: "trash", role: .destructive) {
+                                pendingDeletion = playlist
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var artistGrid: some View {
+        if model.library.favoriteArtists.isEmpty {
+            ContentUnavailableView("ui.library.artists.empty", systemImage: "music.mic")
+                .frame(maxWidth: .infinity, minHeight: 260)
+        } else {
+            LazyVGrid(columns: columns, spacing: 24) {
+                ForEach(model.library.favoriteArtists) { artist in
+                    DesktopMediaCard(
+                        title: artist.name,
+                        subtitle: artist.aliases.first,
+                        artworkURL: artist.artworkURL,
+                        isCircular: true,
+                        action: { model.ui.navigate(to: .artist(artist.id)) }
                     )
                 }
             }
@@ -348,6 +469,25 @@ struct DesktopLibraryView: View {
             ) else { return }
             await model.player.playAll(detail.tracks, sourceID: playlist.id)
         }
+    }
+
+    private var currentSongID: Int? {
+        guard let song = model.player.currentSong,
+              model.library.contains(song: song) else { return nil }
+        return song.id
+    }
+
+    private func locateSong(_ songID: Int) async {
+        defer { songToLocate = nil }
+        locateErrorMessage = nil
+        let isLoaded = await model.library.loadFavoriteSongForLocation(songID)
+        guard !Task.isCancelled else { return }
+        guard isLoaded else {
+            locateErrorMessage = model.library.favoriteSongsLoadMoreError
+                ?? L10n.string("ui.collection.locate_unavailable")
+            return
+        }
+        trackLocator.locate(songID)
     }
 
     private func playFavoriteSongs() {

@@ -54,6 +54,7 @@ struct DesktopCollectionHeader: View {
     var artworkSystemImage: String?
     var artworkTint: Color = .red
     var supplementaryAction: DesktopCollectionSupplementaryAction?
+    var locatePlayingAction: DesktopCollectionSupplementaryAction?
     var onPlayAll: ((Bool) async -> Void)?
 
     @Environment(DesktopAppModel.self) private var model
@@ -223,9 +224,23 @@ struct DesktopCollectionHeader: View {
                 )
             }
 
-            if model.settings.isContentFeatureEnabled(.downloads)
+            if locatePlayingAction != nil
+                || model.settings.isContentFeatureEnabled(.downloads)
                 || shareURL != nil {
                 Menu {
+                    if let locatePlayingAction {
+                        Button(
+                            locatePlayingAction.title,
+                            systemImage: locatePlayingAction.systemImage,
+                            action: locatePlayingAction.action
+                        )
+                        .disabled(
+                            locatePlayingAction.isDisabled
+                                || locatePlayingAction.isRunning
+                        )
+                        Divider()
+                    }
+
                     if model.settings.isContentFeatureEnabled(.downloads) {
                         Button("ui.desktop.collection.download_all", systemImage: "arrow.down.circle") {
                             model.downloads.start(
@@ -259,6 +274,8 @@ struct DesktopCollectionTrackList: View {
     var usesTrackNumbers = false
     var groupsByDisc = false
     var footer: (() -> AnyView)? = nil
+    var onRemoveSong: ((Song) -> Void)?
+    var highlightedSongID: Int?
 
     var body: some View {
         let entries = makeEntries()
@@ -306,8 +323,11 @@ struct DesktopCollectionTrackList: View {
             showsAlbumColumn: showsAlbumColumn,
             displayNumber: usesTrackNumbers
                 ? String(entry.song.trackNumber ?? entry.index + 1)
-                : nil
+                : nil,
+            onRemoveSong: onRemoveSong,
+            isHighlighted: entry.id == highlightedSongID
         )
+        .id(entry.id)
     }
 
     private func makeEntries() -> [TrackEntry] {

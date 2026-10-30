@@ -38,6 +38,8 @@ struct MiniPlayerView: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(verbatim: song.name))
+                .accessibilityValue(Text(verbatim: song.artistText))
 
                 if player.isLoading {
                     ProgressView()

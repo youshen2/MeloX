@@ -12,39 +12,56 @@ struct DesktopAlbumDetailView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var operationError: String?
+    @State private var trackLocator = DesktopCollectionTrackLocator()
 
     var body: some View {
         Group {
             if let album {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 34) {
-                        DesktopCollectionHeader(
-                            artworkURL: album.artworkURL,
-                            kind: album.type ?? L10n.string("ui.common.album"),
-                            title: album.name,
-                            subtitle: album.artistText,
-                            metadata: metadata(album),
-                            description: album.albumDescription,
-                            songs: songs,
-                            sourceID: album.id,
-                            isFavorite: isSubscribed,
-                            favoriteAction: toggleSubscription,
-                            shareURL: URL(
-                                string: "https://music.163.com/#/album?id=\(album.id)"
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 34) {
+                            DesktopCollectionHeader(
+                                artworkURL: album.artworkURL,
+                                kind: album.type ?? L10n.string("ui.common.album"),
+                                title: album.name,
+                                subtitle: album.artistText,
+                                metadata: metadata(album),
+                                description: album.albumDescription,
+                                songs: songs,
+                                sourceID: album.id,
+                                isFavorite: isSubscribed,
+                                favoriteAction: toggleSubscription,
+                                shareURL: URL(
+                                    string: "https://music.163.com/#/album?id=\(album.id)"
+                                ),
+                                locatePlayingAction: DesktopCollectionSupplementaryAction(
+                                    title: L10n.string("ui.collection.locate_playing"),
+                                    systemImage: "scope",
+                                    isDisabled: currentSongID == nil,
+                                    action: {
+                                        if let currentSongID {
+                                            trackLocator.locate(currentSongID)
+                                        }
+                                    }
+                                )
                             )
-                        )
 
-                        Divider()
-                        DesktopCollectionTrackList(
-                            songs: songs,
-                            sourceID: album.id,
-                            showsAlbumColumn: false,
-                            usesTrackNumbers: true,
-                            groupsByDisc: true
-                        )
+                            Divider()
+                            DesktopCollectionTrackList(
+                                songs: songs,
+                                sourceID: album.id,
+                                showsAlbumColumn: false,
+                                usesTrackNumbers: true,
+                                groupsByDisc: true,
+                                highlightedSongID: trackLocator.highlightedSongID
+                            )
+                        }
+                        .padding(.horizontal, 42)
+                        .padding(.vertical, 34)
                     }
-                    .padding(.horizontal, 42)
-                    .padding(.vertical, 34)
+                    .task(id: trackLocator.request) {
+                        await trackLocator.scroll(using: proxy, reduceMotion: reduceMotion)
+                    }
                 }
             } else if isLoading {
                 DesktopDetailLoadingView(message: L10n.string("ui.album.loading"))
@@ -73,7 +90,14 @@ struct DesktopAlbumDetailView: View {
         }
     }
 
+    private var currentSongID: Int? {
+        guard let id = model.player.currentSong?.id,
+              songs.contains(where: { $0.id == id }) else { return nil }
+        return id
+    }
+
     private func load() async {
+        trackLocator.reset()
         isLoading = true
         errorMessage = nil
         do {

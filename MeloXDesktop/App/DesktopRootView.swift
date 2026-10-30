@@ -6,6 +6,7 @@ struct DesktopRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isNowPlayingLayerMounted = false
     @State private var isNowPlayingRenderingActive = false
+    @State private var isWindowFullScreen = false
 
     var body: some View {
         @Bindable var ui = model.ui
@@ -34,6 +35,7 @@ struct DesktopRootView: View {
                     .transition(.move(edge: .bottom))
                 }
             }
+            .ignoresSafeArea(.container, edges: .top)
             .zIndex(1)
             .animation(
                 reduceMotion
@@ -43,31 +45,43 @@ struct DesktopRootView: View {
             )
         }
         .toolbar(removing: .sidebarToggle)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("ui.recognition.title", systemImage: "waveform") {
+                    ui.sheet = .recognition
+                }
+                .help(L10n.string("ui.recognition.title"))
+                .disabled(ui.sheet != nil)
+            }
+        }
+        .toolbarVisibility(
+            ui.isNowPlayingPresented && isWindowFullScreen ? .hidden : .automatic,
+            for: .windowToolbar
+        )
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        // Set the native full-screen toolbar policy before its host is created.
+        // The player's controls stay visible in the SwiftUI backdrop overlay.
+        .windowToolbarFullScreenVisibility(
+            ui.isNowPlayingPresented ? .onHover : .automatic
+        )
         .background {
             ZStack {
                 DesktopMainWindowConfiguration(
-                    isPlayerSidePanelPresented: ui.inspector != nil
+                    isPlayerSidePanelPresented: ui.inspector != nil,
+                    isFullScreen: $isWindowFullScreen
                 )
 
                 DesktopNowPlayingLeadingAccessoryInstaller(
-                    isPresented: ui.isNowPlayingPresented,
+                    isPresented: ui.isNowPlayingPresented && !isWindowFullScreen,
                     close: {
                         model.ui.isNowPlayingPresented = false
                     },
-                    openMiniPlayer: {
-                        model.ui.isNowPlayingPresented = false
-                        Task { @MainActor in
-                            await Task.yield()
-                            openWindow(id: "mini-player")
-                            await DesktopMiniPlayerWindowCoordinator
-                                .bringToFrontAfterOpening()
-                        }
-                    }
+                    openMiniPlayer: openMiniPlayer
                 )
 
                 DesktopNowPlayingTrailingAccessoryInstaller(
                     isPresented: ui.isNowPlayingPresented
+                        && !isWindowFullScreen
                         && model.playbackVolume.isControlVisible,
                     model: model
                 )
@@ -135,7 +149,7 @@ struct DesktopRootView: View {
         isPresented: Bool,
         isRenderingActive: Bool
     ) -> some View {
-        ZStack {
+        ZStack(alignment: .top) {
             DesktopNowPlayingBackdrop(
                 artworkURL: model.player.currentSong?.album?.artworkURL,
                 player: model.player,
@@ -148,10 +162,32 @@ struct DesktopRootView: View {
                 isActive: isPresented,
                 isRenderingActive: isRenderingActive
             )
+
+            if isWindowFullScreen {
+                HStack {
+                    DesktopNowPlayingWindowControls(
+                        close: { model.ui.isNowPlayingPresented = false },
+                        openMiniPlayer: openMiniPlayer
+                    )
+                    Spacer()
+                    DesktopNowPlayingVolumeControl()
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+            }
         }
         // The backdrop is a sibling of the white player content, so both
         // must inherit the player's dark appearance from their common root.
         .environment(\.colorScheme, .dark)
+    }
+
+    private func openMiniPlayer() {
+        model.ui.isNowPlayingPresented = false
+        Task { @MainActor in
+            await Task.yield()
+            openWindow(id: "mini-player")
+            await DesktopMiniPlayerWindowCoordinator.bringToFrontAfterOpening()
+        }
     }
 
     private func updateNowPlayingLifecycle(
@@ -317,6 +353,7 @@ struct DesktopSectionContentView: View {
              .songs,
              .playlists,
              .albums,
+             .artists,
              .podcasts,
              .downloads,
              .cloud:

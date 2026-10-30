@@ -6,6 +6,10 @@ struct DesktopPlaylistDetailView: View {
     let playlistID: Int
 
     @State private var playlist: Playlist?
+    @State private var pendingRemoval: Song?
+    @State private var isRemovingTrack = false
+    @State private var removalError: String?
+
     @State private var songs: [Song] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -14,60 +18,90 @@ struct DesktopPlaylistDetailView: View {
     @State private var loadMoreTracksError: String?
     @State private var isPreparingPlayback = false
     @State private var playbackErrorMessage: String?
+    @State private var trackLocator = DesktopCollectionTrackLocator()
+    @State private var songToLocate: Int?
+    @State private var locateErrorMessage: String?
 
     private let trackPageSize = 100
 
     var body: some View {
         Group {
             if let playlist {
-                ScrollView {
-                    // Keep a single lazy container for the rows below. The
-                    // track section owns virtualization; nesting another
-                    // lazy stack here makes macOS repeatedly remeasure the
-                    // whole playlist while a page is appended.
-                    VStack(alignment: .leading, spacing: 34) {
-                        DesktopCollectionHeader(
-                            artworkURL: playlist.artworkURL,
-                            kind: playlist.isOfficialToplist
-                                ? L10n.string("ui.category.toplists")
-                                : L10n.string("ui.common.playlist"),
-                            title: playlist.name,
-                            subtitle: playlist.creator?.nickname,
-                            metadata: metadata(for: playlist),
-                            description: playlist.playlistDescription,
-                            songs: songs,
-                            sourceID: playlist.id,
-                            isFavorite: model.library.contains(playlist: playlist),
-                            favoriteAction: {
-                                model.library.toggle(playlist: playlist)
-                            },
-                            shareURL: URL(
-                                string: "https://music.163.com/#/playlist?id=\(playlist.id)"
-                            ),
-                            onPlayAll: { shuffled in
-                                await playAll(shuffled: shuffled)
-                            }
-                        )
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        // Keep one lazy container for the track rows so appending
+                        // a page does not remeasure nested lazy stacks.
+                        VStack(alignment: .leading, spacing: 34) {
+                            DesktopCollectionHeader(
+                                artworkURL: playlist.artworkURL,
+                                kind: playlist.isOfficialToplist
+                                    ? L10n.string("ui.category.toplists")
+                                    : L10n.string("ui.common.playlist"),
+                                title: playlist.name,
+                                subtitle: playlist.creator?.nickname,
+                                metadata: metadata(for: playlist),
+                                description: playlist.playlistDescription,
+                                songs: songs,
+                                sourceID: playlist.id,
+                                isFavorite: model.library.contains(playlist: playlist),
+                                favoriteAction: {
+                                    model.library.toggle(playlist: playlist)
+                                },
+                                shareURL: URL(
+                                    string: "https://music.163.com/#/playlist?id=\(playlist.id)"
+                                ),
+                                locatePlayingAction: DesktopCollectionSupplementaryAction(
+                                    title: L10n.string(
+                                        songToLocate == nil
+                                            ? "ui.collection.locate_playing"
+                                            : "ui.collection.locating_playing"
+                                    ),
+                                    systemImage: "scope",
+                                    isRunning: songToLocate != nil,
+                                    isDisabled: currentSongID == nil
+                                        || isLoading || isLoadingMoreTracks,
+                                    action: { songToLocate = currentSongID }
+                                ),
+                                onPlayAll: { shuffled in
+                                    await playAll(shuffled: shuffled)
+                                }
+                            )
 
-                        Divider()
-                        DesktopCollectionTrackList(
-                            songs: songs,
-                            sourceID: playlist.id,
-                            footer: hasMoreTracks ? {
-                                AnyView(
-                                    DesktopCollectionPaginationFooter(
-                                        isLoading: isLoadingMoreTracks,
-                                        failureMessage: loadMoreTracksError,
-                                        loadToken: loadedTrackOffset
-                                    ) {
-                                        await loadMoreTracks()
-                                    }
-                                )
-                            } : nil
-                        )
+                            Divider()
+                            DesktopCollectionTrackList(
+                                songs: songs,
+                                sourceID: playlist.id,
+                                footer: hasMoreTracks ? {
+                                    AnyView(
+                                        DesktopCollectionPaginationFooter(
+                                            isLoading: isLoadingMoreTracks,
+                                            failureMessage: loadMoreTracksError,
+                                            loadToken: songToLocate == nil
+                                                ? loadedTrackOffset
+                                                : nil
+                                        ) {
+                                            await loadMoreTracks()
+                                        }
+                                    )
+                                } : nil,
+                                onRemoveSong: model.library.canDelete(playlist)
+                                    && !isLoadingMoreTracks && songToLocate == nil
+                                    ? { pendingRemoval = $0 }
+                                    : nil,
+                                highlightedSongID: trackLocator.highlightedSongID
+                            )
+                        }
+                        .padding(.horizontal, 42)
+                        .padding(.vertical, 34)
                     }
-                    .padding(.horizontal, 42)
-                    .padding(.vertical, 34)
+                    .task(id: songToLocate) {
+                        if let songToLocate {
+                            await locateSong(songToLocate)
+                        }
+                    }
+                    .task(id: trackLocator.request) {
+                        await trackLocator.scroll(using: proxy, reduceMotion: reduceMotion)
+                    }
                 }
             } else if isLoading {
                 DesktopDetailLoadingView(message: L10n.string("ui.playlists.loading"))
@@ -76,6 +110,35 @@ struct DesktopPlaylistDetailView: View {
                     Task { await load() }
                 }
             }
+        }
+        .desktopLoadingStatus(
+            L10n.string("ui.collection.locating_playing"),
+            isPresented: songToLocate != nil
+        )
+        .disabled(isRemovingTrack)
+        .confirmationDialog(
+            "ui.playlists.remove_song",
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { if !$0 { pendingRemoval = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingRemoval
+        ) { song in
+            Button("ui.playlists.remove_song", role: .destructive) {
+                Task { await removeSong(song) }
+            }
+            Button("ui.common.cancel", role: .cancel) {}
+        } message: { song in
+            Text(L10n.format("ui.playlists.remove_song.message", song.name))
+        }
+        .alert("ui.library.error.title", isPresented: Binding(
+            get: { removalError != nil },
+            set: { if !$0 { removalError = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { removalError = nil }
+        } message: {
+            Text(removalError ?? "")
         }
         .navigationTitle(playlist?.name ?? L10n.string("ui.common.playlist"))
         .task(id: playlistID) { await load() }
@@ -100,6 +163,14 @@ struct DesktopPlaylistDetailView: View {
         } message: {
             Text(playbackErrorMessage ?? L10n.string("ui.playlists.load_complete_failed"))
         }
+        .alert("ui.collection.locate_failed", isPresented: Binding(
+            get: { locateErrorMessage != nil },
+            set: { if !$0 { locateErrorMessage = nil } }
+        )) {
+            Button("ui.common.ok", role: .cancel) { locateErrorMessage = nil }
+        } message: {
+            Text(locateErrorMessage ?? "")
+        }
     }
 
     private func metadata(for playlist: Playlist) -> String {
@@ -120,7 +191,54 @@ struct DesktopPlaylistDetailView: View {
         return loadedTrackOffset < playlist.trackIDs.count
     }
 
+    private var currentSongID: Int? {
+        guard let id = model.player.currentSong?.id,
+              songs.contains(where: { $0.id == id })
+                || playlist?.trackIDs.contains(where: { $0.id == id }) == true else {
+            return nil
+        }
+        return id
+    }
+
+    private func locateSong(_ songID: Int) async {
+        defer { songToLocate = nil }
+        locateErrorMessage = nil
+
+        do {
+            if !songs.contains(where: { $0.id == songID }),
+               let playlist,
+               let index = playlist.trackIDs.firstIndex(where: { $0.id == songID }) {
+                let endOffset = max(
+                    loadedTrackOffset,
+                    min((index / trackPageSize + 1) * trackPageSize, playlist.trackIDs.count)
+                )
+                let loadedSongs = try await model.api.songDetailsCollection(
+                    ids: playlist.trackIDs.prefix(endOffset).map(\.id),
+                    prefetched: songs
+                )
+                try Task.checkCancellation()
+                guard self.playlist?.id == playlist.id else { return }
+                songs = loadedSongs
+                loadedTrackOffset = endOffset
+                loadMoreTracksError = nil
+            }
+
+            guard songs.contains(where: { $0.id == songID }) else {
+                locateErrorMessage = L10n.string("ui.collection.locate_unavailable")
+                return
+            }
+            trackLocator.locate(songID)
+        } catch is CancellationError {
+            return
+        } catch {
+            locateErrorMessage = error.localizedDescription
+        }
+    }
+
     private func load() async {
+        songToLocate = nil
+        trackLocator.reset()
+        locateErrorMessage = nil
         isLoading = true
         errorMessage = nil
         loadedTrackOffset = 0
@@ -145,9 +263,28 @@ struct DesktopPlaylistDetailView: View {
         isLoading = false
     }
 
+    private func removeSong(_ song: Song) async {
+        guard let playlist, !isLoadingMoreTracks, songToLocate == nil else { return }
+        isRemovingTrack = true
+        defer { isRemovingTrack = false }
+        do {
+            try await model.library.remove(song: song, from: playlist)
+            guard var updated = self.playlist else { return }
+            if let index = updated.removeSong(id: song.id), index < loadedTrackOffset {
+                loadedTrackOffset -= 1
+            }
+            self.playlist = updated
+            songs.removeAll { $0.id == song.id }
+        } catch {
+            removalError = error.localizedDescription
+        }
+    }
+
     private func loadMoreTracks() async {
         guard let currentPlaylist = playlist,
               !isLoadingMoreTracks,
+              !isRemovingTrack,
+              songToLocate == nil,
               loadedTrackOffset < currentPlaylist.trackIDs.count else {
             return
         }

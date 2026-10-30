@@ -145,6 +145,7 @@ final class AppSettings {
         static let lyricsLiveActivityScrollPause =
             "lyricsLiveActivityScrollPause"
         static let appLanguage = AppLanguage.storageKey
+        static let searchSuggestionsEnabled = "searchSuggestionsEnabled"
         static let appearance = "appAppearance"
         static let defaultLaunchTab = "defaultLaunchTab"
         static let restoresLastSelectedTab = "restoresLastSelectedTab"
@@ -421,6 +422,10 @@ final class AppSettings {
                 forKey: Key.lyricsLiveActivityScrollPause
             )
         }
+    }
+
+    var searchSuggestionsEnabled: Bool {
+        didSet { defaults.set(searchSuggestionsEnabled, forKey: Key.searchSuggestionsEnabled) }
     }
 
     private(set) var appLanguage: AppLanguage
@@ -1296,6 +1301,7 @@ final class AppSettings {
             rawValue: defaults.string(forKey: Key.appLanguage) ?? ""
         ) ?? .system
         appLanguage = storedAppLanguage
+        searchSuggestionsEnabled = defaults.object(forKey: Key.searchSuggestionsEnabled) as? Bool ?? true
         L10n.activate(storedAppLanguage)
         cookie = defaults.string(forKey: Key.cookie) ?? ""
         quality = MusicQuality(rawValue: defaults.string(forKey: Key.quality) ?? "") ?? .high

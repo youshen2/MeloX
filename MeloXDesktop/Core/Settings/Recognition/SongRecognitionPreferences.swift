@@ -49,6 +49,7 @@ enum SongRecognitionDuration: Int, CaseIterable, Identifiable {
 final class SongRecognitionPreferences {
     private enum Key {
         static let duration = "songRecognition.duration"
+        static let audioSource = "songRecognition.audioSource"
     }
 
     var duration: SongRecognitionDuration {
@@ -57,11 +58,19 @@ final class SongRecognitionPreferences {
         }
     }
 
+    var audioSource: SongRecognitionAudioSource {
+        didSet {
+            defaults.set(audioSource.rawValue, forKey: Key.audioSource)
+        }
+    }
+
     @ObservationIgnored
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        audioSource = defaults.string(forKey: Key.audioSource)
+            .flatMap(SongRecognitionAudioSource.init(rawValue:)) ?? .microphone
         if defaults.object(forKey: Key.duration) != nil {
             duration =
                 SongRecognitionDuration(

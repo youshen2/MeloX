@@ -6,6 +6,7 @@ struct AlbumDetailView: View {
 
     @Environment(NeteaseAPI.self) private var api
     @Environment(LibraryStore.self) private var library
+    @Environment(PlayerStore.self) private var player
     @Environment(DownloadStore.self) private var downloads
     @Environment(AppSettings.self) private var settings
     @Environment(\.colorScheme) private var systemColorScheme
@@ -23,6 +24,7 @@ struct AlbumDetailView: View {
     @State private var artworkPalette: ArtworkDetailPalette?
     @State private var blurredBackdropImage: CGImage?
     @State private var searchQuery = ""
+    @State private var trackLocator = MusicCollectionTrackLocator()
     @State private var downloadCoordinator =
         MusicCollectionDownloadCoordinator()
 
@@ -39,23 +41,29 @@ struct AlbumDetailView: View {
     }
 
     var body: some View {
-        AlbumDetailContent(
-            album: displayedAlbum,
-            songs: songs,
-            palette: resolvedPalette,
-            blurredBackdropImage: blurredBackdropImage,
-            searchQuery: searchQuery,
-            isLoading: isInitialLoading,
-            failureMessage: initialFailureMessage,
-            isSubscribed: isSubscribed,
-            downloadCoordinator:
-                downloadsEnabled
-                    ? downloadCoordinator
-                    : nil,
-            onToggleSubscription: toggleSubscription,
-            onRetry: { reloadToken += 1 },
-            onRefresh: { await load() }
-        )
+        ScrollViewReader { proxy in
+            AlbumDetailContent(
+                album: displayedAlbum,
+                songs: songs,
+                palette: resolvedPalette,
+                blurredBackdropImage: blurredBackdropImage,
+                searchQuery: searchQuery,
+                isLoading: isInitialLoading,
+                failureMessage: initialFailureMessage,
+                isSubscribed: isSubscribed,
+                downloadCoordinator:
+                    downloadsEnabled
+                        ? downloadCoordinator
+                        : nil,
+                onToggleSubscription: toggleSubscription,
+                onRetry: { reloadToken += 1 },
+                onRefresh: { await load() },
+                highlightedSongID: trackLocator.highlightedSongID
+            )
+            .task(id: trackLocator.request) {
+                await trackLocator.scroll(using: proxy, reduceMotion: accessibilityReduceMotion)
+            }
+        }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(
@@ -242,6 +250,14 @@ struct AlbumDetailView: View {
             .accessibilityLabel("ui.album.share")
 
             Menu {
+                Button("ui.collection.locate_playing", systemImage: "scope") {
+                    if let currentSongID {
+                        trackLocator.locate(currentSongID)
+                    }
+                }
+                .disabled(currentSongID == nil)
+                Divider()
+
                 if downloadsEnabled {
                     MusicCollectionDownloadMenuContent(
                         coordinator: downloadCoordinator,
@@ -335,9 +351,18 @@ struct AlbumDetailView: View {
         }
     }
 
+    private var currentSongID: Int? {
+        guard case .loaded = phase,
+              let song = player.currentSong,
+              filterMusicCollectionTracks(songs, query: searchQuery)
+                .contains(where: { $0.id == song.id }) else { return nil }
+        return song.id
+    }
+
     private func load(
         waitingForNavigationTransition: Bool = false
     ) async {
+        trackLocator.reset()
         let transitionDelay = navigationTransitionDelay(
             isEnabled: waitingForNavigationTransition
         )

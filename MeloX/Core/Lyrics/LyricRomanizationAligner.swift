@@ -555,9 +555,7 @@ enum LyricRomanizationAligner {
         let normalizedAuthoredSyllables =
             normalizedRomanization == nil
                 ? []
-                : authoredRomanizationSyllables.filter {
-                    normalizedAnnotation($0.text) != nil
-                }
+                : normalizedSyllables(authoredRomanizationSyllables)
 
         return UnitDraft(
             originalText: originalText,
@@ -567,6 +565,41 @@ enum LyricRomanizationAligner {
             hasAuthoredRomanizationTiming:
                 !normalizedAuthoredSyllables.isEmpty
         )
+    }
+
+    private static func normalizedSyllables(
+        _ syllables: [LyricSyllable]
+    ) -> [LyricSyllable] {
+        guard let first = syllables.firstIndex(where: {
+            normalizedAnnotation($0.text) != nil
+        }), let last = syllables.lastIndex(where: {
+            normalizedAnnotation($0.text) != nil
+        }) else {
+            return []
+        }
+
+        // Match the displayed unit's trimmed text without changing authored
+        // timings or removing spaces between syllables inside the unit.
+        return (first...last).compactMap { index in
+            let syllable = syllables[index]
+            var text = syllable.text
+            if index == first {
+                text = String(text.drop(while: \.isWhitespace))
+            }
+            if index == last {
+                text = String(
+                    text.reversed()
+                        .drop(while: \.isWhitespace)
+                        .reversed()
+                )
+            }
+            guard !text.isEmpty else { return nil }
+            return LyricSyllable(
+                text: text,
+                startTime: syllable.startTime,
+                endTime: syllable.endTime
+            )
+        }
     }
 
     private static func numbered(

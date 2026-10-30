@@ -894,6 +894,17 @@ struct DesktopLyricsScrollView: View {
             settlePlaybackFocusDuringBrowsing(at: highlightedID)
             return
         }
+        let needsImmediateCatchUp = remainingFocusDuration(for: highlightedID)
+            .map { $0 <= model.settings.lyricsFocusSnapThreshold } == true
+        let interruptedPreparation = lyricMovementTransition.map {
+            $0.startedAt == nil && $0.focusID != highlightedID
+        } == true
+        if model.settings.lyricsAutoFollow,
+           needsImmediateCatchUp || interruptedPreparation {
+            requestScroll(to: highlightedID)
+            completeCascadeMovement(to: highlightedID)
+            return
+        }
         if handsOffFromInterlude {
             guard model.settings.lyricsAutoFollow else {
                 updateVisualFocus(to: highlightedID)
@@ -977,18 +988,17 @@ struct DesktopLyricsScrollView: View {
             return
         }
 
-        // LyricsX does not estimate an off-screen target row.  It waits for
-        // its measured frame, then uses that frame for the one scroll
-        // compensation.  The desktop average-height fallback produced a
-        // second correction when real geometry arrived.
+        // Animate measured targets only. Scroll an unmounted target into
+        // place immediately so rapid focus changes cannot keep restarting
+        // a geometry wait while the viewport stays behind playback.
         let nextFocusFrame: CGRect?
         if motionProfile != nil {
-            guard await waitForLyricFrame(id: highlightedID),
-                  !Task.isCancelled,
-                  self.highlightedID == highlightedID else {
+            guard let measuredFrame = geometryCache.frameByID[highlightedID] else {
+                requestScroll(to: highlightedID)
+                completeCascadeMovement(to: highlightedID)
                 return
             }
-            nextFocusFrame = geometryCache.frameByID[highlightedID]
+            nextFocusFrame = measuredFrame
         } else {
             nextFocusFrame = focusFrame(
                 for: highlightedID,
@@ -1078,10 +1088,8 @@ struct DesktopLyricsScrollView: View {
             snapThreshold: model.settings.lyricsFocusSnapThreshold,
             remainingDuration: remainingDuration
         ) else {
-            await moveFocusWithoutCascade(
-                to: highlightedID,
-                viewportHeight: viewportHeight
-            )
+            requestScroll(to: highlightedID)
+            completeCascadeMovement(to: highlightedID)
             return
         }
 
@@ -1217,7 +1225,9 @@ struct DesktopLyricsScrollView: View {
 
         let startedTransition = preparedTransition.starting(
             with: movementAnimations,
-            at: .now
+            at: .now,
+            maximumDuration: remainingFocusDuration(for: highlightedID)
+                .map { $0 * 0.8 }
         )
         var movementTransaction = Transaction(animation: nil)
         movementTransaction.disablesAnimations = true
@@ -1450,7 +1460,9 @@ struct DesktopLyricsScrollView: View {
         updateVisualColorFocus(to: highlightedID)
         let startedTransition = preparedTransition.starting(
             with: movementAnimations,
-            at: .now
+            at: .now,
+            maximumDuration: remainingFocusDuration(for: highlightedID)
+                .map { $0 * 0.8 }
         )
         var movementTransaction = Transaction(animation: nil)
         movementTransaction.disablesAnimations = true
@@ -1570,6 +1582,17 @@ struct DesktopLyricsScrollView: View {
         let bounceScale = 1
             - (1 - normalizedPosition) * bounceGradient
         return maximumBounce * bounceScale
+    }
+
+    private func remainingFocusDuration(
+        for id: LyricLine.ID
+    ) -> TimeInterval? {
+        guard model.player.isPlaying else { return nil }
+        return LyricPlaybackTimeline.remainingFocusDuration(
+            for: id,
+            at: model.player.estimatedProgress() + effectiveLyricsAdvanceTime,
+            in: model.lyrics.lyrics
+        )
     }
 
     private func isForwardAdjacentTransition(

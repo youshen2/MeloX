@@ -906,6 +906,20 @@
 "ui.messages.private.title" = "Private Messages";
 "ui.messages.private.open_hint" = "Open NetEase Cloud Music private messages";
 "ui.recognition.title" = "Song Recognition";
+"ui.recognition.source" = "Audio Source";
+"ui.recognition.source.microphone" = "Microphone";
+"ui.recognition.source.appAudio" = "App Audio";
+"ui.recognition.source.systemAudio" = "System Audio";
+"ui.recognition.source.microphone.detail" = "Use the microphone to recognize music nearby or through speakers.";
+"ui.recognition.source.appAudio.detail" = "Recognize audio playing in MeloX, including through headphones.";
+"ui.recognition.source.systemAudio.detail" = "Choose a capture source, play music in another app, then return to MeloX to view recognition results.";
+"ui.recognition.system_audio_availability" = "Cross-app system audio capture requires iOS 27 or later. This version of iOS supports App Audio.";
+"ui.recognition.preparing_capture" = "Preparing Audio Capture";
+"ui.recognition.capture_permission_message" = "Confirm the capture source in the system panel. MeloX processes only audio and uploads only a fingerprint generated on this device.";
+"ui.recognition.capture.continuous" = "Recognition continues until you stop it. Only an on-device audio fingerprint is uploaded.";
+"ui.recognition.capture.limited" = "Recognize for up to %@. Only an on-device audio fingerprint is uploaded.";
+"ui.recognition.error.capture_unavailable" = "Audio capture is unavailable. Stop other recordings and check system recording restrictions, then try again.";
+"ui.recognition.error.capture_timed_out" = "No audio was received. Make sure music is playing within the selected capture source. Some content may restrict recording.";
 "ui.account.settings_for_user" = "%@’s Account & Settings";
 "ui.account.settings" = "Account & Settings";
 "ui.account.login_settings" = "Sign In & Settings";
@@ -1206,7 +1220,7 @@
 "ui.playlists.login_to_add" = "Sign in to NetEase Cloud Music before adding songs to one of your playlists.";
 "ui.playlists.loading" = "Loading Playlists";
 "ui.playlists.none_available" = "No Available Playlists";
-"ui.playlists.create_first" = "Create a playlist in NetEase Cloud Music first.";
+"ui.playlists.create_first" = "Create a playlist, then add your song.";
 "ui.playlists.add_to_accessibility" = "Add to %@, %ld songs";
 "ui.playlists.search_prompt" = "Search This Playlist";
 "ui.playlists.load_complete_failed" = "The complete playlist could not be loaded.";
@@ -1845,6 +1859,19 @@
 "ui.desktop.messages.conversation_failed" = "Could Not Load Conversation";
 "ui.desktop.messages.input_to" = "Message %@";
 "ui.desktop.recognition.ready.title" = "Recognize Music Playing Nearby";
+"ui.desktop.recognition.source" = "Audio Source";
+"ui.desktop.recognition.source.microphone" = "Microphone";
+"ui.desktop.recognition.source.systemAudio" = "System Audio";
+"ui.desktop.recognition.source.microphone.detail" = "Use the microphone to recognize music playing nearby or through speakers.";
+"ui.desktop.recognition.source.systemAudio.detail" = "Recognize music playing on this Mac, including audio through headphones.";
+"ui.desktop.recognition.ready.system_audio" = "Recognize Music Playing on This Mac";
+"ui.desktop.recognition.preparing_system_audio" = "Preparing System Audio";
+"ui.desktop.recognition.system_audio_permission_message" = "System audio capture requires Screen & System Audio Recording permission for MeloX. MeloX receives only audio and uploads only a fingerprint generated on this Mac.";
+"ui.desktop.recognition.listening_system_audio" = "Listening to music playing on this Mac, including through headphones.";
+"ui.desktop.recognition.open_system_audio_settings" = "Open Screen & System Audio Recording Settings";
+"ui.desktop.recognition.error.system_audio_permission" = "Allow MeloX in Screen & System Audio Recording in System Settings, then restart MeloX and try again.";
+"ui.desktop.recognition.error.system_audio_unavailable" = "System audio capture is unavailable. Connect a display to this Mac and try again.";
+"ui.desktop.recognition.error.system_audio_timed_out" = "No system audio was received. Make sure another app or MeloX is playing music and check Screen & System Audio Recording permission.";
 "ui.desktop.recognition.listening_message" = "Move your Mac close to the audio source and reduce ambient noise.";
 "ui.desktop.recognition.open_microphone_settings" = "Open Microphone Settings";
 "ui.desktop.recognition.ready.continuous" = "MeloX keeps listening and showing new results until you stop manually. The original recording is never uploaded.";
@@ -1912,6 +1939,10 @@
 "ui.desktop.collection.unfavorite" = "Remove from Favorites";
 "ui.desktop.collection.favorite" = "Favorite";
 "ui.desktop.collection.download_all" = "Download All";
+"ui.collection.locate_playing" = "Locate Now Playing";
+"ui.collection.locating_playing" = "Locating Now Playing…";
+"ui.collection.locate_failed" = "Could Not Locate Now Playing";
+"ui.collection.locate_unavailable" = "This song could not be loaded. Please try again later.";
 "ui.desktop.collection.disc" = "Disc %ld";
 "ui.desktop.explore.new_songs" = "New Music";
 "ui.desktop.explore.popular_artists" = "Popular Artists";
@@ -2100,3 +2131,22 @@
 "ui.release_notes.entry.intro_indicator" = "Fixed the intro indicator entering the top fade-out area at the beginning of a song.";
 "ui.release_notes.entry.artwork_overflow" = "Fixed song artwork overflowing its container.";
 "ui.error.api.server_code" = "The music service returned an error (%ld).";
+
+"ui.playlists.create.title" = "New Playlist";
+"ui.playlists.create.name" = "Playlist Name";
+"ui.playlists.create.private" = "Private Playlist";
+"ui.playlists.create.action" = "Create";
+
+"ui.playlists.delete.title" = "Delete Playlist?";
+"ui.playlists.delete.action" = "Delete Playlist";
+"ui.playlists.delete.message" = "“%@” and its track list will be permanently deleted from your NetEase Cloud Music account.";
+
+"ui.playlists.remove_song" = "Remove from Playlist";
+"ui.playlists.remove_song.message" = "Remove “%@” from this playlist?";
+
+"ui.settings.general.search_suggestions" = "Search Suggestions";
+
+"ui.library.artists.title" = "Followed Artists";
+"ui.library.artists.search" = "Search followed artists";
+"ui.library.artists.empty" = "No Followed Artists";
+"ui.library.error.favorite_artists" = "Could not load followed artists: %@";

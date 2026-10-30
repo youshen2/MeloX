@@ -12,7 +12,7 @@ struct MediaCardGridLayout {
     ) {
         let availableWidth = max(
             containerWidth - horizontalPadding * 2,
-            minimumItemWidth
+            1
         )
         let columnCount = max(
             Int(

@@ -906,6 +906,20 @@
 "ui.messages.private.title" = "私信";
 "ui.messages.private.open_hint" = "打开网易云私信";
 "ui.recognition.title" = "听歌识曲";
+"ui.recognition.source" = "音频来源";
+"ui.recognition.source.microphone" = "麦克风";
+"ui.recognition.source.appAudio" = "应用内音频";
+"ui.recognition.source.systemAudio" = "本机内录";
+"ui.recognition.source.microphone.detail" = "通过麦克风识别身边或外放的音乐。";
+"ui.recognition.source.appAudio.detail" = "识别 MeloX 正在播放的声音，支持耳机播放。";
+"ui.recognition.source.systemAudio.detail" = "在系统面板中选择录制范围，切换到其他 App 播放音乐后，返回 MeloX 查看识别结果。";
+"ui.recognition.system_audio_availability" = "跨 App 的本机内录需要 iOS 27 或更新版本；当前系统支持应用内音频。";
+"ui.recognition.preparing_capture" = "正在准备音频录制";
+"ui.recognition.capture_permission_message" = "请在系统面板中确认录制范围。MeloX 仅处理音频，并只上传在设备上生成的音频指纹。";
+"ui.recognition.capture.continuous" = "持续识别直到手动停止，只上传设备端生成的音频指纹。";
+"ui.recognition.capture.limited" = "最长识别 %@，只上传设备端生成的音频指纹。";
+"ui.recognition.error.capture_unavailable" = "音频录制不可用，请结束其他录制任务并检查系统录制限制后重试。";
+"ui.recognition.error.capture_timed_out" = "没有收到音频，请确认所选录制范围内正在播放音乐。部分内容可能限制录制。";
 "ui.account.settings_for_user" = "%@的账号与设置";
 "ui.account.settings" = "账号与设置";
 "ui.account.login_settings" = "登录与设置";
@@ -1206,7 +1220,7 @@
 "ui.playlists.login_to_add" = "登录网易云音乐后，才能把歌曲添加到自己的歌单。";
 "ui.playlists.loading" = "正在读取歌单";
 "ui.playlists.none_available" = "没有可选歌单";
-"ui.playlists.create_first" = "请先在网易云音乐中创建一个歌单。";
+"ui.playlists.create_first" = "新建一个歌单，然后添加歌曲。";
 "ui.playlists.add_to_accessibility" = "添加到%@，%ld 首歌曲";
 "ui.playlists.search_prompt" = "在歌单中搜索";
 "ui.playlists.load_complete_failed" = "无法读取完整歌单。";
@@ -1845,6 +1859,19 @@
 "ui.desktop.messages.conversation_failed" = "无法读取对话";
 "ui.desktop.messages.input_to" = "发私信给 %@";
 "ui.desktop.recognition.ready.title" = "识别身边正在播放的音乐";
+"ui.desktop.recognition.source" = "音频来源";
+"ui.desktop.recognition.source.microphone" = "麦克风";
+"ui.desktop.recognition.source.systemAudio" = "本机内录";
+"ui.desktop.recognition.source.microphone.detail" = "通过麦克风识别身边或外放的音乐。";
+"ui.desktop.recognition.source.systemAudio.detail" = "识别这台 Mac 正在播放的音乐，包括耳机中的声音。";
+"ui.desktop.recognition.ready.system_audio" = "识别这台 Mac 正在播放的音乐";
+"ui.desktop.recognition.preparing_system_audio" = "正在准备本机内录";
+"ui.desktop.recognition.system_audio_permission_message" = "本机内录需要允许 MeloX 录制屏幕与系统音频。MeloX 只接收音频，识曲时只上传设备端生成的音频指纹。";
+"ui.desktop.recognition.listening_system_audio" = "正在聆听本机播放的音乐，也可以使用耳机。";
+"ui.desktop.recognition.open_system_audio_settings" = "打开屏幕与系统音频录制设置";
+"ui.desktop.recognition.error.system_audio_permission" = "请在系统设置中允许 MeloX 录制屏幕与系统音频，然后重新打开 MeloX 再试。";
+"ui.desktop.recognition.error.system_audio_unavailable" = "无法启动本机内录，请确认 Mac 已连接显示器后重试。";
+"ui.desktop.recognition.error.system_audio_timed_out" = "没有收到系统音频，请确认其他 App 或 MeloX 正在播放音乐，并检查屏幕与系统音频录制权限。";
 "ui.desktop.recognition.listening_message" = "让 Mac 靠近声源并尽量减少环境噪声。";
 "ui.desktop.recognition.open_microphone_settings" = "打开麦克风设置";
 "ui.desktop.recognition.ready.continuous" = "MeloX 会持续聆听并不断展示新结果，直到你手动停止；原始录音不会上传。";
@@ -1912,6 +1939,10 @@
 "ui.desktop.collection.unfavorite" = "取消收藏";
 "ui.desktop.collection.favorite" = "收藏";
 "ui.desktop.collection.download_all" = "下载全部";
+"ui.collection.locate_playing" = "定位到正在播放";
+"ui.collection.locating_playing" = "正在定位播放歌曲…";
+"ui.collection.locate_failed" = "无法定位播放歌曲";
+"ui.collection.locate_unavailable" = "暂时无法载入这首歌曲，请稍后重试。";
 "ui.desktop.collection.disc" = "碟片 %ld";
 "ui.desktop.explore.new_songs" = "新歌速递";
 "ui.desktop.explore.popular_artists" = "热门艺人";
@@ -2100,3 +2131,22 @@
 "ui.release_notes.entry.intro_indicator" = "修复了歌曲开头前奏指示器进入顶部渐变消失区域的问题。";
 "ui.release_notes.entry.artwork_overflow" = "修复了歌曲封面超出容器大小的问题。";
 "ui.error.api.server_code" = "音乐服务返回了错误（%ld）。";
+
+"ui.playlists.create.title" = "新建歌单";
+"ui.playlists.create.name" = "歌单名称";
+"ui.playlists.create.private" = "私密歌单";
+"ui.playlists.create.action" = "创建";
+
+"ui.playlists.delete.title" = "删除歌单？";
+"ui.playlists.delete.action" = "删除歌单";
+"ui.playlists.delete.message" = "将从网易云音乐账号中永久删除“%@”及其中的歌曲列表。";
+
+"ui.playlists.remove_song" = "从歌单移除";
+"ui.playlists.remove_song.message" = "从此歌单中移除“%@”？";
+
+"ui.settings.general.search_suggestions" = "搜索联想";
+
+"ui.library.artists.title" = "已关注歌手";
+"ui.library.artists.search" = "搜索已关注的歌手";
+"ui.library.artists.empty" = "暂无已关注的歌手";
+"ui.library.error.favorite_artists" = "歌手列表加载失败：%@";

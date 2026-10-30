@@ -8,15 +8,36 @@ enum LyricLineFitting {
         return width
     }
 
-    static func drawingTransform(
-        for line: Text.Layout.Line,
+    static func drawingScale(
+        for layout: Text.Layout,
         constrainedWidth: CGFloat?,
-        centersLine: Bool,
         trailingSafety: CGFloat
-    ) -> CGAffineTransform? {
+    ) -> CGFloat? {
         guard let width = validWidth(constrainedWidth) else {
             return nil
         }
+
+        let widestLine = layout.reduce(CGFloat.zero) { widest, line in
+            let lineWidth = line.typographicBounds.rect.width
+            return lineWidth.isFinite ? max(widest, lineWidth) : widest
+        }
+        guard widestLine > 0 else { return nil }
+
+        let availableWidth = max(
+            width - max(trailingSafety, 0),
+            1
+        )
+        // A wrapped lyric is one phrase: fit every visual line with the
+        // same scale so shorter lines keep the same glyph size as full lines.
+        return min(max(availableWidth / widestLine, 0), 1)
+    }
+
+    static func drawingTransform(
+        for line: Text.Layout.Line,
+        scale: CGFloat?,
+        centersLine: Bool
+    ) -> CGAffineTransform? {
+        guard let scale else { return nil }
 
         let bounds = line.typographicBounds.rect
         guard bounds.width.isFinite,
@@ -26,14 +47,6 @@ enum LyricLineFitting {
             return nil
         }
 
-        let availableWidth = max(
-            width - max(trailingSafety, 0),
-            1
-        )
-        let scale = min(
-            max(availableWidth / bounds.width, 0),
-            1
-        )
         let translationX: CGFloat
         if centersLine {
             // SwiftUI has already positioned centered lines. Re-centering

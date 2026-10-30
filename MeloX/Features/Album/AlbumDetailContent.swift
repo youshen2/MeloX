@@ -13,6 +13,7 @@ struct AlbumDetailContent: View {
     let onToggleSubscription: () -> Void
     let onRetry: () -> Void
     let onRefresh: () async -> Void
+    var highlightedSongID: Int?
 
     var body: some View {
         ZStack {
@@ -42,7 +43,8 @@ struct AlbumDetailContent: View {
                         isLoading: isLoading,
                         failureMessage: failureMessage,
                         downloadSelection: downloadCoordinator,
-                        onRetry: onRetry
+                        onRetry: onRetry,
+                        highlightedSongID: highlightedSongID
                     )
                 }
                 .padding(.bottom, 32)

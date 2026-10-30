@@ -126,7 +126,7 @@ struct HomeQuickActionsView: View {
                     }
                     .containerRelativeFrame(.horizontal) {
                         length, _ in
-                        length * 0.86
+                        min(length * 0.86, 340)
                     }
                     .buttonStyle(.plain)
                     .disabled(activeAction != nil)

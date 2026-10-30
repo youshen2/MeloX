@@ -13,6 +13,8 @@
 		C20000000000000000000001 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = C20000000000000000000003 /* NukeUI */; };
 		CDCDC02B263846DD93AAF886 /* MeloXLyricsWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2572AEB5A5B04809878AE645 /* MeloXLyricsWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D3000000000000000000000B /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = A1D0AD000000000000000003 /* GRDB */; };
+		F60000000000000000000001 /* AudioStreaming in Frameworks */ = {isa = PBXBuildFile; productRef = F60000000000000000000004 /* AudioStreaming */; };
+		F60000000000000000000002 /* AudioStreaming in Frameworks */ = {isa = PBXBuildFile; productRef = F60000000000000000000004 /* AudioStreaming */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -158,6 +160,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1D0AD000000000000000001 /* GRDB in Frameworks */,
+				F60000000000000000000001 /* AudioStreaming in Frameworks */,
 				C20000000000000000000001 /* NukeUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -175,6 +178,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D3000000000000000000000B /* GRDB in Frameworks */,
+				F60000000000000000000002 /* AudioStreaming in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,6 +263,7 @@
 			name = MeloX;
 			packageProductDependencies = (
 				A1D0AD000000000000000003 /* GRDB */,
+				F60000000000000000000004 /* AudioStreaming */,
 				C20000000000000000000003 /* NukeUI */,
 			);
 			productName = MeloX;
@@ -310,6 +315,7 @@
 			name = "MeloX Desktop";
 			packageProductDependencies = (
 				A1D0AD000000000000000003 /* GRDB */,
+				F60000000000000000000004 /* AudioStreaming */,
 			);
 			productName = "MeloX Desktop";
 			productReference = D30000000000000000000001 /* MeloX Desktop.app */;
@@ -323,7 +329,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2660;
-				LastUpgradeCheck = 2660;
+				LastUpgradeCheck = 2710;
 				TargetAttributes = {
 					1CC9813243AD4097A843BDAE = {
 						CreatedOnToolsVersion = 26.6;
@@ -362,6 +368,7 @@
 			packageReferences = (
 				A1D0AD000000000000000002 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				B10000000000000000000011 /* XCLocalSwiftPackageReference "vendor/QRCode" */,
+				F60000000000000000000003 /* XCLocalSwiftPackageReference "vendor/AudioStreaming" */,
 				C20000000000000000000002 /* XCRemoteSwiftPackageReference "Nuke" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -508,7 +515,7 @@
 				CODE_SIGN_ENTITLEMENTS = MeloXLyricsWidget/MeloXLyricsWidget.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9110201;
+				CURRENT_PROJECT_VERSION = 9110300;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = LAW363CUU8;
 				ENABLE_PREVIEWS = YES;
@@ -540,6 +547,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -594,6 +602,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -604,6 +613,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -651,6 +661,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -664,7 +675,7 @@
 				CODE_SIGN_ENTITLEMENTS = MeloX/MeloX.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9110201;
+				CURRENT_PROJECT_VERSION = 9110400;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = LAW363CUU8;
 				ENABLE_PREVIEWS = YES;
@@ -706,7 +717,7 @@
 				CODE_SIGN_ENTITLEMENTS = MeloX/MeloX.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9110201;
+				CURRENT_PROJECT_VERSION = 9110400;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = LAW363CUU8;
 				ENABLE_PREVIEWS = YES;
@@ -747,7 +758,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9110201;
+				CURRENT_PROJECT_VERSION = 9110400;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=watchos*]" = LAW363CUU8;
 				ENABLE_PREVIEWS = YES;
@@ -787,7 +798,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9110201;
+				CURRENT_PROJECT_VERSION = 9110400;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=watchos*]" = LAW363CUU8;
 				ENABLE_PREVIEWS = YES;
@@ -827,7 +838,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MeloXDesktop/MeloXDesktop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9100201;
+				CURRENT_PROJECT_VERSION = 9100400;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -840,7 +852,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = azki.moye.MeloX.desktop;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -861,7 +873,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MeloXDesktop/MeloXDesktop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9100201;
+				CURRENT_PROJECT_VERSION = 9100400;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -874,7 +887,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = azki.moye.MeloX.desktop;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -895,7 +908,7 @@
 				CODE_SIGN_ENTITLEMENTS = MeloXLyricsWidget/MeloXLyricsWidget.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9110201;
+				CURRENT_PROJECT_VERSION = 9110300;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = LAW363CUU8;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -976,6 +989,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = vendor/QRCode;
 		};
+		F60000000000000000000003 /* XCLocalSwiftPackageReference "vendor/AudioStreaming" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = vendor/AudioStreaming;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -1012,6 +1029,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C20000000000000000000002 /* XCRemoteSwiftPackageReference "Nuke" */;
 			productName = NukeUI;
+		};
+		F60000000000000000000004 /* AudioStreaming */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F60000000000000000000003 /* XCLocalSwiftPackageReference "vendor/AudioStreaming" */;
+			productName = AudioStreaming;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

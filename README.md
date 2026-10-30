@@ -164,6 +164,7 @@ MeloX 将相关内容移植为原生 SwiftUI，并根据歌词播放进度实时
 - 个人歌单
 - 已听播客推荐
 
+- 搜索联想与输入补全
 - 歌曲搜索
 - 专辑搜索
 - 歌手搜索
@@ -173,6 +174,7 @@ MeloX 将相关内容移植为原生 SwiftUI，并根据歌词播放进度实时
 - 歌单详情
 - 专辑详情
 - 歌手详情
+- 歌手关注与已关注歌手音乐库
 - 歌曲百科
 - 歌曲评论
 - 评论回复
@@ -193,7 +195,10 @@ MeloX 将相关内容移植为原生 SwiftUI，并根据歌词播放进度实时
 - 歌曲收藏
 - 歌单收藏
 - 专辑收藏
+- 新建公开与私密歌单
+- 删除自建歌单
 - 添加歌曲到歌单
+- 从自建歌单移除歌曲
 - 播放历史
 - 网易云播放记录同步
 - 网易云听歌时长同步
@@ -321,7 +326,7 @@ MeloX 使用固定 32 秒窗口、FP16 计算精度的 Core ML ML Program；模�
 
 ## 运行环境
 
-- Xcode 26.6 或更高版本
+- Xcode 27.1 或更高版本
 - iOS / iPadOS 26.0 或更高版本
 - macOS 15.0 或更高版本
 - watchOS 10.0 或更高版本（手表端仍在开发中）
@@ -408,6 +413,7 @@ MeloX 使用固定 32 秒窗口、FP16 计算精度的 Core ML ML Program；模�
 - [WXRIW/Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper)：网易云 YRC 逐字歌词解析参考。
 - [qier222/YesPlayMusic](https://github.com/qier222/YesPlayMusic)：网易云接口与播放器实现参考。
 - [DanteAlighieri13210914/pv-tool](https://github.com/DanteAlighieri13210914/pv-tool)：文字 PV 模板与视觉效果的原始实现。
+- [dimitris-c/AudioStreaming](https://github.com/dimitris-c/AudioStreaming)：iOS 与 macOS 音频流播放引擎。
 - [mjhydri/BeatNet](https://github.com/mjhydri/BeatNet)：自动混音使用的节拍、重拍与速度分析模型。
 
 这些项目的代码与资源仍分别受其原始许可证约束。

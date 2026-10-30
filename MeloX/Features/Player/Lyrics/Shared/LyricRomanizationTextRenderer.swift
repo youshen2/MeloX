@@ -52,10 +52,7 @@ struct LyricRomanizationTextRenderer: TextRenderer {
                     )
                 }
 
-                guard effectsStrength > 0,
-                      let timing =
-                        run[LyricTimingTextAttribute.self],
-                      !timing.isWhitespace else {
+                guard effectsStrength > 0 else {
                     runContext.draw(run)
                     continue
                 }
@@ -65,6 +62,10 @@ struct LyricRomanizationTextRenderer: TextRenderer {
                     effectsStrength: effectsStrength,
                     in: &runContext
                 )
+                guard let timing = run[LyricTimingTextAttribute.self],
+                      !timing.isWhitespace else {
+                    continue
+                }
                 drawPlayed(
                     run,
                     progress: playedProgress(for: timing),

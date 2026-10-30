@@ -19,8 +19,8 @@ struct SongRecognitionView: View {
                 readyView
             case .requestingPermission:
                 progressView(
-                    title: L10n.string("ui.recognition.preparing_microphone"),
-                    description: L10n.string("ui.recognition.microphone_permission_message")
+                    title: recognition.audioSource.preparationTitle,
+                    description: recognition.audioSource.permissionMessage
                 )
             case .listening:
                 if recognition.isContinuous {
@@ -78,9 +78,16 @@ struct SongRecognitionView: View {
         } description: {
             Text(readyDescription)
         } actions: {
+            Picker("ui.recognition.source", selection: audioSourceBinding) {
+                ForEach(SongRecognitionAudioSource.availableCases) { source in
+                    Text(source.title).tag(source)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 360)
             Button(
                 "ui.recognition.start",
-                systemImage: "mic.fill",
+                systemImage: settings.songRecognition.audioSource.systemImage,
                 action: startRecognition
             )
             .buttonStyle(.borderedProminent)
@@ -97,10 +104,10 @@ struct SongRecognitionView: View {
                 Text("ui.recognition.listening")
                     .font(.title2.bold())
                 Text(
-                    L10n.format(
+                    recognition.audioSource == .microphone ? L10n.format(
                         "ui.recognition.listening_message",
                         settings.songRecognition.duration.title
-                    )
+                    ) : recognition.audioSource.detail
                 )
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -300,10 +307,23 @@ struct SongRecognitionView: View {
 
     private var readyDescription: String {
         let duration = settings.songRecognition.duration
+        if settings.songRecognition.audioSource != .microphone {
+            let timing = duration.isContinuous
+                ? L10n.string("ui.recognition.capture.continuous")
+                : L10n.format("ui.recognition.capture.limited", duration.title)
+            return settings.songRecognition.audioSource.detail + "\n" + timing
+        }
         if duration.isContinuous {
             return L10n.string("ui.recognition.ready.continuous")
         }
         return L10n.format("ui.recognition.ready.limited", duration.title)
+    }
+
+    private var audioSourceBinding: Binding<SongRecognitionAudioSource> {
+        Binding(
+            get: { settings.songRecognition.audioSource },
+            set: { settings.songRecognition.audioSource = $0 }
+        )
     }
 
     private func play(_ result: SongRecognitionResult) {
@@ -318,12 +338,13 @@ struct SongRecognitionView: View {
     }
 
     private func startRecognition() {
-        if player.isPlaying {
+        if settings.songRecognition.audioSource == .microphone, player.isPlaying {
             player.togglePlayback()
         }
         recognition.start(
             api: api,
-            duration: settings.songRecognition.duration
+            duration: settings.songRecognition.duration,
+            source: settings.songRecognition.audioSource
         )
     }
 }

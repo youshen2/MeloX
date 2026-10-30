@@ -183,29 +183,57 @@ private struct NowPlayingQualityMenu: View {
 }
 
 struct NowPlayingTransportControls: View {
+    enum Presentation {
+        case standard
+        case tablet
+    }
+
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PlayerStore.self) private var player
 
+    var presentation: Presentation = .standard
+
+    private var isTablet: Bool { presentation == .tablet }
+    private var controlDiameter: CGFloat { isTablet ? 44 : 64 }
+
     var body: some View {
-        HStack {
-            Spacer()
+        HStack(spacing: isTablet ? 0 : nil) {
+            if isTablet {
+                Button(action: player.toggleShuffle) {
+                    Image(systemName: "shuffle")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(player.isShuffled ? .red : .white.opacity(0.58))
+                        .frame(width: 44, height: 44)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    player.isShuffled
+                        ? L10n.string("ui.player.shuffle_off")
+                        : L10n.string("ui.player.shuffle_on")
+                )
+                .accessibilityAddTraits(player.isShuffled ? .isSelected : [])
+            }
+
+            Spacer(minLength: isTablet ? 0 : nil)
 
             Button {
                 Task { await player.previous() }
             } label: {
                 Image(systemName: "backward.fill")
-                    .font(.system(size: 34, weight: .medium))
-                    .frame(width: 64, height: 64)
+                    .font(.system(size: isTablet ? 24 : 34, weight: .medium))
+                    .frame(width: controlDiameter, height: controlDiameter)
                     .contentShape(.circle)
             }
             .buttonStyle(
                 NowPlayingTransportButtonStyle(
-                    reducesMotion: accessibilityReduceMotion
+                    reducesMotion: accessibilityReduceMotion,
+                    diameter: controlDiameter
                 )
             )
             .accessibilityLabel("ui.player.previous")
 
-            Spacer()
+            Spacer(minLength: isTablet ? 0 : nil)
 
             Button {
                 player.togglePlayback()
@@ -217,7 +245,7 @@ struct NowPlayingTransportControls: View {
                             .tint(.white)
                     } else {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 48, weight: .medium))
+                            .font(.system(size: isTablet ? 30 : 48, weight: .medium))
                             .contentTransition(
                                 accessibilityReduceMotion
                                     ? .identity
@@ -234,12 +262,13 @@ struct NowPlayingTransportControls: View {
                             )
                     }
                 }
-                .frame(width: 64, height: 64)
+                .frame(width: controlDiameter, height: controlDiameter)
                 .contentShape(.circle)
             }
             .buttonStyle(
                 NowPlayingTransportButtonStyle(
-                    reducesMotion: accessibilityReduceMotion
+                    reducesMotion: accessibilityReduceMotion,
+                    diameter: controlDiameter
                 )
             )
             .accessibilityLabel(
@@ -248,26 +277,40 @@ struct NowPlayingTransportControls: View {
                     : L10n.string("ui.common.play")
             )
 
-            Spacer()
+            Spacer(minLength: isTablet ? 0 : nil)
 
             Button {
                 Task { await player.next() }
             } label: {
                 Image(systemName: "forward.fill")
-                    .font(.system(size: 34, weight: .medium))
-                    .frame(width: 64, height: 64)
+                    .font(.system(size: isTablet ? 24 : 34, weight: .medium))
+                    .frame(width: controlDiameter, height: controlDiameter)
                     .contentShape(.circle)
             }
             .buttonStyle(
                 NowPlayingTransportButtonStyle(
-                    reducesMotion: accessibilityReduceMotion
+                    reducesMotion: accessibilityReduceMotion,
+                    diameter: controlDiameter
                 )
             )
             .accessibilityLabel("ui.player.next")
 
-            Spacer()
+            Spacer(minLength: isTablet ? 0 : nil)
+
+            if isTablet {
+                Button(action: player.cycleRepeatMode) {
+                    Image(systemName: player.repeatMode.systemImage)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(player.repeatMode == .off ? .white.opacity(0.58) : .red)
+                        .frame(width: 44, height: 44)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(player.repeatMode.accessibilityTitle)
+                .accessibilityAddTraits(player.repeatMode == .off ? [] : .isSelected)
+            }
         }
-        .frame(height: 82)
+        .frame(height: isTablet ? 52 : 82)
     }
 }
 
@@ -330,7 +373,6 @@ private struct SystemVolumeSlider: UIViewRepresentable {
         )
         volumeView.backgroundColor = .clear
         volumeView.showsVolumeSlider = true
-        volumeView.showsRouteButton = false
         volumeView.tintColor = .white
         return volumeView
     }

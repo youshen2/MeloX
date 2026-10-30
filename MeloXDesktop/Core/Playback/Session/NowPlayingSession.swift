@@ -24,7 +24,7 @@ final class NowPlayingSession {
         .shared()
     }
 
-    init(players: [AVPlayer]) {
+    init() {
         installRemoteCommands()
     }
 

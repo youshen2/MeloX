@@ -37,12 +37,15 @@ struct NowPlayingArtworkPage: View {
     var body: some View {
         GeometryReader { proxy in
             let artworkSize = max(
-                170,
+                1,
                 min(
                     proxy.size.width + 16,
-                    proxy.size.height
-                        - NowPlayingBottomControls.coreHeight
-                        - 92
+                    max(
+                        170,
+                        proxy.size.height
+                            - NowPlayingBottomControls.coreHeight
+                            - 92
+                    )
                 )
             )
             let displayedArtworkSize =

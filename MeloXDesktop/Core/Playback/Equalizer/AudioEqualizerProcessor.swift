@@ -1,130 +1,48 @@
 import AVFoundation
-import MediaToolbox
+import AudioStreaming
 
-nonisolated final class AudioEqualizerProcessor {
-    private let sharedConfiguration: SharedAudioEqualizerConfiguration
+@MainActor
+final class AudioEqualizerProcessor {
+    private var configuration: AudioEqualizerConfiguration
+    private var equalizer: AVAudioUnitEQ?
+    private var autoMixEqualizer: AVAudioUnitEQ?
 
     init(configuration: AudioEqualizerConfiguration) {
-        sharedConfiguration = SharedAudioEqualizerConfiguration(
-            configuration: configuration
-        )
+        self.configuration = configuration
     }
 
-    @MainActor
-    func update(configuration: AudioEqualizerConfiguration) {
-        sharedConfiguration.update(configuration)
-    }
-
-    func makeAudioMix(
-        for track: AVAssetTrack,
-        autoMixEqualizerState:
-            SharedAutoMixEqualizerState
-    ) -> AVAudioMix? {
-        let context = AudioEqualizerTapContext(
-            sharedConfiguration:
-                sharedConfiguration,
-            autoMixEqualizerState:
-                autoMixEqualizerState
-        )
-        let retainedContext = Unmanaged.passRetained(context)
-
-        var callbacks = MTAudioProcessingTapCallbacks(
-            version: kMTAudioProcessingTapCallbacksVersion_0,
-            clientInfo: retainedContext.toOpaque(),
-            init: audioEqualizerTapInit,
-            finalize: audioEqualizerTapFinalize,
-            prepare: audioEqualizerTapPrepare,
-            unprepare: audioEqualizerTapUnprepare,
-            process: audioEqualizerTapProcess
-        )
-        var tap: MTAudioProcessingTap?
-        let status = MTAudioProcessingTapCreate(
-            kCFAllocatorDefault,
-            &callbacks,
-            kMTAudioProcessingTapCreationFlag_PostEffects,
-            &tap
-        )
-
-        guard status == noErr, let tap else {
-            retainedContext.release()
-            return nil
+    func attach(to player: AudioStreaming.AudioPlayer) {
+        let equalizer = AVAudioUnitEQ(numberOfBands: AudioEqualizerBand.count)
+        let autoMixEqualizer = AVAudioUnitEQ(numberOfBands: 3)
+        self.equalizer = equalizer
+        self.autoMixEqualizer = autoMixEqualizer
+        for (band, frequency) in zip(equalizer.bands, AudioEqualizerBand.allCases) {
+            band.filterType = .parametric
+            band.frequency = Float(frequency.centerFrequency)
+            band.bandwidth = 1.4
+            band.bypass = false
         }
-
-        let inputParameters = AVMutableAudioMixInputParameters(track: track)
-        inputParameters.audioTapProcessor = tap
-
-        let audioMix = AVMutableAudioMix()
-        audioMix.inputParameters = [inputParameters]
-        return audioMix
+        for (band, frequency) in zip(autoMixEqualizer.bands, [120.0, 1_500, 7_000]) {
+            band.filterType = .parametric
+            band.frequency = Float(frequency)
+            band.bandwidth = 1.4
+            band.bypass = false
+        }
+        update(configuration: configuration)
+        player.attach(nodes: [equalizer, autoMixEqualizer])
     }
-}
 
-nonisolated private func audioEqualizerTapContext(
-    for tap: MTAudioProcessingTap
-) -> AudioEqualizerTapContext {
-    Unmanaged<AudioEqualizerTapContext>
-        .fromOpaque(MTAudioProcessingTapGetStorage(tap))
-        .takeUnretainedValue()
-}
+    func update(configuration: AudioEqualizerConfiguration) {
+        self.configuration = configuration
+        equalizer?.bypass = !configuration.isEnabled
+        equalizer?.globalGain = Float(configuration.preamp)
+        if let equalizer {
+            for (band, gain) in zip(equalizer.bands, configuration.bandGains) { band.gain = Float(gain) }
+        }
+    }
 
-nonisolated private func audioEqualizerTapInit(
-    _ tap: MTAudioProcessingTap,
-    _ clientInfo: UnsafeMutableRawPointer?,
-    _ tapStorageOut: UnsafeMutablePointer<UnsafeMutableRawPointer?>
-) {
-    tapStorageOut.pointee = clientInfo
-}
-
-nonisolated private func audioEqualizerTapFinalize(
-    _ tap: MTAudioProcessingTap
-) {
-    Unmanaged<AudioEqualizerTapContext>
-        .fromOpaque(MTAudioProcessingTapGetStorage(tap))
-        .release()
-}
-
-nonisolated private func audioEqualizerTapPrepare(
-    _ tap: MTAudioProcessingTap,
-    _ maxFrames: CMItemCount,
-    _ processingFormat: UnsafePointer<AudioStreamBasicDescription>
-) {
-    audioEqualizerTapContext(for: tap).prepare(
-        format: processingFormat.pointee
-    )
-}
-
-nonisolated private func audioEqualizerTapUnprepare(
-    _ tap: MTAudioProcessingTap
-) {
-    audioEqualizerTapContext(for: tap).unprepare()
-}
-
-nonisolated private func audioEqualizerTapProcess(
-    _ tap: MTAudioProcessingTap,
-    _ numberFrames: CMItemCount,
-    _ flags: MTAudioProcessingTapFlags,
-    _ bufferListInOut: UnsafeMutablePointer<AudioBufferList>,
-    _ numberFramesOut: UnsafeMutablePointer<CMItemCount>,
-    _ flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>
-) {
-    var sourceFlags: MTAudioProcessingTapFlags = 0
-    var providedFrames: CMItemCount = 0
-    let status = MTAudioProcessingTapGetSourceAudio(
-        tap,
-        numberFrames,
-        bufferListInOut,
-        &sourceFlags,
-        nil,
-        &providedFrames
-    )
-
-    numberFramesOut.pointee = providedFrames
-    flagsOut.pointee = sourceFlags
-    guard status == noErr, providedFrames > 0 else { return }
-
-    audioEqualizerTapContext(for: tap).process(
-        bufferList: bufferListInOut,
-        frameCount: providedFrames,
-        flags: sourceFlags
-    )
+    func setAutoMixGains(low: Float, mid: Float, high: Float) {
+        guard let autoMixEqualizer else { return }
+        for (band, gain) in zip(autoMixEqualizer.bands, [low, mid, high]) { band.gain = gain }
+    }
 }

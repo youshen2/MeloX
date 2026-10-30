@@ -21,6 +21,11 @@ struct ContentSettingsView: View {
             }
 
             Section {
+                Picker("ui.recognition.source", selection: $recognition.audioSource) {
+                    ForEach(SongRecognitionAudioSource.availableCases) { source in
+                        Text(source.title).tag(source)
+                    }
+                }
                 Picker(
                     "ui.settings.content.recognition_duration",
                     selection: $recognition.duration
@@ -41,10 +46,16 @@ struct ContentSettingsView: View {
             } header: {
                 Text("ui.settings.content.section.recognition")
             } footer: {
-                if recognition.duration.isContinuous {
-                    Text("ui.settings.content.recognition.footer.continuous")
-                } else {
-                    Text("ui.settings.content.recognition.footer.limited")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(recognition.audioSource.detail)
+                    if !SongRecognitionAudioSource.availableCases.contains(.systemAudio) {
+                        Text("ui.recognition.system_audio_availability")
+                    }
+                    if recognition.duration.isContinuous {
+                        Text("ui.settings.content.recognition.footer.continuous")
+                    } else {
+                        Text("ui.settings.content.recognition.footer.limited")
+                    }
                 }
             }
         }

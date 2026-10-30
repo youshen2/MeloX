@@ -2,7 +2,7 @@ import Foundation
 import Network
 import Observation
 
-enum SearchKind: Int, CaseIterable, Identifiable {
+enum SearchKind: Int, CaseIterable, Identifiable, Hashable {
     case songs = 1
     case albums = 10
     case artists = 100
@@ -946,50 +946,18 @@ final class NeteaseAPI {
     }
 
     func setPlaylistSubscribed(id: Int, isSubscribed: Bool) async throws {
-        var data: [String: Any] = ["id": id]
-        if isSubscribed {
-            data["checkToken"] = NeteaseDirectClient.checkToken
-        }
+        // Match the website's WEAPI route; an empty response does not prove the write failed.
         let path = isSubscribed ? "/api/playlist/subscribe" : "/api/playlist/unsubscribe"
-        let response: APIStatusResponse = try await client.eapi(
+        let response: APIStatusResponse = try await client.weapi(
             path,
-            data: data,
-            requiresCheckToken: true,
-            authenticated: true
+            data: ["id": id],
+            retryEmptyResponse: false
         )
         try validate(responseCode: response.code, message: response.message)
     }
 
     func addSong(id: Int, toPlaylistID playlistID: Int) async throws {
-        // The unversioned EAPI route rejects authenticated writes with code 405.
-        let path = "/api/v1/playlist/manipulate/tracks"
-        let trackID = String(id)
-        var response: APIStatusResponse = try await client.eapi(
-            path,
-            data: [
-                "op": "add",
-                "pid": playlistID,
-                "trackIds": "[\"\(trackID)\"]",
-                "imme": "true",
-            ],
-            authenticated: true
-        )
-
-        // Mirrors @neteaseapireborn/api's compatibility retry for code 512.
-        if response.code == 512 {
-            response = try await client.eapi(
-                path,
-                data: [
-                    "op": "add",
-                    "pid": playlistID,
-                    "trackIds": "[\"\(trackID)\",\"\(trackID)\"]",
-                    "imme": "true",
-                ],
-                authenticated: true
-            )
-        }
-
-        try validate(responseCode: response.code, message: response.message)
+        try await manipulatePlaylistTrack(id: id, playlistID: playlistID, operation: "add")
     }
 
     func validate(responseCode: Int, message: String? = nil) throws {

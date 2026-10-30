@@ -30,8 +30,8 @@ struct DesktopSongRecognitionView: View {
                     readyView
                 case .requestingPermission:
                     progressView(
-                        L10n.string("ui.recognition.preparing_microphone"),
-                        detail: L10n.string("ui.recognition.microphone_permission_message")
+                        recognition.audioSource.preparationTitle,
+                        detail: recognition.audioSource.permissionMessage
                     )
                 case .listening:
                     listeningView
@@ -62,9 +62,28 @@ struct DesktopSongRecognitionView: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.red)
             VStack(spacing: 8) {
-                Text("ui.desktop.recognition.ready.title")
+                Text(
+                    model.settings.songRecognition.audioSource == .microphone
+                        ? L10n.string("ui.desktop.recognition.ready.title")
+                        : L10n.string("ui.desktop.recognition.ready.system_audio")
+                )
                     .font(.title.bold())
                 Text(readyDescription)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 470)
+            }
+            VStack(spacing: 8) {
+                Picker("ui.desktop.recognition.source", selection: settingsAudioSource) {
+                    ForEach(SongRecognitionAudioSource.allCases) { source in
+                        Label(source.title, systemImage: source.systemImage).tag(source)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(maxWidth: 340)
+                Text(model.settings.songRecognition.audioSource.detail)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 470)
@@ -84,7 +103,7 @@ struct DesktopSongRecognitionView: View {
             .labelsHidden()
             .frame(maxWidth: 540)
 
-            Button("ui.recognition.start", systemImage: "mic.fill") {
+            Button("ui.recognition.start", systemImage: model.settings.songRecognition.audioSource.systemImage) {
                 startRecognition()
             }
             .buttonStyle(.borderedProminent)
@@ -114,7 +133,11 @@ struct DesktopSongRecognitionView: View {
                         : L10n.string("ui.recognition.listening")
                 )
                     .font(.title.bold())
-                Text("ui.desktop.recognition.listening_message")
+                Text(
+                    recognition.audioSource == .microphone
+                        ? L10n.string("ui.desktop.recognition.listening_message")
+                        : L10n.string("ui.desktop.recognition.listening_system_audio")
+                )
                     .foregroundStyle(.secondary)
                 Spacer()
             }
@@ -212,8 +235,8 @@ struct DesktopSongRecognitionView: View {
             Text(failure.message)
         } actions: {
             if failure.opensSystemSettings {
-                Button("ui.desktop.recognition.open_microphone_settings", systemImage: "gear") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+                Button(recognition.audioSource.settingsTitle, systemImage: "gear") {
+                    if let url = recognition.audioSource.settingsURL {
                         NSWorkspace.shared.open(url)
                     }
                 }
@@ -243,6 +266,13 @@ struct DesktopSongRecognitionView: View {
         )
     }
 
+    private var settingsAudioSource: Binding<SongRecognitionAudioSource> {
+        Binding(
+            get: { model.settings.songRecognition.audioSource },
+            set: { model.settings.songRecognition.audioSource = $0 }
+        )
+    }
+
     private var showsRestartButton: Bool {
         switch recognition.phase {
         case .results, .noMatch, .failed: true
@@ -259,8 +289,11 @@ struct DesktopSongRecognitionView: View {
     }
 
     private func startRecognition() {
-        if model.player.isPlaying { model.player.togglePlayback() }
-        recognition.start(api: model.api, duration: model.settings.songRecognition.duration)
+        let settings = model.settings.songRecognition
+        if settings.audioSource == .microphone, model.player.isPlaying {
+            model.player.togglePlayback()
+        }
+        recognition.start(api: model.api, duration: settings.duration, source: settings.audioSource)
     }
 
     private func play(_ result: SongRecognitionResult) {
