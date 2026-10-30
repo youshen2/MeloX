@@ -11,7 +11,8 @@ struct NowPlayingQueuePage: View {
     let onSongHeaderHiddenChange: (Bool) -> Void
     let onSongHeaderOffsetChange: (CGFloat) -> Void
 
-    @State private var songHeaderHeight: CGFloat = 0
+    @State private var songHeaderHeight = NowPlayingSongHeader.referenceHeight
+    @State private var scrollOffset: CGFloat = 0
     @State private var isSongHeaderHidden = false
     @State private var isSongHeaderAtRest = true
 
@@ -37,46 +38,15 @@ struct NowPlayingQueuePage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            NowPlayingQueueModeControls()
-                .padding(.vertical, 8)
-                .frame(height: isSongHeaderHidden ? 60 : 0)
-                .clipped()
-                .opacity(isSongHeaderHidden ? 1 : 0)
-                .allowsHitTesting(isSongHeaderHidden)
-                .accessibilityHidden(!isSongHeaderHidden)
-
             List {
-                if presentation == .portrait {
-                    Group {
-                        if showsSongHeader {
-                            NowPlayingSongHeader(
-                                song: song,
-                                artworkNamespace: artworkNamespace,
-                                usesReferenceLayout: true,
-                                usesArtworkTransition:
-                                    usesArtworkTransition
-                                    && isSongHeaderAtRest
-                            )
-                        } else {
-                            Color.clear
-                                .frame(
-                                    height:
-                                        NowPlayingSongHeader
-                                        .referenceHeight
-                                )
-                        }
-                    }
-                    .onGeometryChange(for: CGFloat.self) { geometry in
-                        geometry.size.height
-                    } action: { newHeight in
-                        if newHeight > 0 {
-                            songHeaderHeight = newHeight
-                        }
-                    }
+                // Reserve the header space once. Pinning the overlay must not
+                // resize the List or change its content at the scroll threshold.
+                Color.clear
+                    .frame(height: reservedSongHeaderHeight + 60)
                     .listRowInsets(.init())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
-                }
+                    .accessibilityHidden(true)
 
                 Section {
                     Text("ui.player.continue_playing")
@@ -110,21 +80,6 @@ struct NowPlayingQueuePage: View {
                         }
                         .onMove(perform: moveQueueItems)
                     }
-                } header: {
-                    NowPlayingQueueModeControls()
-                        .padding(.vertical, 8)
-                        .frame(
-                            height:
-                                isSongHeaderHidden
-                                    ? 0
-                                    : 60
-                        )
-                        .clipped()
-                        .opacity(isSongHeaderHidden ? 0 : 1)
-                        .allowsHitTesting(!isSongHeaderHidden)
-                        .accessibilityHidden(isSongHeaderHidden)
-                        .textCase(nil)
-                        .listRowInsets(.init())
                 }
             }
             .listStyle(.plain)
@@ -132,17 +87,50 @@ struct NowPlayingQueuePage: View {
             .scrollContentBackground(.hidden)
             .scrollIndicators(.visible)
             .contentMargins(.top, 0, for: .scrollContent)
+            // The mask also clips the system indicator. Start its track at
+            // the visible queue edge without changing the content offset.
+            .contentMargins(.top, visibleQueueTopInset, for: .scrollIndicators)
             .environment(\.defaultMinListRowHeight, 1)
             .environment(\.defaultMinListHeaderHeight, 0)
             .environment(\.editMode, .constant(.active))
+            .mask {
+                Rectangle()
+                    .padding(.top, visibleQueueTopInset)
+            }
+            .overlay(alignment: .top) {
+                // A single set of controls moves continuously, then stays at
+                // the top without swapping between two header containers.
+                NowPlayingQueueModeControls()
+                    .padding(.vertical, 8)
+                    .frame(height: 60)
+                    .offset(y: modeControlsOffset)
+            }
+            .overlay(alignment: .top) {
+                if presentation == .portrait && showsSongHeader {
+                    NowPlayingSongHeader(
+                        song: song,
+                        artworkNamespace: artworkNamespace,
+                        usesReferenceLayout: true,
+                        usesArtworkTransition: usesArtworkTransition && isSongHeaderAtRest
+                    )
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.size.height
+                    } action: { newHeight in
+                        if newHeight > 0 {
+                            songHeaderHeight = newHeight
+                        }
+                    }
+                    .offset(y: -scrollOffset)
+                    .clipped()
+                }
+            }
             .padding(.bottom, bottomContentInset)
             .onScrollGeometryChange(
                 for: CGFloat.self,
                 of: { geometry in
-                    max(
-                        geometry.contentOffset.y
-                            + geometry.contentInsets.top,
-                        0
+                    min(
+                        max(geometry.contentOffset.y + geometry.contentInsets.top, 0),
+                        reservedSongHeaderHeight
                     )
                 }
             ) { _, offset in
@@ -151,6 +139,7 @@ struct NowPlayingQueuePage: View {
         }
         .onAppear {
             if presentation == .portrait {
+                scrollOffset = 0
                 isSongHeaderHidden = false
                 isSongHeaderAtRest = true
                 onSongHeaderHiddenChange(false)
@@ -185,8 +174,22 @@ struct NowPlayingQueuePage: View {
             : 12
     }
 
+    private var reservedSongHeaderHeight: CGFloat {
+        presentation == .portrait ? songHeaderHeight : 0
+    }
+
+    private var modeControlsOffset: CGFloat {
+        max(reservedSongHeaderHeight - scrollOffset, 0)
+    }
+
+    private var visibleQueueTopInset: CGFloat {
+        modeControlsOffset + 60
+    }
+
     private func updateSongHeaderState(for offset: CGFloat) {
         guard presentation == .portrait else { return }
+
+        scrollOffset = offset
 
         onSongHeaderOffsetChange(
             -min(offset, max(songHeaderHeight, 0))
