@@ -20,6 +20,7 @@ final class DesktopLyricsSynchronizer {
     }
 
     private func observeChanges() {
+        let player = self.player
         let request = withObservationTracking {
             Request(
                 songID: player.currentSong?.id,
@@ -38,8 +39,7 @@ final class DesktopLyricsSynchronizer {
 
         let song = player.currentSong
         let lyricSong = song?.isPodcastProgram == true ? nil : song
-        let lyrics = lyrics
-        let player = player
+        let lyrics = self.lyrics
         synchronizationTask = Task {
             guard !Task.isCancelled else { return }
             await lyrics.load(for: lyricSong)

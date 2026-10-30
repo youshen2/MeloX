@@ -143,7 +143,8 @@ class DesktopLyricsSyncTests(unittest.TestCase):
             lyrics = ROOT / "MeloXDesktop/Core/Lyrics"
             result = subprocess.run(
                 [
-                    "xcrun", "swiftc", "-swift-version", "6",
+                    "xcrun", "swiftc", "-swift-version", "5",
+                    "-O", "-whole-module-optimization",
                     "-default-isolation", "MainActor", "-parse-as-library",
                     str(lyrics / "DesktopLyricsSynchronizer.swift"),
                     str(lyrics / "LyricsStore.swift"), str(harness),
