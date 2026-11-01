@@ -16,7 +16,7 @@ struct NowPlayingTabletPlayerColumn: View {
         VStack(alignment: .leading, spacing: 0) {
             NowPlayingPortraitArtwork(song: song, isArtworkPage: true)
                 .frame(width: layout.artworkSize, height: layout.artworkSize)
-                .scaleEffect(isArtworkExpanded ? 1 / NowPlayingArtworkPage.pausedArtworkScale : 1)
+                .scaleEffect(isArtworkExpanded ? 1 : NowPlayingArtworkPage.pausedArtworkScale)
                 .frame(maxWidth: .infinity)
                 .padding(.top, layout.artworkTopInset)
                 .animation(
@@ -48,15 +48,16 @@ private struct NowPlayingTabletMetadata: View {
         HStack(alignment: .bottom, spacing: 10) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(song.name)
-                    .font(.headline)
-                    .lineLimit(1)
+                    .font(.title2.weight(.bold))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(
                     [song.artistText, song.album?.name]
                         .compactMap { $0 }
                         .joined(separator: L10n.string("ui.common.title_detail_separator"))
                 )
-                .font(.subheadline)
+                .font(.body)
                 .foregroundStyle(.white.opacity(0.6))
                 .lineLimit(1)
 

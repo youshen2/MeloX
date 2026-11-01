@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PlaylistDetailContent: View {
     let playlist: Playlist
@@ -31,69 +32,58 @@ struct PlaylistDetailContent: View {
     }
 
     var body: some View {
-        ZStack {
-            MusicCollectionArtworkBackdrop(
-                blurredArtworkImage: blurredBackdropImage,
-                palette: palette
-            )
-
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    if usesToplistLayout {
-                        ToplistDetailHero(
-                            playlist: playlist,
-                            summary: toplistSummary,
-                            artworkURL: artworkURL,
-                            palette: palette,
-                            isPreparingPlayback: isPreparingPlayback,
-                            onPlayAll: onPlayAll
-                        )
-                    } else {
-                        StandardMusicCollectionDetailHero(
-                            artworkURL: playlist.artworkURL,
-                            title: playlist.name,
-                            subtitle: playlist.creator?.nickname ?? L10n.string("ui.service.netease_cloud_music"),
-                            metadataText: standardMetadata,
-                            tracks: playlist.tracks,
-                            sourceID: playlist.id,
-                            isSaved: library.contains(playlist: playlist),
-                            isPreparingPlayback: isPreparingPlayback,
-                            onToggleSaved: {
-                                library.toggle(playlist: playlist)
-                            },
-                            onPlayAll: onPlayAll
-                        )
-                    }
-
-                    MusicCollectionTrackContent(
-                        tracks: filteredTracks,
-                        sourceID: playlist.id,
-                        showsArtwork: usesToplistLayout,
-                        loadingTitle: usesToplistLayout
-                            ? L10n.string("ui.toplists.loading")
-                            : L10n.string("ui.playlists.loading"),
-                        isLoading: isLoading,
-                        failureMessage: failureMessage,
-                        hasMoreTracks: hasMoreTracks,
-                        loadedTrackOffset: loadedTrackOffset,
-                        isLoadingMoreTracks: isLoadingMoreTracks,
-                        loadMoreTracksError: loadMoreTracksError,
-                        downloadSelection: downloadCoordinator,
-                        onRetry: onRetry,
-                        onLoadMore: onLoadMore,
-                        onRemoveSong: onRemoveSong,
-                        highlightedSongID: highlightedSongID
-                    )
-                }
-                .padding(.bottom, 32)
+        MusicCollectionDetailLayoutView(
+            palette: palette,
+            blurredBackdropImage: blurredBackdropImage,
+            extendsPhoneHeaderUnderToolbar: usesToplistLayout,
+            onRefresh: onRefresh
+        ) {
+            if usesToplistLayout {
+                ToplistDetailHero(
+                    playlist: playlist,
+                    summary: toplistSummary,
+                    artworkURL: artworkURL,
+                    palette: palette,
+                    isPreparingPlayback: isPreparingPlayback,
+                    onPlayAll: onPlayAll
+                )
+            } else {
+                StandardMusicCollectionDetailHero(
+                    artworkURL: playlist.artworkURL,
+                    title: playlist.name,
+                    subtitle: playlist.creator?.nickname ?? L10n.string("ui.service.netease_cloud_music"),
+                    metadataText: standardMetadata,
+                    descriptionText: playlist.nonemptyDescription,
+                    tracks: playlist.tracks,
+                    sourceID: playlist.id,
+                    isSaved: library.contains(playlist: playlist),
+                    isPreparingPlayback: isPreparingPlayback,
+                    onToggleSaved: {
+                        library.toggle(playlist: playlist)
+                    },
+                    onPlayAll: onPlayAll
+                )
             }
-            .scrollIndicators(.hidden)
-            .refreshable {
-                await onRefresh()
-            }
-            .ignoresSafeArea(
-                .container,
-                edges: usesToplistLayout ? .top : []
+
+        } tracks: {
+            MusicCollectionTrackContent(
+                tracks: filteredTracks,
+                sourceID: playlist.id,
+                showsArtwork: usesToplistLayout || UIDevice.current.userInterfaceIdiom == .pad,
+                loadingTitle: usesToplistLayout
+                    ? L10n.string("ui.toplists.loading")
+                    : L10n.string("ui.playlists.loading"),
+                isLoading: isLoading,
+                failureMessage: failureMessage,
+                hasMoreTracks: hasMoreTracks,
+                loadedTrackOffset: loadedTrackOffset,
+                isLoadingMoreTracks: isLoadingMoreTracks,
+                loadMoreTracksError: loadMoreTracksError,
+                downloadSelection: downloadCoordinator,
+                onRetry: onRetry,
+                onLoadMore: onLoadMore,
+                onRemoveSong: onRemoveSong,
+                highlightedSongID: highlightedSongID
             )
         }
         .foregroundStyle(.primary)
@@ -174,10 +164,12 @@ struct MusicCollectionTrackContent: View {
 }
 
 struct StandardMusicCollectionDetailHero: View {
+    @Environment(\.musicCollectionDetailMetrics) private var detailMetrics
     let artworkURL: URL?
     let title: String
     let subtitle: String
     let metadataText: String
+    var descriptionText: String? = nil
     let tracks: [Song]
     let sourceID: Int
     let isSaved: Bool
@@ -185,7 +177,28 @@ struct StandardMusicCollectionDetailHero: View {
     let onToggleSaved: () -> Void
     var onPlayAll: ((Bool) async -> Void)? = nil
 
+    @ViewBuilder
     var body: some View {
+        if detailMetrics.usesAdaptiveHeader {
+            AdaptiveMusicCollectionHero(
+                artworkURL: artworkURL,
+                title: title,
+                subtitle: subtitle,
+                metadataText: metadataText,
+                descriptionText: descriptionText,
+                tracks: tracks,
+                sourceID: sourceID,
+                isSaved: isSaved,
+                isPreparingPlayback: isPreparingPlayback,
+                onToggleSaved: onToggleSaved,
+                onPlayAll: onPlayAll
+            )
+        } else {
+            standardHero
+        }
+    }
+
+    private var standardHero: some View {
         VStack(spacing: 0) {
             ArtworkImage(url: artworkURL, cornerRadius: 12)
                 .containerRelativeFrame(.horizontal) { width, _ in
@@ -236,8 +249,30 @@ private struct ToplistDetailHero: View {
     let onPlayAll: (Bool) async -> Void
 
     @Environment(LibraryStore.self) private var library
+    @Environment(\.musicCollectionDetailMetrics) private var detailMetrics
 
+    @ViewBuilder
     var body: some View {
+        if detailMetrics.usesAdaptiveHeader {
+            AdaptiveMusicCollectionHero(
+                artworkURL: artworkURL,
+                title: playlist.name,
+                subtitle: creatorName,
+                metadataText: [updateText, L10n.format("ui.common.song_count", playlist.trackCount)].compactMap { $0 }.joined(separator: " · "),
+                descriptionText: descriptionText,
+                tracks: playlist.tracks,
+                sourceID: playlist.id,
+                isSaved: library.contains(playlist: playlist),
+                isPreparingPlayback: isPreparingPlayback,
+                onToggleSaved: { library.toggle(playlist: playlist) },
+                onPlayAll: onPlayAll
+            )
+        } else {
+            standardHero
+        }
+    }
+
+    private var standardHero: some View {
         VStack(spacing: 0) {
             ArtworkImage(url: artworkURL, cornerRadius: 0)
                 .containerRelativeFrame(.horizontal)
@@ -323,10 +358,11 @@ struct MusicCollectionPrimaryActions: View {
 
     @Environment(PlayerStore.self) private var player
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.musicCollectionDetailMetrics) private var detailMetrics
 
     var body: some View {
-        GlassEffectContainer(spacing: 14) {
-            HStack(spacing: 14) {
+        GlassEffectContainer(spacing: detailMetrics.usesAdaptiveHeader ? 10 : 14) {
+            HStack(spacing: detailMetrics.usesAdaptiveHeader ? 10 : 14) {
                 Button {
                     Task {
                         if let onPlayAll {
@@ -345,7 +381,7 @@ struct MusicCollectionPrimaryActions: View {
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
-                .controlSize(.large)
+                .controlSize(detailMetrics.usesAdaptiveHeader ? .regular : .large)
                 .disabled(tracks.isEmpty || isPreparingPlayback)
                 .accessibilityLabel("ui.player.shuffle")
 
@@ -371,12 +407,12 @@ struct MusicCollectionPrimaryActions: View {
                             Label("ui.common.play", systemImage: "play.fill")
                         }
                     }
-                    .font(.title3.weight(.bold))
-                    .frame(minWidth: 116)
+                    .font(detailMetrics.usesAdaptiveHeader ? .body.weight(.semibold) : .title3.weight(.bold))
+                    .frame(minWidth: detailMetrics.usesAdaptiveHeader ? 76 : 116, minHeight: 30)
                 }
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.capsule)
-                .controlSize(.large)
+                .controlSize(detailMetrics.usesAdaptiveHeader ? .regular : .large)
                 .tint(primaryActionBackground)
                 .foregroundStyle(primaryActionForeground)
                 .disabled(tracks.isEmpty || isPreparingPlayback)
@@ -390,7 +426,7 @@ struct MusicCollectionPrimaryActions: View {
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
-                .controlSize(.large)
+                .controlSize(detailMetrics.usesAdaptiveHeader ? .regular : .large)
                 .accessibilityLabel(
                     isSaved
                         ? L10n.string("ui.common.unfavorite")
@@ -401,16 +437,19 @@ struct MusicCollectionPrimaryActions: View {
     }
 
     private var primaryActionBackground: Color {
-        colorScheme == .dark ? .white : .black
+        if detailMetrics.usesAdaptiveHeader { return .red }
+        return colorScheme == .dark ? .white : .black
     }
 
     private var primaryActionForeground: Color {
-        colorScheme == .dark ? .black : .white
+        if detailMetrics.usesAdaptiveHeader { return .white }
+        return colorScheme == .dark ? .black : .white
     }
 }
 
-private struct ExpandablePlaylistDescription: View {
+struct ExpandablePlaylistDescription: View {
     let description: String
+    var horizontalPadding: CGFloat = 20
 
     @State private var isExpanded = false
 
@@ -430,7 +469,7 @@ private struct ExpandablePlaylistDescription: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, horizontalPadding)
         .accessibilityLabel(
             isExpanded
                 ? L10n.string("ui.playlists.collapse_description")

@@ -23,6 +23,16 @@ struct MeloXApp: App {
 
     init() {
         let settings = AppSettings()
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled {
+            settings.hasCompletedOnboarding = true
+            settings.setAppLanguage(.simplifiedChinese)
+            settings.lastSelectedTab = .home
+            if ProcessInfo.processInfo.environment["MELOX_UI_LIBRARY_HOME"] == "1" {
+                settings.setPage(.libraryAlbums, placement: .home)
+            }
+        }
+        #endif
         let releaseNotes = AppReleaseNotesStore(
             currentVersion: Bundle.main.appReleaseVersion,
             hadCompletedOnboarding: settings.hasCompletedOnboarding,

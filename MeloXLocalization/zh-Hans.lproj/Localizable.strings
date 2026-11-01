@@ -20,6 +20,7 @@
 "ui.navigation.library" = "音乐库";
 "ui.navigation.library.liked_playlists" = "收藏歌单";
 "ui.navigation.library.liked_albums" = "收藏专辑";
+"ui.explore.featured.title" = "为你精选";
 "ui.navigation.library.liked_songs" = "收藏歌曲";
 "ui.navigation.library.subscribed_podcasts" = "订阅播客";
 "ui.navigation.music" = "音乐";

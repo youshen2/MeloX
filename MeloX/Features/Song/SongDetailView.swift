@@ -71,7 +71,7 @@ struct SongDetailView: View {
                 Menu {
                     NeteaseShareMenuContent(resource: .song(song))
                 } label: {
-                    Image(systemName: "square.and.arrow.up")
+                    MusicToolbarSymbol(systemName: "square.and.arrow.up")
                 }
                 .accessibilityLabel("ui.song.share")
             }

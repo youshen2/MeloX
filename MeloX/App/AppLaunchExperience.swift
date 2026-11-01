@@ -67,6 +67,9 @@ private struct AppLaunchExperienceModifier: ViewModifier {
 
     @MainActor
     private func handleLaunch() async {
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled { return }
+        #endif
         guard !didHandleLaunch else { return }
         didHandleLaunch = true
 

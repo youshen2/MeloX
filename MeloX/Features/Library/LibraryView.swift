@@ -95,6 +95,13 @@ struct LibraryView: View {
                 settings.lastLibraryPage = page
             }
         }
+        .onChange(of: settings.lastLibraryPage) { _, page in
+            guard fixedPage == nil,
+                  settings.restoresLastLibraryPage,
+                  availablePages.contains(page),
+                  section != page else { return }
+            section = page
+        }
         .onChange(of: availablePages) { _, pages in
             guard fixedPage == nil,
                   let firstPage = pages.first,

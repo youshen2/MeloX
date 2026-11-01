@@ -14,10 +14,13 @@ struct MediaCardGridLayout {
             containerWidth - horizontalPadding * 2,
             1
         )
+        let resolvedMinimumItemWidth = containerWidth >= 600
+            ? max(minimumItemWidth, 180)
+            : minimumItemWidth
         let columnCount = max(
             Int(
                 (availableWidth + spacing)
-                    / (minimumItemWidth + spacing)
+                    / (resolvedMinimumItemWidth + spacing)
             ),
             1
         )

@@ -63,6 +63,7 @@ private struct PlaylistTrackRow: View {
     @Environment(LibraryStore.self) private var library
     @Environment(DownloadStore.self) private var downloads
     @Environment(AppSettings.self) private var settings
+    @Environment(\.musicCollectionDetailMetrics) private var detailMetrics
 
     @State private var presentedSheet: PlaylistSongSheet?
 
@@ -110,7 +111,7 @@ private struct PlaylistTrackRow: View {
                             .font(.body)
                             .lineLimit(showsArtwork ? 1 : 2)
 
-                        if showsArtwork {
+                        if showsArtwork && !usesWideTrackColumns {
                             Text(song.artistText)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -118,6 +119,18 @@ private struct PlaylistTrackRow: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if usesWideTrackColumns {
+                        Text(song.artistText)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .frame(width: detailMetrics.viewport.width * 0.25, alignment: .leading)
+                        Text(song.durationText)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 48, alignment: .trailing)
+                    }
                 }
                 .contentShape(.rect)
             }
@@ -125,6 +138,7 @@ private struct PlaylistTrackRow: View {
             .disabled(isSelectingDownloads && !canSelectForDownload)
             .accessibilityLabel(primaryActionAccessibilityLabel)
             .accessibilityValue(primaryActionAccessibilityValue)
+            .accessibilityIdentifier("collection-track-\(song.id)")
 
             if settings.isContentFeatureEnabled(.downloads) {
                 if downloads.isDownloading(songID: song.id) {
@@ -281,6 +295,12 @@ private struct PlaylistTrackRow: View {
                 .minimumScaleFactor(0.8)
                 .frame(width: 40, alignment: .center)
         }
+    }
+
+    private var usesWideTrackColumns: Bool {
+        detailMetrics.usesAdaptiveHeader
+            && detailMetrics.viewport.width >= 720
+            && !detailMetrics.usesAccessibilityText
     }
 
     private var primaryActionAccessibilityLabel: String {

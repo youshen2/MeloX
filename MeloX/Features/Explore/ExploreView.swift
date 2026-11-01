@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ExploreView: View {
     @Environment(NeteaseAPI.self) private var api
@@ -13,14 +14,23 @@ struct ExploreView: View {
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
     @State private var loadedCategory: String?
+    @State private var viewportSize = CGSize(width: 390, height: 700)
 
     private let categories = [
         "推荐歌单", "排行榜", "精品歌单", "全部", "华语", "欧美", "流行",
         "摇滚", "民谣", "电子", "轻音乐", "影视原声", "ACG",
     ]
     private let columns = [
-        GridItem(.adaptive(minimum: 148, maximum: 220), spacing: 16),
+        GridItem(.adaptive(minimum: 148, maximum: 220), spacing: 16, alignment: .top),
     ]
+
+    private var featuredMetrics: ExploreFeaturedMetrics {
+        ExploreFeaturedMetrics(viewport: viewportSize, isTablet: UIDevice.current.userInterfaceIdiom == .pad)
+    }
+
+    private var featuredPlaylists: [Playlist] {
+        Array(playlists.prefix(featuredMetrics.featuredCount))
+    }
 
     init(
         showsNavigationTitle: Bool = true,
@@ -51,8 +61,13 @@ struct ExploreView: View {
 
                 categoryContent
             }
-            .padding(.horizontal)
+            .padding(.horizontal, featuredMetrics.horizontalPadding)
             .padding(.bottom, 28)
+        }
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { size in
+            viewportSize = size
         }
         .refreshable {
             await load(category: category, force: true)
@@ -79,13 +94,7 @@ struct ExploreView: View {
                     .frame(maxWidth: .infinity, minHeight: 320)
             }
         } else {
-            if let featuredPlaylist = playlists.first {
-                ExploreFeaturedPlaylistView(
-                    playlist: featuredPlaylist,
-                    badge: featuredBadge,
-                    showsPlayCount: settings.showPlayCount
-                )
-            }
+            featuredShelf
 
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .firstTextBaseline) {
@@ -100,7 +109,7 @@ struct ExploreView: View {
                 }
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
-                    ForEach(playlists.dropFirst()) { playlist in
+                    ForEach(playlists.dropFirst(featuredMetrics.featuredCount)) { playlist in
                         NavigationLink(value: MusicRoute.playlist(playlist)) {
                             ExplorePlaylistCardView(
                                 playlist: playlist,
@@ -109,6 +118,7 @@ struct ExploreView: View {
                         }
                         .buttonStyle(.plain)
                         .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
+                        .accessibilityIdentifier("explore-grid-\(playlist.id)")
                     }
                 }
             }
@@ -117,6 +127,32 @@ struct ExploreView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             }
+        }
+    }
+
+    private var featuredShelf: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if featuredMetrics.usesPortraitCards {
+                Text(category == "推荐歌单" ? L10n.string("ui.explore.featured.title") : featuredBadge)
+                    .font(.title2.weight(.bold))
+            }
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: featuredMetrics.spacing) {
+                    ForEach(featuredPlaylists) { playlist in
+                        ExploreFeaturedPlaylistView(
+                            playlist: playlist,
+                            badge: featuredBadge,
+                            showsPlayCount: settings.showPlayCount,
+                            aspectRatio: featuredMetrics.aspectRatio,
+                            usesPortraitCard: featuredMetrics.usesPortraitCards
+                        )
+                        .frame(width: featuredMetrics.cardWidth, height: featuredMetrics.cardHeight)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
         }
     }
 
@@ -155,6 +191,14 @@ struct ExploreView: View {
     }
 
     private func load(category requestedCategory: String, force: Bool = false) async {
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled {
+            playlists = MeloXDesignPreview.explorePlaylists
+            loadedCategory = requestedCategory
+            phase = .loaded
+            return
+        }
+        #endif
         if !force, loadedCategory == requestedCategory {
             return
         }

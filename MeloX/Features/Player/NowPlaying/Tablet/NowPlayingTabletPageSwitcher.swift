@@ -45,6 +45,7 @@ struct NowPlayingTabletPageSwitcher: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
+        .accessibilityIdentifier("tablet-page-\(destination.rawValue)")
         .accessibilityValue(
             isSelected
                 ? L10n.string("ui.common.selected")

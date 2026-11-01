@@ -7,6 +7,7 @@ struct NowPlayingTabletView: View {
     @Binding var page: NowPlayingPage
     let pageTransition: NowPlayingTransitionCoordinator
     let song: Song
+    let hasDisplayDivision: Bool
     let lyrics: [LyricLine]
     let lyricError: String?
     let highlightedLyricID: LyricLine.ID?
@@ -17,7 +18,7 @@ struct NowPlayingTabletView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if #available(iOS 27.1, *) {
+            if #available(iOS 27.1, *), hasDisplayDivision {
                 NowPlayingAdaptiveView(
                     page: $page,
                     pageTransition: pageTransition,
@@ -73,6 +74,8 @@ struct NowPlayingTabletView: View {
             )
             .frame(width: layout.panelWidth, height: layout.contentHeight)
             .offset(x: layout.panelLeading, y: NowPlayingTabletLayout.chromeHeight)
+            .allowsHitTesting(page != .artwork)
+            .accessibilityHidden(page == .artwork)
 
             chrome
         }
@@ -89,6 +92,7 @@ struct NowPlayingTabletView: View {
                 .buttonStyle(.plain)
                 .glassEffect(.clear.interactive(), in: .circle)
                 .accessibilityLabel("ui.player.collapse")
+                .accessibilityIdentifier("tablet-player-collapse")
 
                 Spacer()
             }

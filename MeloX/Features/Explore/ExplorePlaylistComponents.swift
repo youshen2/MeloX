@@ -38,14 +38,16 @@ struct ExploreFeaturedPlaylistView: View {
     let playlist: Playlist
     let badge: String
     let showsPlayCount: Bool
+    var aspectRatio: CGFloat = 1.55
+    var usesPortraitCard = false
 
     var body: some View {
         NavigationLink(value: MusicRoute.playlist(playlist)) {
             ZStack(alignment: .bottomLeading) {
                 ArtworkImage(
                     url: playlist.artworkURL,
-                    cornerRadius: 22,
-                    aspectRatio: 1.55
+                    cornerRadius: usesPortraitCard ? 16 : 22,
+                    aspectRatio: aspectRatio
                 )
 
                 LinearGradient(
@@ -53,7 +55,7 @@ struct ExploreFeaturedPlaylistView: View {
                     startPoint: .center,
                     endPoint: .bottom
                 )
-                .clipShape(.rect(cornerRadius: 22))
+                .clipShape(.rect(cornerRadius: usesPortraitCard ? 16 : 22))
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(badge)
@@ -61,7 +63,7 @@ struct ExploreFeaturedPlaylistView: View {
                         .foregroundStyle(.white.opacity(0.78))
 
                     Text(playlist.name)
-                        .font(.title2.bold())
+                        .font(usesPortraitCard ? .headline.weight(.semibold) : .title2.bold())
                         .foregroundStyle(.white)
                         .lineLimit(2)
 
@@ -92,6 +94,7 @@ struct ExploreFeaturedPlaylistView: View {
                 playlist.name
             )
         )
+        .accessibilityIdentifier("explore-featured-\(playlist.id)")
     }
 }
 

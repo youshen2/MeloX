@@ -20,6 +20,7 @@
 "ui.navigation.library" = "Library";
 "ui.navigation.library.liked_playlists" = "Favorite Playlists";
 "ui.navigation.library.liked_albums" = "Favorite Albums";
+"ui.explore.featured.title" = "Top Picks for You";
 "ui.navigation.library.liked_songs" = "Liked Songs";
 "ui.navigation.library.subscribed_podcasts" = "Subscribed Podcasts";
 "ui.navigation.music" = "Music";
