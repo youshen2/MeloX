@@ -46,7 +46,9 @@ struct DesktopRootView: View {
         }
         .toolbar(removing: .sidebarToggle)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItem(
+                placement: ui.selection == .search ? .navigation : .primaryAction
+            ) {
                 Button("ui.recognition.title", systemImage: "waveform") {
                     ui.sheet = .recognition
                 }
@@ -309,6 +311,19 @@ struct DesktopSectionContentView: View {
             DesktopLibraryView(section: section)
         case .messages:
             DesktopMessagesView()
+        }
+    }
+}
+
+extension ToolbarContent {
+    /// Keeps a toolbar item from sharing the macOS 26 glass capsule with
+    /// the item beside it. Earlier systems have no shared toolbar background.
+    @ToolbarContentBuilder
+    func desktopIndependentToolbarBackground() -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
         }
     }
 }

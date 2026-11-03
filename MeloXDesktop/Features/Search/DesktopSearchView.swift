@@ -256,6 +256,7 @@ struct DesktopSearchView: View {
                     .background(.regularMaterial, in: .capsule)
                     .accessibilityElement(children: .contain)
                 }
+                .desktopIndependentToolbarBackground()
 
                 ToolbarItem(placement: .primaryAction) {
                     Picker("ui.desktop.search.scope", selection: $store.source) {
