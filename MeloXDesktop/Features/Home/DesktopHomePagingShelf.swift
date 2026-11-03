@@ -17,7 +17,6 @@ struct DesktopHomePagingShelf<Item: Identifiable, Card: View>: View {
     let cardWidth: CGFloat
     let spacing: CGFloat
     let visibleItemCount: Int
-    let trailingOverlayInset: CGFloat
     private let card: (Item) -> Card
 
     @State private var leadingIndex = 0
@@ -29,14 +28,12 @@ struct DesktopHomePagingShelf<Item: Identifiable, Card: View>: View {
         cardWidth: CGFloat,
         spacing: CGFloat,
         visibleItemCount: Int,
-        trailingOverlayInset: CGFloat,
         @ViewBuilder card: @escaping (Item) -> Card
     ) {
         self.items = items
         self.cardWidth = cardWidth
         self.spacing = spacing
         self.visibleItemCount = visibleItemCount
-        self.trailingOverlayInset = trailingOverlayInset
         self.card = card
     }
 
@@ -52,9 +49,6 @@ struct DesktopHomePagingShelf<Item: Identifiable, Card: View>: View {
                                 .id(item.id)
                         }
                     }
-                    // Keep cards drawing beneath the overlay while reserving
-                    // enough scroll range to reveal the final card beside it.
-                    .padding(.trailing, trailingOverlayInset)
                 }
                 .clipped()
                 .onScrollGeometryChange(for: ScrollState.self) { geometry in
@@ -88,10 +82,7 @@ struct DesktopHomePagingShelf<Item: Identifiable, Card: View>: View {
                     ) {
                         page(1, proxy: proxy)
                     }
-                    .padding(
-                        .trailing,
-                        trailingOverlayInset + 8
-                    )
+                    .padding(.trailing, 8)
                 }
             }
             .contentShape(.rect)
@@ -150,11 +141,7 @@ struct DesktopHomePagingShelf<Item: Identifiable, Card: View>: View {
 
     private func scrollState(for geometry: ScrollGeometry) -> ScrollState {
         let containerWidth = max(geometry.containerSize.width, 0)
-        // Paging uses only the unobscured portion of the full-width shelf.
-        let viewportWidth = max(
-            containerWidth - trailingOverlayInset,
-            0
-        )
+        let viewportWidth = containerWidth
         let maximumOffset = max(
             geometry.contentSize.width - containerWidth,
             0

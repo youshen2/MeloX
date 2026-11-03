@@ -2,12 +2,6 @@ import SwiftUI
 
 struct DesktopSidebar: View {
     @Environment(DesktopAppModel.self) private var model
-    @State private var sidebarFrame = CGRect(
-        x: 8,
-        y: 8,
-        width: 199,
-        height: 0
-    )
 
     private let primarySections: [DesktopSection] = [
         .search,
@@ -41,19 +35,27 @@ struct DesktopSidebar: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        .overlay(alignment: .bottomLeading) {
-            pinnedFooter
-                .frame(width: max(sidebarFrame.width, 1))
-                .padding(.leading, max(sidebarFrame.minX, 0))
-                .padding(.bottom, max(sidebarFrame.minY, 0))
-        }
         .toolbar(removing: .sidebarToggle)
         .background {
-            DesktopSidebarVisibilityLock(
-                sidebarFrame: $sidebarFrame,
-                reservedBottomInset: pinnedFooterHeight
-            )
-                .frame(width: 0, height: 0)
+            ZStack {
+                DesktopSidebarVisibilityLock(
+                    reservedBottomInset: pinnedFooterHeight,
+                    footer: pinnedFooter.environment(model)
+                )
+                DesktopColumnChrome(
+                    panelWidth: ui.inspector == nil
+                        ? 0
+                        : DesktopMainWindowMetrics.playerSidePanelWidth,
+                    panel: DesktopPlayerSidePanel(
+                        selection: ui.retainedInspector,
+                        isPresented: ui.inspector != nil
+                    )
+                    .environment(model),
+                    player: DesktopTabBottomPlayer()
+                        .environment(model)
+                )
+            }
+            .frame(width: 0, height: 0)
         }
         .onChange(
             of: model.settings.contentFeatures.disabledFeatures

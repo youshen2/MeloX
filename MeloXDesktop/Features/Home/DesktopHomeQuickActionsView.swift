@@ -99,7 +99,6 @@ struct DesktopHomeQuickActionsView: View {
     let cardWidth: CGFloat
     let spacing: CGFloat
     let visibleItemCount: Int
-    let trailingOverlayInset: CGFloat
 
     @State private var activeAction: DesktopHomeQuickAction?
     @State private var errorMessage: String?
@@ -112,8 +111,7 @@ struct DesktopHomeQuickActionsView: View {
                 items: DesktopHomeQuickAction.allCases,
                 cardWidth: cardWidth,
                 spacing: spacing,
-                visibleItemCount: visibleItemCount,
-                trailingOverlayInset: trailingOverlayInset
+                visibleItemCount: visibleItemCount
             ) { action in
                 DesktopHomeQuickActionButton(
                     action: action,

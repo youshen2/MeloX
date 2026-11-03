@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Renders the single player bar in the selected tab's content coordinate
-/// space. The tab page owns selection gating so hidden tabs do not keep extra
-/// player trees alive.
+/// Renders the player bar across the bottom of the content column.
+/// The column already ends before the lyrics or queue panel.
 struct DesktopTabBottomPlayer: View {
     @Environment(DesktopAppModel.self) private var model
 
@@ -11,24 +10,18 @@ struct DesktopTabBottomPlayer: View {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 DesktopBottomPlayer()
-                    .frame(width: DesktopBottomPlayerMetrics.outerWidth)
+                    .frame(maxWidth: DesktopBottomPlayerMetrics.outerWidth)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
             .padding(.leading, 24)
-            .padding(.trailing, 24 + reservedTrailingWidth)
+            .padding(.trailing, 24)
             .padding(.bottom, 10)
         }
     }
-
-    private var reservedTrailingWidth: CGFloat {
-        model.ui.inspector == nil
-            ? 0
-            : DesktopMainWindowMetrics.playerSidePanelWidth
-    }
 }
 
-/// Reserves content space for the single player bar rendered by the app shell.
+/// Reserves content space for the player bar mounted on the main window.
 struct DesktopTabBottomPlayerInset: View {
     @Environment(DesktopAppModel.self) private var model
 
@@ -44,6 +37,17 @@ struct DesktopTabBottomPlayerInset: View {
         model.player.playbackIssue == nil
             ? DesktopBottomPlayerMetrics.regularGlobalInsetHeight
             : DesktopBottomPlayerMetrics.issueGlobalInsetHeight
+    }
+}
+
+extension View {
+    /// Keeps scrollable page content clear of the main-window player bar.
+    /// Applied to sidebar roots and pushed routes alike. Content may draw
+    /// underneath the bar while scrolling.
+    func desktopBottomPlayerInset() -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            DesktopTabBottomPlayerInset()
+        }
     }
 }
 
@@ -143,8 +147,9 @@ struct DesktopBottomPlayer: View {
             }
             .padding(.horizontal, DesktopBottomPlayerMetrics.horizontalInset)
             .frame(
-                width: DesktopBottomPlayerMetrics.outerWidth,
-                height: DesktopBottomPlayerMetrics.outerHeight
+                maxWidth: .infinity,
+                minHeight: DesktopBottomPlayerMetrics.outerHeight,
+                maxHeight: DesktopBottomPlayerMetrics.outerHeight
             )
         }
     }

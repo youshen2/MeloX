@@ -5,25 +5,16 @@ import SwiftUI
 ///
 /// SwiftUI can remove its standard toolbar item, but it does not expose the
 /// AppKit flags that prevent a macOS sidebar from being collapsed by dragging
-/// its divider or by resizing the window. This probe also reports the native
-/// sidebar frame so SwiftUI can align fixed content with the resizable column.
-/// The sidebar content itself remains fully SwiftUI-owned.
-struct DesktopSidebarVisibilityLock: NSViewRepresentable {
-    @Binding private var sidebarFrame: CGRect
-    let reservedBottomInset: CGFloat
-
-    init(
-        sidebarFrame: Binding<CGRect>,
-        reservedBottomInset: CGFloat = 0
-    ) {
-        _sidebarFrame = sidebarFrame
-        self.reservedBottomInset = reservedBottomInset
-    }
+/// its divider or by resizing the window. The account footer is hosted inside
+/// that sidebar column so it tracks the divider while it is dragged.
+struct DesktopSidebarVisibilityLock<Footer: View>: NSViewRepresentable {
+    var reservedBottomInset: CGFloat
+    var footer: Footer
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
-            sidebarFrame: $sidebarFrame,
-            reservedBottomInset: reservedBottomInset
+            reservedBottomInset: reservedBottomInset,
+            footer: footer
         )
     }
 
@@ -39,8 +30,8 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
         _ nsView: DesktopSidebarVisibilityProbe,
         context: Context
     ) {
-        context.coordinator.sidebarFrame = $sidebarFrame
         context.coordinator.reservedBottomInset = reservedBottomInset
+        context.coordinator.footerHost.update(rootView: footer)
         context.coordinator.attach(to: nsView.window)
     }
 
@@ -56,21 +47,20 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
     final class Coordinator {
         private weak var installedWindow: NSWindow?
         private weak var installedSidebarItem: NSSplitViewItem?
+        private weak var installedSplitViewController: NSSplitViewController?
         private weak var installedSidebarScrollView: NSScrollView?
         private var windowUpdateObserver: NSObjectProtocol?
         private var deferredConfigurationTask: Task<Void, Never>?
-        private var frameReportingTask: Task<Void, Never>?
-        private var reportedSidebarFrame: CGRect?
         private var originalBottomContentInset: CGFloat?
-        var sidebarFrame: Binding<CGRect>
+        fileprivate let footerHost: SidebarFooterHost<Footer>
         var reservedBottomInset: CGFloat
 
         init(
-            sidebarFrame: Binding<CGRect>,
-            reservedBottomInset: CGFloat
+            reservedBottomInset: CGFloat,
+            footer: Footer
         ) {
-            self.sidebarFrame = sidebarFrame
             self.reservedBottomInset = reservedBottomInset
+            footerHost = SidebarFooterHost(rootView: footer)
         }
 
         func attach(to window: NSWindow?) {
@@ -104,18 +94,17 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
         func detach() {
             deferredConfigurationTask?.cancel()
             deferredConfigurationTask = nil
-            frameReportingTask?.cancel()
-            frameReportingTask = nil
 
             if let windowUpdateObserver {
                 NotificationCenter.default.removeObserver(windowUpdateObserver)
             }
             windowUpdateObserver = nil
             restoreOriginalBottomContentInset()
+            footerHost.removeFromSuperview()
             installedSidebarItem = nil
+            installedSplitViewController = nil
             installedSidebarScrollView = nil
             installedWindow = nil
-            reportedSidebarFrame = nil
             originalBottomContentInset = nil
         }
 
@@ -124,11 +113,13 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
             removeSidebarToggle(from: window.toolbar)
 
             if let installedSidebarItem,
+               let installedSplitViewController,
                installedSidebarItem.viewController.view.window === window {
-                lock(installedSidebarItem)
+                lock(installedSidebarItem, in: installedSplitViewController)
                 return
             }
             installedSidebarItem = nil
+            installedSplitViewController = nil
 
             var configuredControllers = Set<ObjectIdentifier>()
             if let rootViewController = window.contentViewController {
@@ -216,11 +207,15 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
             for item in splitViewController.splitViewItems
             where item.behavior == .sidebar {
                 installedSidebarItem = item
-                lock(item)
+                installedSplitViewController = splitViewController
+                lock(item, in: splitViewController)
             }
         }
 
-        private func lock(_ item: NSSplitViewItem) {
+        private func lock(
+            _ item: NSSplitViewItem,
+            in splitViewController: NSSplitViewController
+        ) {
             if item.isCollapsed {
                 item.isCollapsed = false
             }
@@ -234,8 +229,26 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
                 item.isSpringLoaded = false
             }
 
-            reserveFooterSpace(below: item.viewController.view)
-            reportFrame(of: item)
+            let maximumWidth = DesktopMainWindowMetrics.maximumSidebarWidth
+            if item.maximumThickness != maximumWidth {
+                item.maximumThickness = maximumWidth
+            }
+            let sidebarWidth = item.viewController.view.bounds.width
+            if sidebarWidth > maximumWidth + 0.5 {
+                let dividerIndex = splitViewController.splitViewItems
+                    .firstIndex(of: item) ?? 0
+                splitViewController.splitView.setPosition(
+                    maximumWidth,
+                    ofDividerAt: dividerIndex
+                )
+            }
+
+            let sidebarView = item.viewController.view
+            reserveFooterSpace(below: sidebarView)
+            footerHost.place(
+                in: sidebarView,
+                height: reservedBottomInset
+            )
         }
 
         private func reserveFooterSpace(below view: NSView) {
@@ -281,28 +294,78 @@ struct DesktopSidebarVisibilityLock: NSViewRepresentable {
             scrollView.contentInsets = contentInsets
         }
 
-        private func reportFrame(of item: NSSplitViewItem) {
-            guard let contentView = installedWindow?.contentView else { return }
+    }
+}
 
-            let sidebarView = item.viewController.view
-            let frame = sidebarView.convert(sidebarView.bounds, to: contentView)
-            guard frame.width > 0,
-                  frame.height > 0,
-                  reportedSidebarFrame != frame else {
-                return
-            }
+fileprivate final class SidebarFooterHost<Footer: View>: NSView {
+    let hostingView: NSHostingView<Footer>
 
-            reportedSidebarFrame = frame
-            frameReportingTask?.cancel()
-            frameReportingTask = Task { @MainActor [weak self] in
-                await Task.yield()
-                guard !Task.isCancelled,
-                      self?.reportedSidebarFrame == frame else {
-                    return
-                }
-                self?.sidebarFrame.wrappedValue = frame
-            }
+    init(rootView: Footer) {
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.sizingOptions = []
+        self.hostingView = hostingView
+        super.init(frame: .zero)
+        addSubview(hostingView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        hostingView.frame = bounds
+    }
+
+    func update(rootView: Footer) {
+        hostingView.rootView = rootView
+    }
+
+    func place(in sidebarView: NSView, height: CGFloat) {
+        guard let container = footerContainer(above: sidebarView) else { return }
+
+        translatesAutoresizingMaskIntoConstraints = true
+        autoresizingMask = container.isFlipped
+            ? [.width, .minYMargin]
+            : [.width, .maxYMargin]
+
+        let anchor = sidebarView.superview === container ? sidebarView : nil
+        if superview !== container {
+            removeFromSuperview()
+            container.addSubview(self, positioned: .above, relativeTo: anchor)
+        } else if container.subviews.last !== self {
+            container.addSubview(self, positioned: .above, relativeTo: anchor)
         }
+
+        let sidebarFrame = sidebarView.convert(sidebarView.bounds, to: container)
+        let originY = container.isFlipped
+            ? sidebarFrame.maxY - height
+            : sidebarFrame.minY
+        let nextFrame = NSRect(
+            x: sidebarFrame.minX,
+            y: originY,
+            width: sidebarFrame.width,
+            height: height
+        )
+        guard frame != nextFrame else { return }
+        frame = nextFrame
+    }
+
+    /// `NSHostingView` rejects AppKit subviews. The footer sits in the first
+    /// ordinary ancestor so it stays in the sidebar column without becoming
+    /// part of the hosting view.
+    private func footerContainer(above sidebarView: NSView) -> NSView? {
+        var container = sidebarView
+        while Self.isHostingView(container) {
+            guard let parent = container.superview else { return nil }
+            container = parent
+        }
+        return container
+    }
+
+    private static func isHostingView(_ view: NSView) -> Bool {
+        String(describing: type(of: view)).contains("HostingView")
     }
 }
 

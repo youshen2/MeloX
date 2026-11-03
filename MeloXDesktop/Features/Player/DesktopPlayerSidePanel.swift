@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// A trailing overlay that keeps the outgoing page mounted through dismissal.
-/// The incoming page is mounted at presentation start so Music's inspector
-/// content and glass surface travel into view as one unit.
+/// The lyrics or queue column beside the page. Closing it collapses the
+/// column instead of sliding a cover across the page. The glass fills only
+/// this column.
 struct DesktopPlayerSidePanel: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var renderingSelection: DesktopInspector?
