@@ -45,15 +45,18 @@ struct DesktopRootView: View {
             )
         }
         .toolbar(removing: .sidebarToggle)
+        .toolbar(removing: ui.isNowPlayingPresented ? .title : nil)
         .toolbar {
-            ToolbarItem(
-                placement: ui.selection == .search ? .navigation : .primaryAction
-            ) {
-                Button("ui.recognition.title", systemImage: "waveform") {
-                    ui.sheet = .recognition
+            if !ui.isNowPlayingPresented {
+                ToolbarItem(
+                    placement: ui.selection == .search ? .navigation : .primaryAction
+                ) {
+                    Button("ui.recognition.title", systemImage: "waveform") {
+                        ui.sheet = .recognition
+                    }
+                    .help(L10n.string("ui.recognition.title"))
+                    .disabled(ui.sheet != nil)
                 }
-                .help(L10n.string("ui.recognition.title"))
-                .disabled(ui.sheet != nil)
             }
         }
         .toolbarVisibility(
@@ -245,9 +248,11 @@ struct DesktopTabPage: View {
         NavigationStack(path: $ui.path) {
             DesktopSectionContentView(section: section)
                 .desktopBottomPlayerInset()
+                .desktopSuppressedWhileNowPlaying(ui.isNowPlayingPresented)
                 .navigationDestination(for: DesktopRoute.self) { route in
                     DesktopRouteView(route: route)
                         .desktopBottomPlayerInset()
+                        .desktopSuppressedWhileNowPlaying(ui.isNowPlayingPresented)
                 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -312,6 +317,19 @@ struct DesktopSectionContentView: View {
         case .messages:
             DesktopMessagesView()
         }
+    }
+}
+
+extension View {
+    /// The lyrics page covers this navigation stack without replacing it.
+    /// Drop the stack's back button and title so they do not remain in the
+    /// window toolbar. The toolbar itself stays, because hiding it also
+    /// removes the unified titlebar that hosts the player's own controls.
+    func desktopSuppressedWhileNowPlaying(
+        _ isNowPlayingPresented: Bool
+    ) -> some View {
+        navigationBarBackButtonHidden(isNowPlayingPresented)
+            .toolbar(removing: isNowPlayingPresented ? .title : nil)
     }
 }
 
