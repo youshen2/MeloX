@@ -49,9 +49,14 @@ struct DesktopSidebarVisibilityLock<Footer: View>: NSViewRepresentable {
         private weak var installedSidebarItem: NSSplitViewItem?
         private weak var installedSplitViewController: NSSplitViewController?
         private weak var installedSidebarScrollView: NSScrollView?
+        private weak var observedToolbar: NSToolbar?
         private var windowUpdateObserver: NSObjectProtocol?
+        private var toolbarItemObservers: [NSObjectProtocol] = []
+        private var toolbarObservation: NSKeyValueObservation?
         private var deferredConfigurationTask: Task<Void, Never>?
         private var originalBottomContentInset: CGFloat?
+        private var isSuppressingSidebarToggle = false
+        private var isSidebarToggleRemovalScheduled = false
         fileprivate let footerHost: SidebarFooterHost<Footer>
         var reservedBottomInset: CGFloat
 
@@ -82,6 +87,11 @@ struct DesktopSidebarVisibilityLock<Footer: View>: NSViewRepresentable {
                     self?.configureWindow()
                 }
             }
+            toolbarObservation = window.observe(\.toolbar, options: [.initial, .new]) { [weak self] window, _ in
+                MainActor.assumeIsolated {
+                    self?.toolbarDidChange(window.toolbar)
+                }
+            }
 
             configureWindow()
             deferredConfigurationTask = Task { @MainActor [weak self] in
@@ -99,6 +109,8 @@ struct DesktopSidebarVisibilityLock<Footer: View>: NSViewRepresentable {
                 NotificationCenter.default.removeObserver(windowUpdateObserver)
             }
             windowUpdateObserver = nil
+            stopObservingToolbar()
+            isSidebarToggleRemovalScheduled = false
             restoreOriginalBottomContentInset()
             footerHost.removeFromSuperview()
             installedSidebarItem = nil
@@ -110,6 +122,7 @@ struct DesktopSidebarVisibilityLock<Footer: View>: NSViewRepresentable {
 
         private func configureWindow() {
             guard let window = installedWindow else { return }
+            observeToolbar(window.toolbar)
             removeSidebarToggle(from: window.toolbar)
 
             if let installedSidebarItem,
@@ -136,23 +149,102 @@ struct DesktopSidebarVisibilityLock<Footer: View>: NSViewRepresentable {
             }
         }
 
-        private func removeSidebarToggle(from toolbar: NSToolbar?) {
+        /// SwiftUI can replace the window toolbar while switching tabs. Follow
+        /// the live instance so the toggle is hidden before the next display.
+        private func toolbarDidChange(_ toolbar: NSToolbar?) {
+            observeToolbar(toolbar)
+            removeSidebarToggle(from: toolbar)
+        }
+
+        private func observeToolbar(_ toolbar: NSToolbar?) {
+            guard observedToolbar !== toolbar else { return }
+            stopObservingToolbarItems()
+            observedToolbar = toolbar
             guard let toolbar else { return }
 
-            let indexes = toolbar.items.indices.filter { index in
-                let identifier = toolbar.items[index].itemIdentifier
-                if identifier == .toggleSidebar {
-                    return true
+            toolbarItemObservers = [
+                NotificationCenter.default.addObserver(
+                    forName: NSToolbar.willAddItemNotification,
+                    object: toolbar,
+                    queue: .main
+                ) { [weak self] notification in
+                    MainActor.assumeIsolated {
+                        self?.toolbarWillAddItem(notification)
+                    }
                 }
+            ]
+        }
 
-                let rawIdentifier = identifier.rawValue.lowercased()
-                return rawIdentifier.contains("sidebar")
-                    && rawIdentifier.contains("toggle")
+        private func stopObservingToolbar() {
+            toolbarObservation?.invalidate()
+            toolbarObservation = nil
+            stopObservingToolbarItems()
+            observedToolbar = nil
+        }
+
+        private func stopObservingToolbarItems() {
+            for observer in toolbarItemObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            toolbarItemObservers.removeAll()
+        }
+
+        /// AppKit posts this before the item is inserted and has no matching
+        /// did-add notification. Hide first so a synchronous display cannot
+        /// paint the button, then remove it before the run loop waits.
+        private func toolbarWillAddItem(_ notification: Notification) {
+            guard let toolbar = notification.object as? NSToolbar,
+                  toolbar === installedWindow?.toolbar,
+                  let item = notification.userInfo?[NSToolbarUserInfoKey.itemKey] as? NSToolbarItem,
+                  Self.isSidebarToggle(item) else {
+                return
             }
 
+            item.isHidden = true
+            scheduleSidebarToggleRemoval(from: toolbar)
+        }
+
+        private func scheduleSidebarToggleRemoval(from toolbar: NSToolbar) {
+            guard !isSidebarToggleRemovalScheduled else { return }
+            isSidebarToggleRemovalScheduled = true
+            CFRunLoopPerformBlock(
+                CFRunLoopGetMain(),
+                CFRunLoopMode.commonModes.rawValue
+            ) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.removeSidebarToggle(from: toolbar)
+                    self.isSidebarToggleRemovalScheduled = false
+                }
+            }
+            CFRunLoopWakeUp(CFRunLoopGetMain())
+        }
+
+        private func removeSidebarToggle(from toolbar: NSToolbar?) {
+            guard let toolbar, !isSuppressingSidebarToggle else { return }
+
+            let indexes = toolbar.items.indices.filter { index in
+                Self.isSidebarToggle(toolbar.items[index])
+            }
+            guard !indexes.isEmpty else { return }
+
+            isSuppressingSidebarToggle = true
+            defer { isSuppressingSidebarToggle = false }
             for index in indexes.reversed() {
+                toolbar.items[index].isHidden = true
                 toolbar.removeItem(at: index)
             }
+        }
+
+        private static func isSidebarToggle(_ item: NSToolbarItem) -> Bool {
+            let identifier = item.itemIdentifier
+            if identifier == .toggleSidebar {
+                return true
+            }
+
+            let rawIdentifier = identifier.rawValue.lowercased()
+            return rawIdentifier.contains("sidebar")
+                && rawIdentifier.contains("toggle")
         }
 
         private func lockSidebarItems(
