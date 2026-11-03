@@ -256,6 +256,7 @@ struct DesktopSearchView: View {
                     .background(.regularMaterial, in: .capsule)
                     .accessibilityElement(children: .contain)
                 }
+                .desktopIndependentToolbarBackground()
 
                 ToolbarItem(placement: .primaryAction) {
                     Picker("ui.desktop.search.scope", selection: $store.source) {
@@ -264,6 +265,18 @@ struct DesktopSearchView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                }
+
+                if model.ui.inspector != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Color.clear
+                            .frame(
+                                width: DesktopMainWindowMetrics.playerSidePanelWidth,
+                                height: 1
+                            )
+                            .accessibilityHidden(true)
+                    }
+                    .desktopIndependentToolbarBackground()
                 }
             }
         }

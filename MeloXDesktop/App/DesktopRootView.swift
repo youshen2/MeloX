@@ -45,13 +45,18 @@ struct DesktopRootView: View {
             )
         }
         .toolbar(removing: .sidebarToggle)
+        .toolbar(removing: ui.isNowPlayingPresented ? .title : nil)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("ui.recognition.title", systemImage: "waveform") {
-                    ui.sheet = .recognition
+            if !ui.isNowPlayingPresented {
+                ToolbarItem(
+                    placement: ui.selection == .search ? .navigation : .primaryAction
+                ) {
+                    Button("ui.recognition.title", systemImage: "waveform") {
+                        ui.sheet = .recognition
+                    }
+                    .help(L10n.string("ui.recognition.title"))
+                    .disabled(ui.sheet != nil)
                 }
-                .help(L10n.string("ui.recognition.title"))
-                .disabled(ui.sheet != nil)
             }
         }
         .toolbarVisibility(
@@ -62,7 +67,6 @@ struct DesktopRootView: View {
         .background {
             ZStack {
                 DesktopMainWindowConfiguration(
-                    isPlayerSidePanelPresented: ui.inspector != nil,
                     isPlayerPresented: ui.isNowPlayingPresented,
                     isFullScreen: $isWindowFullScreen
                 )
@@ -236,17 +240,19 @@ struct DesktopRootView: View {
 
 struct DesktopTabPage: View {
     @Environment(DesktopAppModel.self) private var model
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let section: DesktopSection
 
     var body: some View {
         @Bindable var ui = model.ui
-        let isInspectorPresented = ui.inspector != nil
 
-        let pageContent = NavigationStack(path: $ui.path) {
+        NavigationStack(path: $ui.path) {
             DesktopSectionContentView(section: section)
+                .desktopBottomPlayerInset()
+                .desktopSuppressedWhileNowPlaying(ui.isNowPlayingPresented)
                 .navigationDestination(for: DesktopRoute.self) { route in
                     DesktopRouteView(route: route)
+                        .desktopBottomPlayerInset()
+                        .desktopSuppressedWhileNowPlaying(ui.isNowPlayingPresented)
                 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -255,46 +261,6 @@ struct DesktopTabPage: View {
             DesktopLoadingStatusPreferenceKey.self
         ) { message in
             model.ui.setContextualLoadingMessage(message, for: section)
-        }
-
-        ZStack(alignment: .trailing) {
-            pageContent
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    DesktopTabBottomPlayerInset()
-                }
-
-            DesktopPlayerSidePanel(
-                selection: ui.retainedInspector,
-                isPresented: isInspectorPresented
-            )
-            .frame(
-                width: DesktopMainWindowMetrics.playerSidePanelWidth
-            )
-            .offset(
-                x: isInspectorPresented
-                    ? 0
-                    : DesktopMainWindowMetrics.playerSidePanelWidth
-            )
-            .opacity(isInspectorPresented ? 1 : 0)
-            .allowsHitTesting(isInspectorPresented)
-            .accessibilityHidden(!isInspectorPresented)
-            .zIndex(2)
-            .animation(
-                reduceMotion
-                    ? nil
-                    : DesktopMainWindowMetrics.presentationAnimation,
-                value: isInspectorPresented
-            )
-
-            if section == ui.selection {
-                DesktopTabBottomPlayer()
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .bottom
-                    )
-                    .zIndex(3)
-            }
         }
     }
 }
@@ -350,6 +316,32 @@ struct DesktopSectionContentView: View {
             DesktopLibraryView(section: section)
         case .messages:
             DesktopMessagesView()
+        }
+    }
+}
+
+extension View {
+    /// The lyrics page covers this navigation stack without replacing it.
+    /// Drop the stack's back button and title so they do not remain in the
+    /// window toolbar. The toolbar itself stays, because hiding it also
+    /// removes the unified titlebar that hosts the player's own controls.
+    func desktopSuppressedWhileNowPlaying(
+        _ isNowPlayingPresented: Bool
+    ) -> some View {
+        navigationBarBackButtonHidden(isNowPlayingPresented)
+            .toolbar(removing: isNowPlayingPresented ? .title : nil)
+    }
+}
+
+extension ToolbarContent {
+    /// Keeps a toolbar item from sharing the macOS 26 glass capsule with
+    /// the item beside it. Earlier systems have no shared toolbar background.
+    @ToolbarContentBuilder
+    func desktopIndependentToolbarBackground() -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
         }
     }
 }

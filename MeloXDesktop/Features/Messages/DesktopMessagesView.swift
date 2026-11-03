@@ -1,5 +1,32 @@
 import SwiftUI
 
+/// Scroll content can pass under the floating player. This inset only keeps
+/// the last row clear once a list is scrolled to the bottom. `HSplitView`
+/// does not inherit the page safe-area inset.
+private func desktopPlayerScrollContentInset(
+    _ model: DesktopAppModel
+) -> CGFloat {
+    guard model.player.currentSong != nil else { return 0 }
+    return model.player.playbackIssue == nil
+        ? DesktopBottomPlayerMetrics.regularGlobalInsetHeight
+        : DesktopBottomPlayerMetrics.issueGlobalInsetHeight
+}
+
+/// `List` and `ScrollView` inside `HSplitView` ignore `contentMargins`, so the
+/// end inset has to be real scroll content. It stays under the player until
+/// the list is scrolled to the bottom.
+@ViewBuilder
+private func playerScrollEndSpacer(_ height: CGFloat) -> some View {
+    if height > 0 {
+        Color.clear
+            .frame(height: height)
+            .accessibilityHidden(true)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
+}
+
 struct DesktopMessagesView: View {
     @Environment(DesktopAppModel.self) private var model
     @State private var conversations: [NeteasePrivateConversation] = []
@@ -134,6 +161,7 @@ struct DesktopMessagesView: View {
                             : Color.clear
                     )
                 }
+                playerScrollEndSpacer(desktopPlayerScrollContentInset(model))
             }
             .listStyle(.plain)
             .overlay {
@@ -296,6 +324,7 @@ private struct DesktopConversationPane: View {
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending)
             }
             .padding(14)
+            .padding(.bottom, desktopPlayerScrollContentInset(model))
         }
         .task { await load() }
     }
