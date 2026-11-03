@@ -266,6 +266,18 @@ struct DesktopSearchView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
+
+                if model.ui.inspector != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Color.clear
+                            .frame(
+                                width: DesktopMainWindowMetrics.playerSidePanelWidth,
+                                height: 1
+                            )
+                            .accessibilityHidden(true)
+                    }
+                    .desktopIndependentToolbarBackground()
+                }
             }
         }
         .task(id: "\(model.settings.searchSuggestionsEnabled):\(store.source):\(store.query)") {
