@@ -2153,3 +2153,10 @@
 "ui.settings.general.cache_page_content" = "Cache Home and Library";
 "ui.settings.general.compact_home_actions" = "Compact Home Shortcuts";
 "ui.settings.general.cache_page_content.footer" = "Save successfully loaded recommendations, library lists, and playlist details. Show cached content first, then refresh online. Clear it in Storage.";
+
+"ui.library.search.prompt" = "Search favorite songs, artists, or albums";
+"ui.library.search.clear" = "Clear search";
+"ui.library.search.results" = "%@ matching songs";
+"ui.library.search.loading" = "Searching all favorites…";
+"ui.library.search.empty.title" = "No favorite songs found";
+"ui.library.search.empty.description" = "Try another song, artist, or album name.";

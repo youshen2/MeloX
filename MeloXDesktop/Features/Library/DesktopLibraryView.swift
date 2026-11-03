@@ -17,6 +17,7 @@ struct DesktopLibraryView: View {
     @State private var trackLocator = DesktopCollectionTrackLocator()
     @State private var songToLocate: Int?
     @State private var locateErrorMessage: String?
+    @State private var favoriteSearchText = ""
 
     private let columns = [
         GridItem(.adaptive(minimum: 145, maximum: 205), spacing: 20)
@@ -69,6 +70,38 @@ struct DesktopLibraryView: View {
         .onChange(of: section) {
             songToLocate = nil
             trackLocator.reset()
+            favoriteSearchText = ""
+        }
+        .toolbar {
+            if section == .songs && !model.ui.isNowPlayingPresented {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("ui.library.search.prompt", text: $favoriteSearchText)
+                            .textFieldStyle(.plain)
+                        if !favoriteSearchText.isEmpty {
+                            Button {
+                                favoriteSearchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help(L10n.string("ui.library.search.clear"))
+                            .accessibilityLabel("ui.library.search.clear")
+                        }
+                    }
+                    .padding(.horizontal, 13)
+                    .frame(width: 332, height: 36)
+                    .background(.regularMaterial, in: .capsule)
+                    .accessibilityElement(children: .contain)
+                }
+            }
+        }
+        .task(id: shouldLoadFavoriteSearch) {
+            guard shouldLoadFavoriteSearch else { return }
+            await model.library.loadRemainingFavoriteSongs()
         }
         .desktopLoadingStatus(
             L10n.string("ui.collection.locating_playing"),
@@ -180,6 +213,9 @@ struct DesktopLibraryView: View {
             .disabled(
                 model.library.favoriteSongs.isEmpty
                     || isPreparingPlayback
+                    || (!favoriteSearchQuery.isEmpty
+                        && (model.library.hasMoreFavoriteSongs
+                            || filteredFavoriteSongs.isEmpty))
             )
         case .downloads:
             Button("ui.common.play_all", systemImage: "play.fill") {
@@ -227,25 +263,85 @@ struct DesktopLibraryView: View {
 
     private var favoriteSongList: some View {
         VStack(spacing: 0) {
-            songList(
-                model.library.favoriteSongs,
-                loadMoreToken: model.library.hasMoreFavoriteSongs
-                    ? model.library.favoriteSongsNextOffset
-                    : nil,
-                onLoadMore: {
-                    await model.library.loadMoreFavoriteSongs()
+            if !favoriteSearchQuery.isEmpty {
+                Text(L10n.format(
+                    "ui.library.search.results",
+                    L10n.integer(filteredFavoriteSongs.count)
+                ))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 12)
+            }
+
+            if !favoriteSearchQuery.isEmpty,
+               filteredFavoriteSongs.isEmpty,
+               !model.library.hasMoreFavoriteSongs {
+                ContentUnavailableView(
+                    "ui.library.search.empty.title",
+                    systemImage: "magnifyingglass",
+                    description: Text("ui.library.search.empty.description")
+                )
+                .frame(maxWidth: .infinity, minHeight: 280)
+            } else if !favoriteSearchQuery.isEmpty {
+                if !filteredFavoriteSongs.isEmpty {
+                    songList(filteredFavoriteSongs)
                 }
-            )
+            } else {
+                songList(
+                    model.library.favoriteSongs,
+                    loadMoreToken: model.library.hasMoreFavoriteSongs
+                        ? model.library.favoriteSongsNextOffset
+                        : nil,
+                    onLoadMore: {
+                        await model.library.loadMoreFavoriteSongs()
+                    }
+                )
+            }
 
             if model.library.hasMoreFavoriteSongs {
                 DesktopCollectionPaginationFooter(
-                    isLoading: model.library.isLoadingMoreFavoriteSongs,
+                    isLoading: model.library.isLoadingMoreFavoriteSongs
+                        || (shouldLoadFavoriteSearch
+                            && model.library.favoriteSongsLoadMoreError == nil),
                     failureMessage:
-                        model.library.favoriteSongsLoadMoreError
+                        model.library.favoriteSongsLoadMoreError,
+                    loadingTitle: L10n.string(
+                        favoriteSearchQuery.isEmpty
+                            ? "ui.common.loading_more_songs"
+                            : "ui.library.search.loading"
+                    )
                 ) {
-                    await model.library.loadMoreFavoriteSongs()
+                    if favoriteSearchQuery.isEmpty {
+                        await model.library.loadMoreFavoriteSongs()
+                    } else {
+                        await model.library.loadRemainingFavoriteSongs()
+                    }
                 }
             }
+        }
+    }
+
+    private var favoriteSearchQuery: String {
+        favoriteSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var shouldLoadFavoriteSearch: Bool {
+        section == .songs && !favoriteSearchQuery.isEmpty
+            && model.library.phase != .loading
+    }
+
+    private var filteredFavoriteSongs: [Song] {
+        guard !favoriteSearchQuery.isEmpty else {
+            return model.library.favoriteSongs
+        }
+        return model.library.favoriteSongs.filter { song in
+            FavoriteSongSearch.matches(
+                query: favoriteSearchQuery,
+                title: song.name,
+                artist: song.artistText,
+                album: song.album?.name
+            )
         }
     }
 
@@ -509,7 +605,12 @@ struct DesktopLibraryView: View {
         Task { @MainActor in
             defer { isPreparingPlayback = false }
             do {
-                let songs = try await model.library.favoriteSongsForPlayback()
+                let songs: [Song]
+                if favoriteSearchQuery.isEmpty {
+                    songs = try await model.library.favoriteSongsForPlayback()
+                } else {
+                    songs = filteredFavoriteSongs
+                }
                 try Task.checkCancellation()
                 await model.player.playAll(songs)
             } catch is CancellationError {
