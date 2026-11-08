@@ -43,8 +43,6 @@ struct ContentFeatureSettingsView: View {
                 }
             } header: {
                 Text("ui.settings.background_mix.title")
-            } footer: {
-                Text("ui.settings.background_mix.always.footer")
             }
         }
         .navigationTitle("ui.settings.catalog.features.title")

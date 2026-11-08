@@ -333,7 +333,6 @@
 "ui.settings.background_mix.keywords" = "mix|background|simultaneous|Control Center|Lock Screen|game";
 "ui.settings.background_mix.always.title" = "Mix playback";
 "ui.settings.background_mix.always.subtitle" = "Play alongside other apps";
-"ui.settings.background_mix.always.footer" = "Other apps can make sound without pausing MeloX, but Control Center, the Lock Screen, and the spatial audio panel may stop showing playback info.";
 "ui.settings.catalog.features.title" = "Feature Modules";
 "ui.settings.catalog.features.subtitle" = "Enable or disable podcasts, downloads, Cloud Music, and Recently Played";
 "ui.settings.catalog.features.keywords" = "toggle|hide|podcasts|radio|downloads|cloud|recently played|playback history";
