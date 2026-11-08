@@ -1392,7 +1392,7 @@
 "ui.heart_mode.manage_hint" = "轻点管理心动模式";
 "ui.heart_mode.turn_off" = "关闭心动模式";
 "ui.heart_mode.turn_off_message" = "关闭后会保留当前播放队列。";
-"ui.listen_together.playback_mode_managed" = "一起听期间由房间统一管理播放模式";
+"ui.listen_together.playback_mode_managed" = "一起听期间不能使用自动播放和自动混音";
 "ui.listen_together.room" = "一起听房间";
 "ui.listen_together.start" = "发起一起听";
 "ui.podcasts.go_to" = "前往播客：%@";

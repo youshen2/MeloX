@@ -1392,7 +1392,7 @@
 "ui.heart_mode.manage_hint" = "Tap to manage Heart Mode";
 "ui.heart_mode.turn_off" = "Turn Off Heart Mode";
 "ui.heart_mode.turn_off_message" = "The current playback queue is preserved when Heart Mode is turned off.";
-"ui.listen_together.playback_mode_managed" = "Playback modes are managed by the room during Listen Together";
+"ui.listen_together.playback_mode_managed" = "Autoplay and AutoMix are unavailable during Listen Together";
 "ui.listen_together.room" = "Listen Together Room";
 "ui.listen_together.start" = "Start Listen Together";
 "ui.podcasts.go_to" = "Go to Podcast: %@";

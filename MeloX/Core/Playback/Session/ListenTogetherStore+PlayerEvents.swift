@@ -10,7 +10,11 @@ extension ListenTogetherStore {
             return
         }
         Task { @MainActor [weak self] in
-            await self?.reportLocalCommand(
+            guard let self,
+                  self.player.currentSong?.id == targetSongID else {
+                return
+            }
+            await self.reportLocalCommand(
                 type: .goTo,
                 formerSongID: formerSongID,
                 targetSongID: targetSongID
@@ -20,15 +24,15 @@ extension ListenTogetherStore {
 
     func playerPlaybackDidChange(isPlaying: Bool) {
         guard shouldReportLocalChanges,
-              player.currentSong != nil else {
+              let songID = player.currentSong?.id else {
             return
         }
-        if !isPlaying, player.isLoading {
+        if !isPlaying, player.isLoading || player.isPreparingListenTogetherAutoplay {
             return
         }
         Task { @MainActor [weak self] in
             guard let self,
-                  let songID = self.player.currentSong?.id else {
+                  self.player.currentSong?.id == songID else {
                 return
             }
             await self.reportLocalCommand(
@@ -45,7 +49,11 @@ extension ListenTogetherStore {
             return
         }
         Task { @MainActor [weak self] in
-            await self?.reportLocalCommand(
+            guard let self,
+                  self.player.currentSong?.id == songID else {
+                return
+            }
+            await self.reportLocalCommand(
                 type: .progress,
                 formerSongID: songID,
                 targetSongID: songID
@@ -143,7 +151,7 @@ extension ListenTogetherStore {
             progressMilliseconds: Int64(
                 (player.estimatedProgress() * 1_000).rounded()
             ),
-            isPlaying: player.isPlaying,
+            isPlaying: player.listenTogetherReportedPlaying,
             formerSongID: formerSongID,
             targetSongID: targetSongID,
             clientSequence: nextClientSequence()
@@ -158,7 +166,7 @@ extension ListenTogetherStore {
         try await api.sendListenTogetherHeartbeat(
             roomID: room.id,
             songID: songID,
-            isPlaying: player.isPlaying,
+            isPlaying: player.listenTogetherReportedPlaying,
             progressMilliseconds: Int64(
                 (player.estimatedProgress() * 1_000).rounded()
             )

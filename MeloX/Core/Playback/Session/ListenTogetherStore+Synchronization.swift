@@ -117,17 +117,33 @@ extension ListenTogetherStore {
             )
         ) / 1_000
 
+        // Defer before opening the report-suppression window. A no-op poll
+        // must not swallow the play command for the track now loading.
+        if !shouldPlay,
+           player.isPreparingListenTogetherAutoplay,
+           player.currentSong?.id == targetSongID {
+            return
+        }
+
         isApplyingRemoteState = true
         suppressReportsUntil = Date.now.addingTimeInterval(1)
         defer { isApplyingRemoteState = false }
-        await player.synchronizeListenTogetherPlayback(
+        let applied = await player.synchronizeListenTogetherPlayback(
             songs: songs,
             targetSongID: targetSongID,
             progress: progress,
             isPlaying: shouldPlay,
             shouldSeek: initial || commandChanged,
-            playMode: payload.playlist?.playMode
+            // Polls must not copy the room play mode. Doing so clears a
+            // local repeat or shuffle choice on every echoed command.
+            adoptsRoomPlayMode: initial,
+            playMode: payload.playlist?.playMode,
+            commandType: command?.commandType
         )
+        guard applied else {
+            suppressReportsUntil = .distantPast
+            return
+        }
 
         lastPlaylistSignature = playlistSignature
         lastCommandSignature = commandSignature

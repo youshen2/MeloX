@@ -31,9 +31,8 @@ struct ListenTogetherAppCoordinationModifier: ViewModifier {
             .onChange(of: player.queue.map(\.id)) {
                 listenTogether.playerQueueDidChange()
             }
-            .onChange(of: player.isShuffled) {
-                listenTogether.playerQueueDidChange()
-            }
+            // Local shuffle is not a playlist change. The next track is
+            // reported when currentSong changes.
             .alert(
                 "ui.listen_together.title",
                 isPresented: noticePresented

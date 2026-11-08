@@ -100,11 +100,21 @@ final class PlayerStore {
     var listenTogetherDisplaySongIDs: [Int] {
         queue.map(\.id)
     }
+    /// Room playlist reports stay in display order. Shuffle only chooses the
+    /// next track on this device; publishing the permutation makes the server
+    /// echo a reordered queue back to both sides.
     var listenTogetherRandomSongIDs: [Int] {
-        guard isShuffled else { return listenTogetherDisplaySongIDs }
-        return playbackQueue.persistedShuffleOrder.compactMap { index in
-            queue.indices.contains(index) ? queue[index].id : nil
-        }
+        listenTogetherDisplaySongIDs
+    }
+    /// True while this device is resolving the next listen-together track and
+    /// intends to play it. `isPlaying` is still false during that gap.
+    var isPreparingListenTogetherAutoplay: Bool {
+        isListenTogetherSessionActive
+            && currentLoadShouldAutoplay
+            && (isLoading || isResolvingSource)
+    }
+    var listenTogetherReportedPlaying: Bool {
+        isPlaying || isPreparingListenTogetherAutoplay
     }
     var isAutoMixTransitioning: Bool {
         autoMixTransitionProgress != nil
@@ -227,6 +237,10 @@ final class PlayerStore {
     private var listenTogetherSavedPlaybackOptions:
         ListenTogetherSavedPlaybackOptions?
 
+    /// Set when the user changes shuffle or repeat after the room session
+    /// starts, so the initial server snapshot cannot overwrite that choice.
+    private var listenTogetherPlayModeTouched = false
+
     init(
         api: NeteaseAPI,
         settings: AppSettings,
@@ -321,6 +335,7 @@ final class PlayerStore {
                 autoMixEnabled: isAutoMixEnabled
             )
         isListenTogetherSessionActive = true
+        listenTogetherPlayModeTouched = false
         repeatMode = .all
         if isShuffled {
             playbackQueue.toggleShuffle()
@@ -339,6 +354,7 @@ final class PlayerStore {
         }
         listenTogetherSavedPlaybackOptions = nil
         isListenTogetherSessionActive = false
+        listenTogetherPlayModeTouched = false
         repeatMode = saved.repeatMode
         if isShuffled != saved.wasShuffled {
             playbackQueue.toggleShuffle()
@@ -356,17 +372,44 @@ final class PlayerStore {
         progress targetProgress: TimeInterval,
         isPlaying shouldPlay: Bool,
         shouldSeek: Bool,
-        playMode: String?
-    ) async {
+        adoptsRoomPlayMode: Bool,
+        playMode: String?,
+        commandType: String? = nil
+    ) async -> Bool {
         guard !songs.isEmpty,
               let targetIndex = songs.firstIndex(where: {
                   $0.id == targetSongID
               }) else {
-            return
+            return true
         }
 
         isHeartModeActive = false
-        applyListenTogetherPlayMode(playMode)
+        if adoptsRoomPlayMode, !listenTogetherPlayModeTouched {
+            applyListenTogetherPlayMode(playMode)
+        }
+        // A pause for the song we just auto-advanced into is the echo of the
+        // load gap (isPlaying is still false). Leave it unconsumed so a real
+        // pause can apply once this handoff finishes.
+        if !shouldPlay,
+           isPreparingListenTogetherAutoplay,
+           currentSong?.id == targetSongID {
+            return false
+        }
+        // The same handoff already owns this song. Reloading it here cancels
+        // the in-flight source request and opens another paused gap.
+        if shouldPlay,
+           isPreparingListenTogetherAutoplay,
+           currentSong?.id == targetSongID {
+            return true
+        }
+        if shouldIgnoreStaleListenTogetherTransport(
+            songs: songs,
+            targetSongID: targetSongID,
+            shouldPlay: shouldPlay,
+            commandType: commandType
+        ) {
+            return true
+        }
         let queueChanged = songs.map(\.id) != queue.map(\.id)
         let songChanged = currentSong?.id != targetSongID
 
@@ -390,7 +433,7 @@ final class PlayerStore {
                 autoplay: shouldPlay,
                 startAt: max(targetProgress, 0)
             )
-            return
+            return true
         }
 
         currentSong = songs[targetIndex]
@@ -416,6 +459,24 @@ final class PlayerStore {
         }
         updateNowPlayingState()
         persistSnapshot()
+        return true
+    }
+
+    private func shouldIgnoreStaleListenTogetherTransport(
+        songs: [Song],
+        targetSongID: Int,
+        shouldPlay: Bool,
+        commandType: String?
+    ) -> Bool {
+        guard isListenTogetherSessionActive,
+              !shouldPlay,
+              currentSong?.id != targetSongID,
+              isPlaying || isPreparingListenTogetherAutoplay,
+              songs.map(\.id) == queue.map(\.id) else {
+            return false
+        }
+        let type = commandType?.uppercased() ?? ""
+        return !["GOTO", "NEXT", "PREV", "PLAY"].contains(type)
     }
 
     private func applyListenTogetherPlayMode(_ playMode: String?) {
@@ -429,9 +490,6 @@ final class PlayerStore {
             repeatMode = .all
         } else {
             repeatMode = .off
-        }
-        if isShuffled {
-            playbackQueue.toggleShuffle()
         }
         updateQueueModeIndicator()
     }
@@ -914,7 +972,9 @@ final class PlayerStore {
     }
 
     func cycleRepeatMode() {
-        guard !isListenTogetherSessionActive else { return }
+        if isListenTogetherSessionActive {
+            listenTogetherPlayModeTouched = true
+        }
         cancelAutoMixPreparation()
         switch repeatMode {
         case .off:
@@ -931,7 +991,9 @@ final class PlayerStore {
     }
 
     func toggleShuffle() {
-        guard !isListenTogetherSessionActive else { return }
+        if isListenTogetherSessionActive {
+            listenTogetherPlayModeTouched = true
+        }
         cancelAutoMixPreparation()
         playbackQueue.toggleShuffle()
         if isShuffled {
@@ -1012,6 +1074,11 @@ final class PlayerStore {
         cancelAutoMixPreparation()
         loadGeneration += 1
         let generation = loadGeneration
+        // Publish play intent before unload and before `currentSong` changes.
+        // Listen-together observes both, and the new item is not playing yet.
+        currentLoadShouldAutoplay = autoplay
+        isResolvingSource = true
+        isLoading = true
         // Unloading can publish the outgoing deck's final clock sample.
         // Finish those callbacks before initializing the incoming song's timeline.
         engine.unload()
@@ -1029,13 +1096,10 @@ final class PlayerStore {
             to: playbackStartPosition,
             rate: 0
         )
-        isResolvingSource = true
-        isLoading = true
         isPlaying = false
         isUsingDownloadedSource = false
         currentPlaybackSource = nil
         effectivePlaybackQuality = nil
-        currentLoadShouldAutoplay = autoplay
         playbackIssue = nil
         if nowPlayingLyricsSongID != song.id {
             nowPlayingLyricsSongID = nil

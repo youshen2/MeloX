@@ -230,6 +230,7 @@ private struct NowPlayingQueueModeControls: View {
             modeButton(
                 systemImage: "shuffle",
                 isSelected: player.isShuffled,
+                isEnabled: true,
                 accessibilityLabel:
                     player.isShuffled
                         ? L10n.string("ui.player.shuffle_off")
@@ -240,6 +241,7 @@ private struct NowPlayingQueueModeControls: View {
             modeButton(
                 systemImage: player.repeatMode.systemImage,
                 isSelected: player.repeatMode != .off,
+                isEnabled: true,
                 accessibilityLabel:
                     player.repeatMode.accessibilityTitle,
                 action: cycleRepeatMode
@@ -248,6 +250,7 @@ private struct NowPlayingQueueModeControls: View {
             modeButton(
                 systemImage: "infinity",
                 isSelected: player.isAutoplayEnabled,
+                isEnabled: !player.isListenTogetherSessionActive,
                 accessibilityLabel:
                     player.isAutoplayEnabled
                         ? L10n.string("ui.player.autoplay_off")
@@ -258,6 +261,7 @@ private struct NowPlayingQueueModeControls: View {
             modeButton(
                 systemImage: "circle.circle.fill",
                 isSelected: player.isAutoMixEnabled,
+                isEnabled: !player.isListenTogetherSessionActive,
                 accessibilityLabel:
                     player.isAutoMixEnabled
                         ? L10n.string("ui.player.automix_off")
@@ -265,17 +269,12 @@ private struct NowPlayingQueueModeControls: View {
                 action: toggleAutoMix
             )
         }
-        .disabled(player.isListenTogetherSessionActive)
-        .accessibilityHint(
-            player.isListenTogetherSessionActive
-                ? L10n.string("ui.listen_together.playback_mode_managed")
-                : ""
-        )
     }
 
     private func modeButton(
         systemImage: String,
         isSelected: Bool,
+        isEnabled: Bool,
         accessibilityLabel: String,
         action: @escaping () -> Void
     ) -> some View {
@@ -299,7 +298,13 @@ private struct NowPlayingQueueModeControls: View {
                 .contentShape(.rect(cornerRadius: 22))
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(
+            isEnabled
+                ? ""
+                : L10n.string("ui.listen_together.playback_mode_managed")
+        )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
