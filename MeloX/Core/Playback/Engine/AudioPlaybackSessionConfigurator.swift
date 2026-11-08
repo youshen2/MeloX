@@ -10,12 +10,7 @@ enum AudioPlaybackSessionConfigurator {
     /// When on, the playback session stays mixable so other apps do not interrupt it.
     static var preferredMixMode: AudioPlaybackMixMode = .exclusive
 
-    private static var isApplyingConfiguration = false
-    private static var ignoreInterruptionsUntil = Date.distantPast
-
-    static var shouldIgnoreInterruption: Bool {
-        isApplyingConfiguration || Date.now < ignoreInterruptionsUntil
-    }
+    private(set) static var isApplyingConfiguration = false
 
     static func activate() throws {
         let session = AVAudioSession.sharedInstance()
@@ -31,10 +26,6 @@ enum AudioPlaybackSessionConfigurator {
             || session.categoryOptions != options
 
         isApplyingConfiguration = true
-        if needsCategory {
-            // setCategory can post an interruption. Ignore that one and keep playing.
-            ignoreInterruptionsUntil = Date.now.addingTimeInterval(0.6)
-        }
         defer { isApplyingConfiguration = false }
 
         if needsCategory {

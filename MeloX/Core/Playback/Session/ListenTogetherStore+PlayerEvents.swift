@@ -1,109 +1,101 @@
 import Foundation
 
 struct PendingListenTogetherTransportReport {
-    var type: ListenTogetherCommandType
-    var formerSongID: Int?
-    var targetSongID: Int
+    let type: ListenTogetherCommandType
+    let formerSongID: Int?
+    let targetSongID: Int
+    let isPlaying: Bool
+    let progressMilliseconds: Int64
 }
 
 extension ListenTogetherStore {
-    func playerSongDidChange(
-        from formerSongID: Int?,
-        to targetSongID: Int?
-    ) {
-        guard shouldReportLocalChanges,
-              let targetSongID else {
-            return
-        }
-        scheduleLocalTransportReport(
-            type: .goTo,
-            formerSongID: formerSongID,
-            targetSongID: targetSongID
-        )
-    }
-
-    func playerPlaybackDidChange(isPlaying: Bool) {
-        guard shouldReportLocalChanges,
-              let songID = player.currentSong?.id else {
-            return
-        }
-        if !isPlaying, player.isLoading || player.isPreparingListenTogetherAutoplay {
-            return
-        }
-        scheduleLocalTransportReport(
-            type: isPlaying ? .play : .pause,
-            formerSongID: songID,
-            targetSongID: songID
-        )
-    }
-
-    func playerDidSeek() {
-        guard shouldReportLocalChanges,
-              let songID = player.currentSong?.id else {
-            return
-        }
-        scheduleLocalTransportReport(
-            type: .progress,
-            formerSongID: songID,
-            targetSongID: songID
-        )
-    }
-
-    /// Only the newest local transport action is sent. An older progress or
-    /// pause request that finishes after a track change would otherwise become
-    /// the room's latest command and pull playback backward.
-    private func scheduleLocalTransportReport(
+    func playerTransportDidChange(
         type: ListenTogetherCommandType,
-        formerSongID: Int?,
-        targetSongID: Int
+        formerSongID: Int?
     ) {
+        guard isInRoom, operation != .leaving,
+              let targetSongID = player.currentSong?.id else { return }
+        localChangeRevision += 1
+        let pending = pendingTransportReport
+        let preservesTrackChange = pending?.type == .goTo
+            && pending?.targetSongID == targetSongID
+        let isPlaying: Bool
+        switch type {
+        case .play: isPlaying = true
+        case .pause: isPlaying = false
+        default: isPlaying = player.listenTogetherReportedPlaying
+        }
         pendingTransportReport = PendingListenTogetherTransportReport(
-            type: type,
-            formerSongID: formerSongID,
-            targetSongID: targetSongID
+            type: preservesTrackChange ? .goTo : type,
+            formerSongID: preservesTrackChange ? pending?.formerSongID : formerSongID,
+            targetSongID: targetSongID,
+            isPlaying: isPlaying,
+            progressMilliseconds: Int64((player.estimatedProgress() * 1_000).rounded())
         )
-        transportReportTask?.cancel()
+        guard transportReportTask == nil else { return }
+        let session = sessionRevision
         transportReportTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(40))
-            guard let self, !Task.isCancelled else { return }
-            guard let pending = self.pendingTransportReport else { return }
-            self.pendingTransportReport = nil
-            guard self.shouldReportLocalChanges,
-                  self.player.currentSong?.id == pending.targetSongID else {
-                return
+            await self?.sendPendingTransportReports(session: session)
+        }
+    }
+
+    private func sendPendingTransportReports(session: Int) async {
+        defer {
+            if sessionRevision == session {
+                transportReportTask = nil
             }
-            await self.reportLocalCommand(
-                type: pending.type,
-                formerSongID: pending.formerSongID,
-                targetSongID: pending.targetSongID
-            )
+        }
+        // Merge nearby actions before sending. Once sent, finish that request
+        // before starting the next one so it cannot overtake the newer action.
+        while !Task.isCancelled, sessionRevision == session,
+              pendingTransportReport != nil {
+            do {
+                try await Task.sleep(for: .milliseconds(40))
+                guard sessionRevision == session, operation != .leaving,
+                      let pending = pendingTransportReport else { return }
+                pendingTransportReport = nil
+                try await sendCommand(
+                    type: pending.type,
+                    formerSongID: pending.formerSongID,
+                    targetSongID: pending.targetSongID,
+                    isPlaying: pending.isPlaying,
+                    progressMilliseconds: pending.progressMilliseconds
+                )
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled, sessionRevision == session else { return }
+                connectionState = .reconnecting
+            }
         }
     }
 
     func playerQueueDidChange() {
-        guard shouldReportLocalChanges else { return }
+        guard isInRoom, operation != .leaving else { return }
+        localChangeRevision += 1
         queueReportTask?.cancel()
+        queueReportRevision += 1
+        let session = sessionRevision
+        let revision = queueReportRevision
         queueReportTask = Task { @MainActor [weak self] in
+            defer {
+                if let self, self.sessionRevision == session,
+                   self.queueReportRevision == revision {
+                    self.queueReportTask = nil
+                }
+            }
             do {
                 try await Task.sleep(for: .milliseconds(350))
-                guard let self,
-                      self.shouldReportLocalChanges else {
-                    return
-                }
+                guard !Task.isCancelled, let self,
+                      self.sessionRevision == session,
+                      self.operation != .leaving else { return }
                 try await self.sendPlaylistSnapshot()
-            } catch is CancellationError {
-                return
             } catch {
-                self?.connectionState = .reconnecting
+                guard !Task.isCancelled, let self,
+                      self.sessionRevision == session else { return }
+                self.connectionState = .reconnecting
             }
         }
-    }
-
-    private var shouldReportLocalChanges: Bool {
-        isInRoom
-            && !isApplyingRemoteState
-            && Date.now >= suppressReportsUntil
-            && operation != .leaving
     }
 
     func sendPlaylistSnapshot() async throws {
@@ -116,10 +108,11 @@ extension ListenTogetherStore {
             throw ListenTogetherSessionError.noCurrentSong
         }
         let randomSongIDs = player.listenTogetherRandomSongIDs
+        clientSequence += 1
         try await api.reportListenTogetherPlaylist(
             roomID: room.id,
             userID: localUserID,
-            version: nextClientSequence(),
+            version: clientSequence,
             displaySongIDs: displaySongIDs,
             randomSongIDs: randomSongIDs.isEmpty
                 ? displaySongIDs
@@ -140,40 +133,29 @@ extension ListenTogetherStore {
         )
     }
 
-    private func reportLocalCommand(
-        type: ListenTogetherCommandType,
-        formerSongID: Int?,
-        targetSongID: Int
-    ) async {
-        do {
-            try await sendCommand(
-                type: type,
-                formerSongID: formerSongID,
-                targetSongID: targetSongID
-            )
-        } catch is CancellationError {
-            return
-        } catch {
-            connectionState = .reconnecting
-        }
-    }
-
     private func sendCommand(
         type: ListenTogetherCommandType,
         formerSongID: Int?,
-        targetSongID: Int
+        targetSongID: Int,
+        isPlaying: Bool? = nil,
+        progressMilliseconds: Int64? = nil
     ) async throws {
         guard let room else { return }
+        clientSequence += 1
+        locallyReportedCommandSequences.append(clientSequence)
+        if locallyReportedCommandSequences.count > 16 {
+            locallyReportedCommandSequences.removeFirst()
+        }
         try await api.reportListenTogetherCommand(
             roomID: room.id,
             commandType: type,
-            progressMilliseconds: Int64(
+            progressMilliseconds: progressMilliseconds ?? Int64(
                 (player.estimatedProgress() * 1_000).rounded()
             ),
-            isPlaying: player.listenTogetherReportedPlaying,
+            isPlaying: isPlaying ?? player.listenTogetherReportedPlaying,
             formerSongID: formerSongID,
             targetSongID: targetSongID,
-            clientSequence: nextClientSequence()
+            clientSequence: clientSequence
         )
     }
 
@@ -192,46 +174,11 @@ extension ListenTogetherStore {
         )
     }
 
-    private func nextClientSequence() -> Int {
-        clientSequence += 1
-        locallyReportedCommandSequences.append(clientSequence)
-        if locallyReportedCommandSequences.count > 16 {
-            locallyReportedCommandSequences.removeFirst(
-                locallyReportedCommandSequences.count - 16
-            )
-        }
-        return clientSequence
-    }
-
-    func commandOriginatedLocally(
-        _ command: ListenTogetherPlayCommand?
-    ) -> Bool {
-        guard let command else { return false }
-        if let userID = command.userID,
-           let localUserID,
-           userID == String(localUserID) {
-            return true
-        }
-        // clientSeq is per device and both sides start at 1, so it is only
-        // a hint when the server omitted userId.
-        guard command.userID == nil, command.clientSequence > 0 else {
-            return false
-        }
-        return locallyReportedCommandSequences.contains(
-            Int(command.clientSequence)
-        )
-    }
-
-    /// A command this device sent, but not the newest one. Applying it would
-    /// restore an older song or position after playback has already moved on.
-    func isSupersededLocalCommand(
-        _ command: ListenTogetherPlayCommand?
-    ) -> Bool {
-        guard let command, commandOriginatedLocally(command),
-              command.clientSequence > 0,
-              let latest = locallyReportedCommandSequences.last else {
-            return false
-        }
-        return Int(command.clientSequence) < latest
+    func commandOriginatedLocally(_ command: ListenTogetherPlayCommand?) -> Bool {
+        guard let command,
+              let localUserID,
+              command.userID == String(localUserID),
+              let sequence = Int(exactly: command.clientSequence) else { return false }
+        return locallyReportedCommandSequences.contains(sequence)
     }
 }

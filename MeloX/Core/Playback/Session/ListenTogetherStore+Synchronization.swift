@@ -3,7 +3,6 @@ import Foundation
 extension ListenTogetherStore {
     func startMonitoring() {
         monitorTask?.cancel()
-        suppressReportsUntil = Date.now.addingTimeInterval(1)
         monitorTask = Task { @MainActor [weak self] in
             await self?.monitorSession()
         }
@@ -27,22 +26,25 @@ extension ListenTogetherStore {
     private func pollServer(
         includesRoomStatus: Bool
     ) async {
+        let session = sessionRevision
         do {
             try await synchronizeFromServer(initial: false)
-            guard isInRoom else { return }
+            guard isInRoom, sessionRevision == session else { return }
 
             if includesRoomStatus {
                 try await refreshRoomStatus()
-                guard isInRoom else { return }
+                guard isInRoom, sessionRevision == session else { return }
                 try await sendHeartbeat()
             }
 
+            guard sessionRevision == session else { return }
             consecutiveSyncFailures = 0
             connectionState = .connected
             lastSyncDate = .now
         } catch is CancellationError {
             return
         } catch {
+            guard !Task.isCancelled, sessionRevision == session else { return }
             consecutiveSyncFailures += 1
             if consecutiveSyncFailures >= 2 {
                 connectionState = .reconnecting
@@ -52,7 +54,10 @@ extension ListenTogetherStore {
 
     func refreshRoomStatus() async throws {
         guard let expectedRoom = room else { return }
+        let session = sessionRevision
         let status = try await api.listenTogetherRoomStatus()
+        try Task.checkCancellation()
+        guard sessionRevision == session else { return }
         guard status.isInRoom else {
             clearSession(notice: L10n.string("ui.listen_together.notice.room_ended"))
             return
@@ -69,18 +74,34 @@ extension ListenTogetherStore {
     }
 
     func synchronizeFromServer(initial: Bool) async throws {
-        guard let room else { return }
-        let payload = try await api.listenTogetherPlayback(
-            roomID: room.id
-        )
+        guard let room, operation != .leaving else { return }
+        let session = sessionRevision
+        guard synchronizingSession != session, transportReportTask == nil,
+              queueReportTask == nil else { return }
+        synchronizingSession = session
+        defer {
+            if synchronizingSession == session {
+                synchronizingSession = nil
+            }
+        }
+        let revision = localChangeRevision
+        let payload = try await api.listenTogetherPlayback(roomID: room.id)
+        try Task.checkCancellation()
+        guard sessionRevision == session, localChangeRevision == revision,
+              operation != .leaving else { return }
+
         let playlistSignature = signature(for: payload.playlist)
         let commandSignature = signature(for: payload.playCommand)
-        let playlistChanged =
-            playlistSignature != lastPlaylistSignature
-        let commandChanged =
-            commandSignature != lastCommandSignature
+        let playlistChanged = playlistSignature != lastPlaylistSignature
+        let commandChanged = commandSignature != lastCommandSignature
+        guard initial || playlistChanged || commandChanged else { return }
 
-        guard initial || playlistChanged || commandChanged else {
+        let command = payload.playCommand
+        let appliesTransport = initial || (
+            commandChanged && command != nil && !commandOriginatedLocally(command)
+        )
+        if !appliesTransport, !playlistChanged {
+            lastCommandSignature = commandSignature
             return
         }
 
@@ -88,11 +109,8 @@ extension ListenTogetherStore {
         if songIDs.isEmpty {
             songIDs = player.queue.map(\.id)
         }
-
-        let command = payload.playCommand
-        let targetSongID = command?.targetSongNumericID
-            ?? player.currentSong?.id
-            ?? songIDs.first
+        let targetSongID = (appliesTransport ? command?.targetSongNumericID : nil)
+            ?? player.currentSong?.id ?? songIDs.first
         guard let targetSongID else {
             throw ListenTogetherSessionError.invalidPlaybackState
         }
@@ -106,47 +124,29 @@ extension ListenTogetherStore {
         } else {
             songs = try await loadSongsPreservingOrder(ids: songIDs)
         }
+        try Task.checkCancellation()
+        guard sessionRevision == session, localChangeRevision == revision,
+              operation != .leaving else { return }
         guard songs.contains(where: { $0.id == targetSongID }) else {
             throw ListenTogetherSessionError.invalidPlaybackState
         }
 
-        let shouldPlay = command?.shouldPlay ?? player.isPlaying
-        let progress = TimeInterval(
-            command?.progressMilliseconds ?? Int64(
-                (player.estimatedProgress() * 1_000).rounded()
+        if appliesTransport {
+            let shouldPlay = command?.shouldPlay ?? player.listenTogetherReportedPlaying
+            let progress = command.map { TimeInterval($0.progressMilliseconds) / 1_000 }
+                ?? player.estimatedProgress()
+            await player.synchronizeListenTogetherPlayback(
+                songs: songs,
+                targetSongID: targetSongID,
+                progress: progress,
+                isPlaying: shouldPlay,
+                adoptsRoomPlayMode: initial,
+                playMode: payload.playlist?.playMode
             )
-        ) / 1_000
-
-        // Defer before opening the report-suppression window. A no-op poll
-        // must not swallow the play command for the track now loading.
-        if !shouldPlay,
-           player.isPreparingListenTogetherAutoplay,
-           player.currentSong?.id == targetSongID {
-            return
+        } else {
+            player.synchronizeListenTogetherQueue(songs: songs)
         }
-
-        isApplyingRemoteState = true
-        suppressReportsUntil = Date.now.addingTimeInterval(1)
-        defer { isApplyingRemoteState = false }
-        let applied = await player.synchronizeListenTogetherPlayback(
-            songs: songs,
-            targetSongID: targetSongID,
-            progress: progress,
-            isPlaying: shouldPlay,
-            shouldSeek: initial || commandChanged,
-            // Polls must not copy the room play mode. Doing so clears a
-            // local repeat or shuffle choice on every echoed command.
-            adoptsRoomPlayMode: initial,
-            playMode: payload.playlist?.playMode,
-            commandType: command?.commandType,
-            echoedLocalCommand: commandOriginatedLocally(command),
-            supersededLocalCommand: isSupersededLocalCommand(command)
-        )
-        guard applied else {
-            suppressReportsUntil = .distantPast
-            return
-        }
-
+        guard sessionRevision == session, operation != .leaving else { return }
         lastPlaylistSignature = playlistSignature
         lastCommandSignature = commandSignature
     }
@@ -155,12 +155,16 @@ extension ListenTogetherStore {
         ids: [Int]
     ) async throws -> [Song] {
         var loadedByID: [Int: Song] = [:]
+        for song in player.queue {
+            loadedByID[song.id] = song
+        }
+        let missingIDs = ids.filter { loadedByID[$0] == nil }
         var start = 0
-        while start < ids.count {
+        while start < missingIDs.count {
             try Task.checkCancellation()
-            let end = min(start + 100, ids.count)
+            let end = min(start + 100, missingIDs.count)
             let page = try await api.songDetails(
-                ids: Array(ids[start..<end])
+                ids: Array(missingIDs[start..<end])
             )
             for song in page {
                 loadedByID[song.id] = song
