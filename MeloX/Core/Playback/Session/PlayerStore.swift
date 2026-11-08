@@ -1,4 +1,3 @@
-import AVFAudio
 import Foundation
 import Observation
 import OSLog
@@ -117,9 +116,6 @@ final class PlayerStore {
     var listenTogetherReportedPlaying: Bool {
         isPlaying || isPreparingListenTogetherAutoplay
     }
-
-    /// Session-category changes and mix-resume must not look like a user pause.
-    private(set) var suppressesListenTogetherTransportReports = false
     var isAutoMixTransitioning: Bool {
         autoMixTransitionProgress != nil
     }
@@ -199,10 +195,6 @@ final class PlayerStore {
 
     @ObservationIgnored
     private var shouldResumeAfterInterruption = false
-
-    private var listenTogetherTransportSuppressionCount = 0
-
-    private var temporaryMixRestoreTask: Task<Void, Never>?
 
     @ObservationIgnored
     private var lastPersistedSecond = -1
@@ -1430,22 +1422,14 @@ final class PlayerStore {
             settings.alwaysMixesWithOtherApps
             ? .mixWithOthers
             : .exclusive
-        if settings.alwaysMixesWithOtherApps
-            || !settings.resumesPlaybackInMixWhenInterrupted {
-            AudioPlaybackSessionConfigurator.isTemporarilyMixing = false
-            temporaryMixRestoreTask?.cancel()
+        let shouldContinue =
+            isPlaying || engine.expectsPlaybackToContinue
+        if engine.hasCurrentItem, shouldContinue {
+            engine.resumeInPlace()
+        } else {
+            try? AudioPlaybackSessionConfigurator.activate()
         }
-        reconfigureAudioSessionWithoutRestartingPlayback()
-    }
-
-    func restoreExclusivePlaybackIfNeeded() {
-        guard !settings.alwaysMixesWithOtherApps,
-              AudioPlaybackSessionConfigurator.isTemporarilyMixing else {
-            return
-        }
-        AudioPlaybackSessionConfigurator.isTemporarilyMixing = false
-        temporaryMixRestoreTask?.cancel()
-        reconfigureAudioSessionWithoutRestartingPlayback()
+        updateNowPlayingState()
     }
 
     private func handleAudioInterruptionBegan(
@@ -1457,33 +1441,8 @@ final class PlayerStore {
             }
             return
         }
-        if event.routeDisconnected {
-            shouldResumeAfterInterruption = false
-            engine.pause()
-            return
-        }
-        if event.wasSuspended
-            || event.reason == .appWasSuspended
-            || AudioPlaybackSessionConfigurator.hasActivePhoneCall {
-            shouldResumeAfterInterruption =
-                isPlaying || engine.expectsPlaybackToContinue
-            engine.pause()
-            return
-        }
-        let wantsPlayback = isPlaying || engine.expectsPlaybackToContinue
-        if settings.alwaysMixesWithOtherApps, wantsPlayback {
-            shouldResumeAfterInterruption = false
-            resumeThroughSessionReconfiguration()
-            return
-        }
-        if settings.resumesPlaybackInMixWhenInterrupted, wantsPlayback {
-            shouldResumeAfterInterruption = false
-            AudioPlaybackSessionConfigurator.isTemporarilyMixing = true
-            temporaryMixRestoreTask?.cancel()
-            resumeThroughSessionReconfiguration()
-            return
-        }
-        shouldResumeAfterInterruption = wantsPlayback
+        shouldResumeAfterInterruption =
+            !event.routeDisconnected && isPlaying
         engine.pause()
     }
 
@@ -1491,66 +1450,10 @@ final class PlayerStore {
         if AudioPlaybackSessionConfigurator.shouldIgnoreInterruption {
             return
         }
-        if AudioPlaybackSessionConfigurator.isTemporarilyMixing {
-            temporaryMixRestoreTask?.cancel()
-            temporaryMixRestoreTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(350))
-                guard let self,
-                      !Task.isCancelled,
-                      AudioPlaybackSessionConfigurator.isTemporarilyMixing,
-                      !self.settings.alwaysMixesWithOtherApps else {
-                    return
-                }
-                self.restoreExclusivePlaybackIfNeeded()
-            }
-            return
-        }
         if shouldResume, shouldResumeAfterInterruption {
             engine.play()
         }
         shouldResumeAfterInterruption = false
-    }
-
-    private func resumeThroughSessionReconfiguration() {
-        beginListenTogetherTransportSuppression()
-        engine.resumeInPlace()
-        updateNowPlayingState()
-        endListenTogetherTransportSuppressionSoon()
-    }
-
-    private func reconfigureAudioSessionWithoutRestartingPlayback() {
-        let shouldContinue =
-            isPlaying || engine.expectsPlaybackToContinue
-        beginListenTogetherTransportSuppression()
-        if engine.hasCurrentItem {
-            if shouldContinue {
-                engine.resumeInPlace()
-            } else {
-                try? AudioPlaybackSessionConfigurator.activate()
-            }
-        } else {
-            try? AudioPlaybackSessionConfigurator.activate()
-        }
-        updateNowPlayingState()
-        endListenTogetherTransportSuppressionSoon()
-    }
-
-    private func beginListenTogetherTransportSuppression() {
-        listenTogetherTransportSuppressionCount += 1
-        suppressesListenTogetherTransportReports = true
-    }
-
-    private func endListenTogetherTransportSuppressionSoon() {
-        let token = listenTogetherTransportSuppressionCount
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(500))
-            guard let self,
-                  self.listenTogetherTransportSuppressionCount == token else {
-                return
-            }
-            self.listenTogetherTransportSuppressionCount = 0
-            self.suppressesListenTogetherTransportReports = false
-        }
     }
 
     private func handlePlaybackClockSample(

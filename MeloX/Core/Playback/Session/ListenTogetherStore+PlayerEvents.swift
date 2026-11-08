@@ -86,7 +86,6 @@ extension ListenTogetherStore {
     private var shouldReportLocalChanges: Bool {
         isInRoom
             && !isApplyingRemoteState
-            && !player.suppressesListenTogetherTransportReports
             && Date.now >= suppressReportsUntil
             && operation != .leaving
     }

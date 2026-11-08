@@ -33,34 +33,18 @@ struct ContentFeatureSettingsView: View {
                     Label {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("ui.settings.background_mix.always.title")
-                            Text("ui.settings.background_mix.always.footer")
+                            Text("ui.settings.background_mix.always.subtitle")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     } icon: {
-                        Image(systemName: "waveform.badge.mic")
+                        Image(systemName: "speaker.wave.2")
                     }
                 }
-
-                Toggle(isOn: resumeInMixBinding) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("ui.settings.background_mix.resume.title")
-                            Text(
-                                settings.alwaysMixesWithOtherApps
-                                    ? "ui.settings.background_mix.resume.disabled_footer"
-                                    : "ui.settings.background_mix.resume.footer"
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                    }
-                }
-                .disabled(settings.alwaysMixesWithOtherApps)
             } header: {
                 Text("ui.settings.background_mix.title")
+            } footer: {
+                Text("ui.settings.background_mix.always.footer")
             }
         }
         .navigationTitle("ui.settings.catalog.features.title")
@@ -72,16 +56,6 @@ struct ContentFeatureSettingsView: View {
             get: { settings.alwaysMixesWithOtherApps },
             set: { isEnabled in
                 settings.alwaysMixesWithOtherApps = isEnabled
-                player.applyBackgroundAudioMixPolicy()
-            }
-        )
-    }
-
-    private var resumeInMixBinding: Binding<Bool> {
-        Binding(
-            get: { settings.resumesPlaybackInMixWhenInterrupted },
-            set: { isEnabled in
-                settings.resumesPlaybackInMixWhenInterrupted = isEnabled
                 player.applyBackgroundAudioMixPolicy()
             }
         )

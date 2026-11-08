@@ -1,5 +1,4 @@
 import AVFoundation
-import CallKit
 
 enum AudioPlaybackMixMode: Equatable {
     case exclusive
@@ -8,29 +7,14 @@ enum AudioPlaybackMixMode: Equatable {
 
 @MainActor
 enum AudioPlaybackSessionConfigurator {
-    /// Scheme 1: stay mixable for the whole session.
+    /// When on, the playback session stays mixable so other apps do not interrupt it.
     static var preferredMixMode: AudioPlaybackMixMode = .exclusive
-
-    /// Scheme 3: temporarily mixable after another app interrupted us.
-    static var isTemporarilyMixing = false
 
     private static var isApplyingConfiguration = false
     private static var ignoreInterruptionsUntil = Date.distantPast
-    private static let callObserver = CXCallObserver()
-
-    static var effectiveMixMode: AudioPlaybackMixMode {
-        if preferredMixMode == .mixWithOthers || isTemporarilyMixing {
-            return .mixWithOthers
-        }
-        return .exclusive
-    }
 
     static var shouldIgnoreInterruption: Bool {
         isApplyingConfiguration || Date.now < ignoreInterruptionsUntil
-    }
-
-    static var hasActivePhoneCall: Bool {
-        callObserver.calls.contains { !$0.hasEnded }
     }
 
     static func activate() throws {
@@ -39,16 +23,18 @@ enum AudioPlaybackSessionConfigurator {
             return
         }
 
-        let mixMode = effectiveMixMode
         let options: AVAudioSession.CategoryOptions =
-            mixMode == .mixWithOthers ? [.mixWithOthers] : []
+            preferredMixMode == .mixWithOthers ? [.mixWithOthers] : []
         let needsCategory =
             session.category != .playback
             || session.mode != .default
             || session.categoryOptions != options
 
         isApplyingConfiguration = true
-        ignoreInterruptionsUntil = Date.now.addingTimeInterval(0.6)
+        if needsCategory {
+            // setCategory can post an interruption. Ignore that one and keep playing.
+            ignoreInterruptionsUntil = Date.now.addingTimeInterval(0.6)
+        }
         defer { isApplyingConfiguration = false }
 
         if needsCategory {
