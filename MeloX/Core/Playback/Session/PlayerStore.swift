@@ -411,19 +411,33 @@ final class PlayerStore {
            currentSong?.id == targetSongID {
             return false
         }
-        // The same handoff already owns this song. Reloading it here cancels
-        // the in-flight source request and opens another paused gap.
+        // The same handoff already owns this song. Do not reload it, but still
+        // accept a playlist edit or a new position. Returning here used to mark
+        // the payload consumed and drop those updates until something else changed.
         if shouldPlay,
            isPreparingListenTogetherAutoplay,
            currentSong?.id == targetSongID {
+            adoptListenTogetherQueue(
+                songs: songs,
+                targetIndex: targetIndex
+            )
+            adoptListenTogetherProgress(
+                targetSongID: targetSongID,
+                targetProgress: targetProgress,
+                shouldSeek: shouldSeek,
+                echoedLocalCommand: echoedLocalCommand
+            )
+            updateNowPlayingState()
+            persistSnapshot()
             return true
         }
-        if shouldIgnoreStaleListenTogetherTransport(
+        if !adoptsRoomPlayMode,
+           shouldIgnoreStaleListenTogetherTransport(
             songs: songs,
             targetSongID: targetSongID,
             shouldPlay: shouldPlay,
             commandType: commandType
-        ) {
+           ) {
             return true
         }
         let queueChanged = songs.map(\.id) != queue.map(\.id)
@@ -432,15 +446,11 @@ final class PlayerStore {
         if songChanged {
             recordCurrentPlayback()
         }
-        if queueChanged {
-            cancelAutoMixPreparation()
-            playbackQueue.replace(
-                with: songs,
-                startingAt: targetIndex
+        if queueChanged || currentIndex != targetIndex {
+            adoptListenTogetherQueue(
+                songs: songs,
+                targetIndex: targetIndex
             )
-            historySourceID = nil
-        } else if currentIndex != targetIndex {
-            _ = playbackQueue.select(index: targetIndex)
         }
 
         if songChanged || !engine.hasCurrentItem {
@@ -482,6 +492,47 @@ final class PlayerStore {
         updateNowPlayingState()
         persistSnapshot()
         return true
+    }
+
+    private func adoptListenTogetherQueue(
+        songs: [Song],
+        targetIndex: Int
+    ) {
+        let queueChanged = songs.map(\.id) != queue.map(\.id)
+        if queueChanged {
+            cancelAutoMixPreparation()
+            playbackQueue.replace(
+                with: songs,
+                startingAt: targetIndex
+            )
+            historySourceID = nil
+        } else if currentIndex != targetIndex {
+            _ = playbackQueue.select(index: targetIndex)
+        }
+    }
+
+    private func adoptListenTogetherProgress(
+        targetSongID: Int,
+        targetProgress: TimeInterval,
+        shouldSeek: Bool,
+        echoedLocalCommand: Bool
+    ) {
+        guard shouldSeek,
+              abs(estimatedProgress() - targetProgress) > 0.35,
+              !shouldIgnoreEchoedBackwardSeek(
+                targetSongID: targetSongID,
+                targetProgress: targetProgress,
+                echoedLocalCommand: echoedLocalCommand
+              ) else {
+            return
+        }
+        if engine.hasCurrentItem {
+            seek(to: targetProgress)
+        } else {
+            let clamped = clampedPlaybackPosition(targetProgress)
+            progress = clamped
+            reanchorPlaybackTimeline(to: clamped, rate: 0)
+        }
     }
 
     private func shouldIgnoreStaleListenTogetherTransport(

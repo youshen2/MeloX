@@ -9,7 +9,6 @@ enum SettingsRoute: Hashable {
     case general
     case tabLayout
     case contentFeatures
-    case backgroundMix
     case content
     case storage
     case skylineLyrics
@@ -103,13 +102,7 @@ enum SettingsCatalog {
                     subtitle: L10n.string("ui.settings.catalog.features.subtitle"),
                     systemImage: "switch.2",
                     keywords: L10n.keywords("ui.settings.catalog.features.keywords")
-                ),
-                SettingsCatalogItem(
-                    route: .backgroundMix,
-                    title: L10n.string("ui.settings.background_mix.title"),
-                    subtitle: L10n.string("ui.settings.background_mix.subtitle"),
-                    systemImage: "waveform.badge.mic",
-                    keywords: L10n.keywords("ui.settings.background_mix.keywords")
+                        + L10n.keywords("ui.settings.background_mix.keywords")
                 ),
                 SettingsCatalogItem(
                     route: .content,
