@@ -138,7 +138,8 @@ extension ListenTogetherStore {
             // local repeat or shuffle choice on every echoed command.
             adoptsRoomPlayMode: initial,
             playMode: payload.playlist?.playMode,
-            commandType: command?.commandType
+            commandType: command?.commandType,
+            echoedLocalCommand: commandOriginatedLocally(command)
         )
         guard applied else {
             suppressReportsUntil = .distantPast

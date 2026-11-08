@@ -175,6 +175,31 @@ extension ListenTogetherStore {
 
     private func nextClientSequence() -> Int {
         clientSequence += 1
+        locallyReportedCommandSequences.append(clientSequence)
+        if locallyReportedCommandSequences.count > 16 {
+            locallyReportedCommandSequences.removeFirst(
+                locallyReportedCommandSequences.count - 16
+            )
+        }
         return clientSequence
+    }
+
+    func commandOriginatedLocally(
+        _ command: ListenTogetherPlayCommand?
+    ) -> Bool {
+        guard let command else { return false }
+        if let userID = command.userID,
+           let localUserID,
+           userID == String(localUserID) {
+            return true
+        }
+        // clientSeq is per device and both sides start at 1, so it is only
+        // a hint when the server omitted userId.
+        guard command.userID == nil, command.clientSequence > 0 else {
+            return false
+        }
+        return locallyReportedCommandSequences.contains(
+            Int(command.clientSequence)
+        )
     }
 }

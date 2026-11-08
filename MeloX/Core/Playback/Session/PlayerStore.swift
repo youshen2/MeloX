@@ -214,6 +214,9 @@ final class PlayerStore {
     @ObservationIgnored
     private var currentLoadShouldAutoplay = false
 
+    /// Engine failures retried for this song before the unavailable alert.
+    private var playbackRecoveryAttempts = 0
+
     @ObservationIgnored
     private var currentPlaybackSource: PlaybackSource?
 
@@ -374,7 +377,8 @@ final class PlayerStore {
         shouldSeek: Bool,
         adoptsRoomPlayMode: Bool,
         playMode: String?,
-        commandType: String? = nil
+        commandType: String? = nil,
+        echoedLocalCommand: Bool = false
     ) async -> Bool {
         guard !songs.isEmpty,
               let targetIndex = songs.firstIndex(where: {
@@ -446,8 +450,14 @@ final class PlayerStore {
                 nowPlayingLyricsDisplaySettings
         )
 
-        if shouldSeek,
-           abs(estimatedProgress() - targetProgress) > 0.35 {
+        let shouldApplySeek = shouldSeek
+            && abs(estimatedProgress() - targetProgress) > 0.35
+            && !shouldIgnoreEchoedBackwardSeek(
+                targetSongID: targetSongID,
+                targetProgress: targetProgress,
+                echoedLocalCommand: echoedLocalCommand
+            )
+        if shouldApplySeek {
             seek(to: targetProgress)
         }
 
@@ -477,6 +487,24 @@ final class PlayerStore {
         }
         let type = commandType?.uppercased() ?? ""
         return !["GOTO", "NEXT", "PREV", "PLAY"].contains(type)
+    }
+
+    /// Our own GOTO is reported at progress 0 before the new song has played.
+    /// The echo arrives after playback has moved on; seeking to that snapshot
+    /// restarts the song and flips the play button.
+    private func shouldIgnoreEchoedBackwardSeek(
+        targetSongID: Int,
+        targetProgress: TimeInterval,
+        echoedLocalCommand: Bool
+    ) -> Bool {
+        guard echoedLocalCommand,
+              isListenTogetherSessionActive,
+              currentSong?.id == targetSongID,
+              engine.hasCurrentItem,
+              isPlaying || isPreparingListenTogetherAutoplay else {
+            return false
+        }
+        return targetProgress + 0.35 < estimatedProgress()
     }
 
     private func applyListenTogetherPlayMode(_ playMode: String?) {
@@ -1071,6 +1099,9 @@ final class PlayerStore {
         startAt: TimeInterval = 0
     ) async {
         guard let song = playbackQueue.currentSong else { return }
+        if song.id != currentSong?.id {
+            playbackRecoveryAttempts = 0
+        }
         cancelAutoMixPreparation()
         loadGeneration += 1
         let generation = loadGeneration
@@ -1117,20 +1148,11 @@ final class PlayerStore {
         persistSnapshot()
 
         do {
-            let source: PlaybackSource
-            if let downloadedSource = downloads.localPlaybackSource(songID: song.id) {
-                source = downloadedSource
-                isUsingDownloadedSource = true
-            } else if let cachedDetailedSong {
-                source = try await api.playbackSource(
-                    for: cachedDetailedSong
-                )
-            } else {
-                // A list response can contain only part of the quality
-                // metadata. Let the v1 source endpoint try the requested
-                // level while song details resolve in parallel.
-                source = try await api.playbackSource(id: song.id)
-            }
+            let source = try await playbackSourceRetryingTransientFailure(
+                for: song,
+                cachedDetailedSong: cachedDetailedSong,
+                generation: generation
+            )
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
             currentPlaybackSource = source
@@ -1155,6 +1177,59 @@ final class PlayerStore {
         }
     }
 
+    /// `/api/song/enhance/player/url/v1` sometimes returns HTTP 200 with a null
+    /// URL on the first try. The app treats that as a copyright/region error.
+    /// Retry only this song, before showing the alert or starting audio.
+    private func playbackSourceRetryingTransientFailure(
+        for song: Song,
+        cachedDetailedSong: Song?,
+        generation: Int
+    ) async throws -> PlaybackSource {
+        let attempts = 3
+        var lastError: Error?
+        for attempt in 0..<attempts {
+            if attempt > 0 {
+                try await Task.sleep(for: .milliseconds(400 * attempt))
+            }
+            guard generation == loadGeneration, currentSong?.id == song.id else {
+                throw CancellationError()
+            }
+            do {
+                if let downloadedSource = downloads.localPlaybackSource(songID: song.id) {
+                    isUsingDownloadedSource = true
+                    return downloadedSource
+                }
+                isUsingDownloadedSource = false
+                if let cachedDetailedSong {
+                    return try await api.playbackSource(for: cachedDetailedSong)
+                }
+                return try await api.playbackSource(id: song.id)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                guard Self.isRetryablePlaybackSourceError(error) else {
+                    throw error
+                }
+            }
+        }
+        throw lastError ?? APIError.noPlayableSource
+    }
+
+    private static func isRetryablePlaybackSourceError(_ error: Error) -> Bool {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .noPlayableSource, .emptyResponse, .invalidResponse:
+                return true
+            case .server(let statusCode, _) where statusCode >= 500:
+                return true
+            case .server, .requestEncoding, .notLoggedIn:
+                return false
+            }
+        }
+        return error is URLError
+    }
+
     private func handlePlaybackEnded() async {
         recordCurrentPlayback(completed: true)
         if repeatMode == .one {
@@ -1167,6 +1242,9 @@ final class PlayerStore {
     }
 
     private func handleEngineFailure(_ error: Error) async {
+        if isResolvingSource {
+            return
+        }
         if let playbackError = error as? AudioPlaybackError,
            case .itemFailed = playbackError,
            isUsingDownloadedSource,
@@ -1175,6 +1253,20 @@ final class PlayerStore {
             let shouldAutoplay = currentLoadShouldAutoplay
             isUsingDownloadedSource = false
             downloads.discardInvalidDownload(songID: song.id)
+            await loadCurrentSong(
+                autoplay: shouldAutoplay,
+                startAt: resumePosition
+            )
+            return
+        }
+
+        if let playbackError = error as? AudioPlaybackError,
+           case .itemFailed = playbackError,
+           playbackRecoveryAttempts < 2,
+           currentSong != nil {
+            playbackRecoveryAttempts += 1
+            let resumePosition = estimatedProgress()
+            let shouldAutoplay = currentLoadShouldAutoplay
             await loadCurrentSong(
                 autoplay: shouldAutoplay,
                 startAt: resumePosition
@@ -1233,6 +1325,7 @@ final class PlayerStore {
                 self.isPlaying = true
                 self.isLoading = false
                 self.currentLoadShouldAutoplay = true
+                self.playbackRecoveryAttempts = 0
                 self.playbackIssue = nil
                 self.recordCurrentPlaybackStartIfNeeded()
                 self.scheduleBeatAnalysisIfNeeded()

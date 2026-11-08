@@ -123,6 +123,11 @@ final class ListenTogetherStore {
     @ObservationIgnored
     var clientSequence = 0
 
+    /// Play-command sequences this device just submitted. Echoes of those
+    /// commands must not seek backward over playback that has already moved on.
+    @ObservationIgnored
+    var locallyReportedCommandSequences: [Int] = []
+
     @ObservationIgnored
     var monitorTask: Task<Void, Never>?
 
@@ -328,6 +333,7 @@ final class ListenTogetherStore {
         self.localUserID = localUserID
         isHost = room.creatorID == String(localUserID)
         clientSequence = 0
+        locallyReportedCommandSequences = []
         lastPlaylistSignature = nil
         lastCommandSignature = nil
         consecutiveSyncFailures = 0
@@ -346,6 +352,7 @@ final class ListenTogetherStore {
         localUserID = nil
         isHost = false
         clientSequence = 0
+        locallyReportedCommandSequences = []
         lastPlaylistSignature = nil
         lastCommandSignature = nil
         consecutiveSyncFailures = 0
