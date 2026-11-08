@@ -331,9 +331,9 @@
 "ui.settings.catalog.content_storage.section" = "Content & Storage";
 "ui.settings.background_mix.title" = "Background Playback";
 "ui.settings.background_mix.keywords" = "mix|background|simultaneous|Control Center|Lock Screen|game";
-"ui.settings.background_mix.always.title" = "Play with other apps";
-"ui.settings.background_mix.always.subtitle" = "Music keeps playing when you open a game or another app";
-"ui.settings.background_mix.always.footer" = "When this is on, MeloX plays alongside other apps. iOS may omit MeloX from Control Center and the Lock Screen, and the spatial audio panel may not find it.";
+"ui.settings.background_mix.always.title" = "Mix playback";
+"ui.settings.background_mix.always.subtitle" = "Play alongside other apps";
+"ui.settings.background_mix.always.footer" = "Other apps can make sound without pausing MeloX, but Control Center, the Lock Screen, and the spatial audio panel may stop showing playback info.";
 "ui.settings.catalog.features.title" = "Feature Modules";
 "ui.settings.catalog.features.subtitle" = "Enable or disable podcasts, downloads, Cloud Music, and Recently Played";
 "ui.settings.catalog.features.keywords" = "toggle|hide|podcasts|radio|downloads|cloud|recently played|playback history";

@@ -331,9 +331,9 @@
 "ui.settings.catalog.content_storage.section" = "内容与存储";
 "ui.settings.background_mix.title" = "后台播放";
 "ui.settings.background_mix.keywords" = "混音|后台|同时播放|控制中心|锁屏|游戏";
-"ui.settings.background_mix.always.title" = "与其他应用同时播放";
-"ui.settings.background_mix.always.subtitle" = "打开游戏等应用时，音乐不会被暂停";
-"ui.settings.background_mix.always.footer" = "开启后，MeloX 会和其他应用的声音一起播放。系统可能不再在控制中心和锁屏显示 MeloX 的播放卡片，空间音频面板也可能找不到它。";
+"ui.settings.background_mix.always.title" = "混合播放";
+"ui.settings.background_mix.always.subtitle" = "与其他应用的声音同时播放";
+"ui.settings.background_mix.always.footer" = "开启后其他应用发声时不会暂停 MeloX，但控制中心、锁屏与空间音频面板可能不再显示播放信息。";
 "ui.settings.catalog.features.title" = "功能模块";
 "ui.settings.catalog.features.subtitle" = "启用或停用播客、下载、云盘与最近播放";
 "ui.settings.catalog.features.keywords" = "开关|隐藏|播客|广播|下载|云盘|最近播放|播放记录";
