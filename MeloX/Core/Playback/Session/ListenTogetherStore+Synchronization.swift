@@ -139,7 +139,8 @@ extension ListenTogetherStore {
             adoptsRoomPlayMode: initial,
             playMode: payload.playlist?.playMode,
             commandType: command?.commandType,
-            echoedLocalCommand: commandOriginatedLocally(command)
+            echoedLocalCommand: commandOriginatedLocally(command),
+            supersededLocalCommand: isSupersededLocalCommand(command)
         )
         guard applied else {
             suppressReportsUntil = .distantPast

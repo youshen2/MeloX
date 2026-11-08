@@ -135,6 +135,12 @@ final class ListenTogetherStore {
     var queueReportTask: Task<Void, Never>?
 
     @ObservationIgnored
+    var transportReportTask: Task<Void, Never>?
+
+    @ObservationIgnored
+    var pendingTransportReport: PendingListenTogetherTransportReport?
+
+    @ObservationIgnored
     var isApplyingRemoteState = false
 
     @ObservationIgnored
@@ -329,6 +335,9 @@ final class ListenTogetherStore {
     ) {
         monitorTask?.cancel()
         queueReportTask?.cancel()
+        transportReportTask?.cancel()
+        transportReportTask = nil
+        pendingTransportReport = nil
         self.room = room
         self.localUserID = localUserID
         isHost = room.creatorID == String(localUserID)
@@ -348,6 +357,9 @@ final class ListenTogetherStore {
         monitorTask = nil
         queueReportTask?.cancel()
         queueReportTask = nil
+        transportReportTask?.cancel()
+        transportReportTask = nil
+        pendingTransportReport = nil
         room = nil
         localUserID = nil
         isHost = false

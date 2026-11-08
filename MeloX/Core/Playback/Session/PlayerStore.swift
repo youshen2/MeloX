@@ -382,7 +382,8 @@ final class PlayerStore {
         adoptsRoomPlayMode: Bool,
         playMode: String?,
         commandType: String? = nil,
-        echoedLocalCommand: Bool = false
+        echoedLocalCommand: Bool = false,
+        supersededLocalCommand: Bool = false
     ) async -> Bool {
         guard !songs.isEmpty,
               let targetIndex = songs.firstIndex(where: {
@@ -392,6 +393,20 @@ final class PlayerStore {
         }
 
         isHeartModeActive = false
+        if !adoptsRoomPlayMode,
+           supersededLocalCommand,
+           let currentID = currentSong?.id,
+           let keepIndex = songs.firstIndex(where: { $0.id == currentID }) {
+            if songs.map(\.id) != queue.map(\.id) {
+                adoptListenTogetherQueue(
+                    songs: songs,
+                    targetIndex: keepIndex
+                )
+                updateNowPlayingState()
+                persistSnapshot()
+            }
+            return true
+        }
         if adoptsRoomPlayMode, !listenTogetherPlayModeTouched {
             applyListenTogetherPlayMode(playMode)
         }

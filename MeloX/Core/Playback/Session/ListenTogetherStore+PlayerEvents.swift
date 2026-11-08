@@ -1,5 +1,11 @@
 import Foundation
 
+struct PendingListenTogetherTransportReport {
+    var type: ListenTogetherCommandType
+    var formerSongID: Int?
+    var targetSongID: Int
+}
+
 extension ListenTogetherStore {
     func playerSongDidChange(
         from formerSongID: Int?,
@@ -9,18 +15,11 @@ extension ListenTogetherStore {
               let targetSongID else {
             return
         }
-        Task { @MainActor [weak self] in
-            guard let self,
-                  self.shouldReportLocalChanges,
-                  self.player.currentSong?.id == targetSongID else {
-                return
-            }
-            await self.reportLocalCommand(
-                type: .goTo,
-                formerSongID: formerSongID,
-                targetSongID: targetSongID
-            )
-        }
+        scheduleLocalTransportReport(
+            type: .goTo,
+            formerSongID: formerSongID,
+            targetSongID: targetSongID
+        )
     }
 
     func playerPlaybackDidChange(isPlaying: Bool) {
@@ -31,18 +30,11 @@ extension ListenTogetherStore {
         if !isPlaying, player.isLoading || player.isPreparingListenTogetherAutoplay {
             return
         }
-        Task { @MainActor [weak self] in
-            guard let self,
-                  self.shouldReportLocalChanges,
-                  self.player.currentSong?.id == songID else {
-                return
-            }
-            await self.reportLocalCommand(
-                type: isPlaying ? .play : .pause,
-                formerSongID: songID,
-                targetSongID: songID
-            )
-        }
+        scheduleLocalTransportReport(
+            type: isPlaying ? .play : .pause,
+            formerSongID: songID,
+            targetSongID: songID
+        )
     }
 
     func playerDidSeek() {
@@ -50,16 +42,40 @@ extension ListenTogetherStore {
               let songID = player.currentSong?.id else {
             return
         }
-        Task { @MainActor [weak self] in
-            guard let self,
-                  self.shouldReportLocalChanges,
-                  self.player.currentSong?.id == songID else {
+        scheduleLocalTransportReport(
+            type: .progress,
+            formerSongID: songID,
+            targetSongID: songID
+        )
+    }
+
+    /// Only the newest local transport action is sent. An older progress or
+    /// pause request that finishes after a track change would otherwise become
+    /// the room's latest command and pull playback backward.
+    private func scheduleLocalTransportReport(
+        type: ListenTogetherCommandType,
+        formerSongID: Int?,
+        targetSongID: Int
+    ) {
+        pendingTransportReport = PendingListenTogetherTransportReport(
+            type: type,
+            formerSongID: formerSongID,
+            targetSongID: targetSongID
+        )
+        transportReportTask?.cancel()
+        transportReportTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(40))
+            guard let self, !Task.isCancelled else { return }
+            guard let pending = self.pendingTransportReport else { return }
+            self.pendingTransportReport = nil
+            guard self.shouldReportLocalChanges,
+                  self.player.currentSong?.id == pending.targetSongID else {
                 return
             }
             await self.reportLocalCommand(
-                type: .progress,
-                formerSongID: songID,
-                targetSongID: songID
+                type: pending.type,
+                formerSongID: pending.formerSongID,
+                targetSongID: pending.targetSongID
             )
         }
     }
@@ -204,5 +220,18 @@ extension ListenTogetherStore {
         return locallyReportedCommandSequences.contains(
             Int(command.clientSequence)
         )
+    }
+
+    /// A command this device sent, but not the newest one. Applying it would
+    /// restore an older song or position after playback has already moved on.
+    func isSupersededLocalCommand(
+        _ command: ListenTogetherPlayCommand?
+    ) -> Bool {
+        guard let command, commandOriginatedLocally(command),
+              command.clientSequence > 0,
+              let latest = locallyReportedCommandSequences.last else {
+            return false
+        }
+        return Int(command.clientSequence) < latest
     }
 }
