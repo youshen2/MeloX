@@ -141,6 +141,8 @@ struct SettingsView: View {
             TabLayoutSettingsView()
         case .contentFeatures:
             ContentFeatureSettingsView()
+        case .backgroundMix:
+            BackgroundMixSettingsView()
         case .content:
             ContentSettingsView()
         case .storage:

@@ -11,6 +11,7 @@ extension ListenTogetherStore {
         }
         Task { @MainActor [weak self] in
             guard let self,
+                  self.shouldReportLocalChanges,
                   self.player.currentSong?.id == targetSongID else {
                 return
             }
@@ -32,6 +33,7 @@ extension ListenTogetherStore {
         }
         Task { @MainActor [weak self] in
             guard let self,
+                  self.shouldReportLocalChanges,
                   self.player.currentSong?.id == songID else {
                 return
             }
@@ -50,6 +52,7 @@ extension ListenTogetherStore {
         }
         Task { @MainActor [weak self] in
             guard let self,
+                  self.shouldReportLocalChanges,
                   self.player.currentSong?.id == songID else {
                 return
             }
@@ -83,6 +86,7 @@ extension ListenTogetherStore {
     private var shouldReportLocalChanges: Bool {
         isInRoom
             && !isApplyingRemoteState
+            && !player.suppressesListenTogetherTransportReports
             && Date.now >= suppressReportsUntil
             && operation != .leaving
     }

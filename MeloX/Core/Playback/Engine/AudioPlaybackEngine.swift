@@ -8,6 +8,12 @@ enum AudioPlaybackState: Equatable {
     case playing
 }
 
+struct AudioSessionInterruptionBegan: Sendable {
+    var routeDisconnected: Bool
+    var wasSuspended: Bool
+    var reason: AVAudioSession.InterruptionReason?
+}
+
 enum AudioPlaybackError: LocalizedError {
     case audioSession(Error)
     case itemFailed(Error?)
@@ -37,7 +43,7 @@ final class AudioPlaybackEngine {
     var onAutoMixTransitionProgress: ((Double) -> Void)?
     var onAutoMixTransitionCompleted: ((Int) -> Void)?
     var onAutoMixPreparationFailed: ((Int, Error) -> Void)?
-    var onInterruptionBegan: ((_ routeDisconnected: Bool) -> Void)?
+    var onInterruptionBegan: ((AudioSessionInterruptionBegan) -> Void)?
     var onInterruptionEnded: ((Bool) -> Void)?
     var onOutputDeviceDisconnected: (() -> Void)?
 
@@ -127,6 +133,21 @@ final class AudioPlaybackEngine {
             autoMixController.resumeIncomingIfNeeded()
             updateStateFromPlayer()
         } catch { fail(with: AudioPlaybackError.audioSession(error)) }
+    }
+
+    /// Continue the current item after a session-category change.
+    /// Does not seek and does not reload the source.
+    func resumeInPlace() {
+        wantsPlayback = true
+        guard hasCurrentItem else { return }
+        do {
+            try AudioPlaybackSessionConfigurator.activate()
+        } catch {
+            return
+        }
+        activeDeck.resumeInPlace()
+        autoMixController.resumeIncomingIfNeeded()
+        updateStateFromPlayer()
     }
 
     func pause() {
@@ -278,7 +299,16 @@ final class AudioPlaybackEngine {
             let reason = rawReason.flatMap {
                 AVAudioSession.InterruptionReason(rawValue: $0)
             }
-            onInterruptionBegan?(reason == .routeDisconnected)
+            let wasSuspended = notification.userInfo?[
+                AVAudioSessionInterruptionWasSuspendedKey
+            ] as? Bool ?? false
+            onInterruptionBegan?(
+                AudioSessionInterruptionBegan(
+                    routeDisconnected: reason == .routeDisconnected,
+                    wasSuspended: wasSuspended,
+                    reason: reason
+                )
+            )
         case .ended:
             let rawOptions = notification.userInfo?[
                 AVAudioSessionInterruptionOptionKey

@@ -186,6 +186,7 @@ struct ContentView: View {
             .onChange(of: scenePhase) { _, phase in
                 player.refreshLyricsNotification()
                 guard phase == .active else { return }
+                player.restoreExclusivePlaybackIfNeeded()
                 player.refreshLyricsLiveActivity()
             }
             .onChange(of: floatingLyrics.restorationRequestID) {

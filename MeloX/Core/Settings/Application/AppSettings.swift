@@ -12,6 +12,8 @@ final class AppSettings {
     static let defaultPlayerBackgroundAudioResponseEnabled = false
     static let defaultPlayerBackgroundBeatEffectsEnabled = false
     static let defaultBeatNetDebugEnabled = false
+    static let defaultAlwaysMixesWithOtherApps = false
+    static let defaultResumesPlaybackInMixWhenInterrupted = false
     static let defaultStartsHeartModeOnLaunch = false
     static let defaultRecognizesClipboardLinksOnLaunch = false
     static let defaultSystemNowPlayingLyricsEnabled = true
@@ -167,6 +169,10 @@ final class AppSettings {
         static let playerBackgroundAudioResponseEnabled =
             "playerBackgroundAudioResponseEnabled"
         static let beatNetDebugEnabled = "beatNetDebugEnabled"
+        static let alwaysMixesWithOtherApps =
+            "alwaysMixesWithOtherApps"
+        static let resumesPlaybackInMixWhenInterrupted =
+            "resumesPlaybackInMixWhenInterrupted"
         static let playerBackgroundBlur = "playerBackgroundBlur"
         static let playerBackgroundSaturation = "playerBackgroundSaturation"
         static let shrinksPausedArtwork = "shrinksPausedArtwork"
@@ -744,6 +750,26 @@ final class AppSettings {
             defaults.set(
                 beatNetDebugEnabled,
                 forKey: Key.beatNetDebugEnabled
+            )
+        }
+    }
+
+    /// Scheme 1: keep the playback session mixable so other apps cannot interrupt it.
+    var alwaysMixesWithOtherApps: Bool {
+        didSet {
+            defaults.set(
+                alwaysMixesWithOtherApps,
+                forKey: Key.alwaysMixesWithOtherApps
+            )
+        }
+    }
+
+    /// Scheme 3: after an external interruption, mix and continue, then restore exclusive playback.
+    var resumesPlaybackInMixWhenInterrupted: Bool {
+        didSet {
+            defaults.set(
+                resumesPlaybackInMixWhenInterrupted,
+                forKey: Key.resumesPlaybackInMixWhenInterrupted
             )
         }
     }
@@ -1446,6 +1472,12 @@ final class AppSettings {
         beatNetDebugEnabled = defaults.object(
             forKey: Key.beatNetDebugEnabled
         ) as? Bool ?? Self.defaultBeatNetDebugEnabled
+        alwaysMixesWithOtherApps = defaults.object(
+            forKey: Key.alwaysMixesWithOtherApps
+        ) as? Bool ?? Self.defaultAlwaysMixesWithOtherApps
+        resumesPlaybackInMixWhenInterrupted = defaults.object(
+            forKey: Key.resumesPlaybackInMixWhenInterrupted
+        ) as? Bool ?? Self.defaultResumesPlaybackInMixWhenInterrupted
         playerBackgroundBlur = defaults.object(forKey: Key.playerBackgroundBlur) as? Double ?? 90
         playerBackgroundSaturation = defaults.object(
             forKey: Key.playerBackgroundSaturation
@@ -2004,6 +2036,10 @@ final class AppSettings {
             Self.defaultPlayerBackgroundAudioResponseEnabled
         beatNetDebugEnabled =
             Self.defaultBeatNetDebugEnabled
+        alwaysMixesWithOtherApps =
+            Self.defaultAlwaysMixesWithOtherApps
+        resumesPlaybackInMixWhenInterrupted =
+            Self.defaultResumesPlaybackInMixWhenInterrupted
         playerBackgroundBlur = 90
         playerBackgroundSaturation =
             Self.defaultPlayerBackgroundSaturation
