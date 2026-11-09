@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TrackRowView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.openMusicRoute) private var openMusicRoute
     @Environment(PlayerStore.self) private var player
     @Environment(LibraryStore.self) private var library
@@ -11,32 +12,32 @@ struct TrackRowView: View {
     var showsArtwork = false
     var secondaryMetadata: String?
 
+    @ScaledMetric(relativeTo: .caption) private var indexWidth: CGFloat = 26
     @State private var presentedSheet: TrackRowSheet?
 
     var body: some View {
         HStack(spacing: 12) {
+            if let indexText {
+                Text(indexText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: indexWidth, alignment: .trailing)
+            }
             if showsArtwork {
                 ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
                     .frame(width: 44, height: 44)
-            } else if let index {
-                Text(
-                    (index + 1).formatted(
-                        .number.locale(L10n.locale)
-                    )
-                )
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, alignment: .trailing)
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(song.name)
                     .font(.body)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 Text(subtitleText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(
+                        secondaryMetadata != nil || dynamicTypeSize.isAccessibilitySize ? 2 : 1
+                    )
             }
             Spacer(minLength: 8)
             if AppFeatureAvailability.downloads {
@@ -167,6 +168,10 @@ struct TrackRowView: View {
             : L10n.string("ui.song.like")
     }
 
+    private var indexText: String? {
+        index.map { L10n.integer($0 + 1) }
+    }
+
     private var subtitleText: String {
         [song.artistText, secondaryMetadata]
             .compactMap { value in
@@ -182,13 +187,17 @@ struct TrackRowView: View {
     }
 
     private var accessibilityText: String {
-        subtitleText.isEmpty
+        let trackLabel = subtitleText.isEmpty
             ? song.name
             : L10n.format(
                 "ui.accessibility.track_title_and_subtitle",
                 song.name,
                 subtitleText
             )
+        return L10n.joined(
+            [indexText, trackLabel].compactMap { $0 },
+            separatorKey: "ui.common.spoken_separator"
+        )
     }
 
     private var favoriteActionSystemImage: String {

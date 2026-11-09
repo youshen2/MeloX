@@ -53,7 +53,7 @@ struct ArtworkImage: View {
                 .resizable()
                 .scaledToFill()
                 .transition(.opacity)
-        } else if hasError {
+        } else if url == nil || hasError {
             placeholder
         } else {
             ZStack {

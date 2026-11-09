@@ -63,11 +63,11 @@ struct DailySongsView: View {
                             .accessibilityHint("ui.home.daily_songs.refresh_hint")
                         }
                     }
-                    ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                    ForEach(songs) { song in
                         Button {
                             Task { await player.play(song, in: songs) }
                         } label: {
-                            TrackRowView(song: song, index: index, showsArtwork: true)
+                            TrackRowView(song: song, showsArtwork: true)
                         }
                         .buttonStyle(.plain)
                         .swipeActions(edge: .trailing) {

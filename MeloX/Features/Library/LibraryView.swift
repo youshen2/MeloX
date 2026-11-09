@@ -32,15 +32,17 @@ struct LibraryView: View {
     var body: some View {
         VStack(spacing: 0) {
             if !showsNavigationTitle, fixedPage == nil, availablePages.count > 1 {
-                Group {
-                    if availablePages.count > 4, horizontalSizeClass == .compact {
-                        pagePicker.pickerStyle(.menu)
-                    } else {
-                        pagePicker.pickerStyle(.segmented)
-                    }
+                FilterPicker(
+                    title: "ui.library.category_picker",
+                    selection: $section,
+                    maximumWidth: availablePages.count > 4 ? 720 : 480,
+                    usesMenu: availablePages.count > 4 && horizontalSizeClass == .compact
+                ) {
+                    pageOptions
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
                 .background(.background)
             }
 
@@ -132,9 +134,13 @@ struct LibraryView: View {
 
     private var pagePicker: some View {
         Picker("ui.library.category_picker", selection: $section) {
-            ForEach(availablePages) { item in
-                Text(item.title).tag(item)
-            }
+            pageOptions
+        }
+    }
+
+    private var pageOptions: some View {
+        ForEach(availablePages) { item in
+            Text(item.title).tag(item)
         }
     }
 

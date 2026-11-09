@@ -7,22 +7,22 @@ struct ExploreCategoryPicker: View {
 
     var body: some View {
         ScrollView(.horizontal) {
-            LazyHStack(spacing: 8) {
+            LazyHStack(spacing: 10) {
                 ForEach(categories, id: \.self) { category in
                     Button(categoryTitle(for: category)) {
                         select(category)
                     }
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.capsule)
-                    .controlSize(.small)
+                    .controlSize(.large)
                     .tint(category == selection ? .accentColor : Color.secondary.opacity(0.14))
                     .foregroundStyle(category == selection ? .white : .primary)
                     .accessibilityAddTraits(category == selection ? .isSelected : [])
                 }
             }
         }
+        .contentMargins(.horizontal, 16, for: .scrollContent)
         .scrollIndicators(.hidden)
-        .scrollClipDisabled()
     }
 
     private func categoryTitle(for category: String) -> String {

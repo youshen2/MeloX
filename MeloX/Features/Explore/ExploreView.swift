@@ -50,8 +50,9 @@ struct ExploreView: View {
                 )
 
                 categoryContent
+                    .padding(.horizontal, 16)
             }
-            .padding(.horizontal)
+            .padding(.top, 8)
             .padding(.bottom, 28)
         }
         .refreshable {

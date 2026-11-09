@@ -200,15 +200,15 @@ struct LyricsContentSettingsView: View {
 
                 if !usesAppleMusic26Motion {
                     Section {
-                        Picker(
-                            "ui.settings.lyrics.content.lift_mode",
+                        FilterPicker(
+                            title: "ui.settings.lyrics.content.lift_mode",
                             selection: $settings.lyricsLiftMode
                         ) {
                             ForEach(LyricsLiftMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
                         }
-                        .pickerStyle(.segmented)
+                        .padding(.vertical, 4)
 
                         valueSlider(
                             title: L10n.string("ui.settings.lyrics.content.highlight_gradient_width"),
@@ -247,8 +247,8 @@ struct LyricsContentSettingsView: View {
                     }
 
                     Section {
-                        Picker(
-                            "ui.settings.lyrics.content.long_tone_detection",
+                        FilterPicker(
+                            title: "ui.settings.lyrics.content.long_tone_detection",
                             selection:
                                 $settings
                                     .lyricsLongSyllableDetectionMode
@@ -259,7 +259,7 @@ struct LyricsContentSettingsView: View {
                                 Text(mode.title).tag(mode)
                             }
                         }
-                        .pickerStyle(.segmented)
+                        .padding(.vertical, 4)
 
                         valueSlider(
                             title: L10n.string("ui.settings.lyrics.content.long_tone_threshold"),

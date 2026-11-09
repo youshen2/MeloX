@@ -3,6 +3,7 @@ import SwiftUI
 struct UserListeningRankView: View {
     let userID: Int
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(NeteaseAPI.self) private var api
     @Environment(PlayerStore.self) private var player
 
@@ -15,16 +16,18 @@ struct UserListeningRankView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("ui.account.listening_rank.period", selection: $selectedPeriod) {
+            FilterPicker(
+                title: "ui.account.listening_rank.period",
+                selection: $selectedPeriod,
+                maximumWidth: 360
+            ) {
                 ForEach(UserPlayRecordPeriod.allCases) { period in
                     Text(period.title).tag(period)
                 }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.vertical, 10)
-
-            Divider()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, contentInset)
+            .padding(.vertical, 16)
 
             content
         }
@@ -93,15 +96,9 @@ struct UserListeningRankView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List {
-                Section {
-                    Button {
-                        Task { await player.playAll(currentSongs) }
-                    } label: {
-                        Label("ui.common.play_all", systemImage: "play.fill")
-                    }
-                } footer: {
-                    Text(selectedPeriod.description)
-                }
+                rankActions
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(rowInsets(top: 0, bottom: 14))
 
                 ForEach(Array(currentRecords.enumerated()), id: \.element.song.id) {
                     index,
@@ -114,11 +111,13 @@ struct UserListeningRankView: View {
                         TrackRowView(
                             song: record.song,
                             index: index,
+                            showsArtwork: true,
                             secondaryMetadata:
                                 L10n.format("ui.common.play_count", record.playCount)
                         )
                     }
                     .buttonStyle(.plain)
+                    .listRowInsets(rowInsets(top: 6, bottom: 6))
                 }
             }
             .listStyle(.plain)
@@ -126,6 +125,46 @@ struct UserListeningRankView: View {
                 await load(period: selectedPeriod, force: true)
             }
         }
+    }
+
+    private var rankActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) {
+                playAllButton
+                periodDescription.fixedSize(horizontal: true, vertical: false)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                playAllButton
+                periodDescription
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var playAllButton: some View {
+        Button {
+            Task { await player.playAll(currentSongs) }
+        } label: {
+            Label("ui.common.play_all", systemImage: "play.fill")
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+    }
+
+    private var periodDescription: some View {
+        Text(selectedPeriod.description)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+    }
+
+    private var contentInset: CGFloat {
+        horizontalSizeClass == .regular ? 32 : 20
+    }
+
+    private func rowInsets(top: CGFloat, bottom: CGFloat) -> EdgeInsets {
+        EdgeInsets(top: top, leading: contentInset, bottom: bottom, trailing: contentInset)
     }
 
     private var currentRecords: [UserPlayRecord] {

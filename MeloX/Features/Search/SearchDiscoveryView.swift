@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct SearchDiscoveryView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(NeteaseAPI.self) private var api
     @Environment(AppSettings.self) private var settings
 
@@ -10,8 +11,11 @@ struct SearchDiscoveryView: View {
     @State private var reloadToken = 0
 
     private var columns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.adaptive(minimum: 270), spacing: 12)]
+        }
         if UIDevice.current.userInterfaceIdiom == .pad {
-            return [GridItem(.adaptive(minimum: 138), spacing: 12)]
+            return [GridItem(.adaptive(minimum: 160), spacing: 12)]
         }
         return Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
     }
@@ -118,33 +122,34 @@ struct SearchDiscoveryView: View {
 }
 
 private struct SearchCategoryCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let category: SearchMusicCategory
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            LinearGradient(
-                colors: category.colors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            Image(systemName: category.systemImage)
-                .font(.system(size: 60, weight: .bold))
-                .foregroundStyle(.white.opacity(0.22))
-                .rotationEffect(.degrees(-8))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(14)
-
-            Text(category.localizedName)
-                .font(.title3.bold())
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .padding(14)
-        }
-        .aspectRatio(1.55, contentMode: .fit)
-        .clipShape(.rect(cornerRadius: 14))
-        .accessibilityElement(children: .combine)
+        Text(category.localizedName)
+            .font(.title3.bold())
+            .foregroundStyle(.white)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .bottomLeading)
+            .background {
+                LinearGradient(
+                    colors: category.colors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: category.systemImage)
+                        .font(.system(size: 60, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.22))
+                        .rotationEffect(.degrees(-8))
+                        .padding(14)
+                        .accessibilityHidden(true)
+                }
+            }
+            .clipShape(.rect(cornerRadius: 14))
+            .contentShape(.rect(cornerRadius: 14))
     }
 }
 
