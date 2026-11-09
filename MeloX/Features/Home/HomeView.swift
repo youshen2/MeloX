@@ -38,16 +38,18 @@ struct HomeView: View {
         return FilterPicker(
             title: "ui.home.section_picker",
             selection: $section,
+            maximumWidth: CGFloat(availableSections.count) * 112,
             usesMenu: usesMenu
         ) {
             ForEach(availableSections) { section in
-                if usesMenu {
-                    Label(section.settingsTitle, systemImage: section.systemImage)
-                        .tag(section)
-                } else {
-                    Text(section.settingsTitle)
-                        .tag(section)
+                Group {
+                    if usesMenu {
+                        Label(section.settingsTitle, systemImage: section.systemImage)
+                    } else {
+                        Text(section.settingsTitle)
+                    }
                 }
+                .tag(section)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

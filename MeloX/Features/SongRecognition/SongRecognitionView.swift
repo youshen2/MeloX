@@ -95,7 +95,6 @@ struct SongRecognitionView: View {
                 action: startRecognition
             )
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
         }
     }
 

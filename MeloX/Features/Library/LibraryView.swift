@@ -35,7 +35,7 @@ struct LibraryView: View {
                 FilterPicker(
                     title: "ui.library.category_picker",
                     selection: $section,
-                    maximumWidth: availablePages.count > 4 ? 720 : 480,
+                    maximumWidth: min(CGFloat(availablePages.count) * 112, 720),
                     usesMenu: availablePages.count > 4 && horizontalSizeClass == .compact
                 ) {
                     pageOptions

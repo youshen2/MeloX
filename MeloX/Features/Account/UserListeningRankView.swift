@@ -16,19 +16,7 @@ struct UserListeningRankView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FilterPicker(
-                title: "ui.account.listening_rank.period",
-                selection: $selectedPeriod,
-                maximumWidth: 360
-            ) {
-                ForEach(UserPlayRecordPeriod.allCases) { period in
-                    Text(period.title).tag(period)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, contentInset)
-            .padding(.vertical, 16)
-
+            controls
             content
         }
         .navigationTitle("ui.library.my_listening_rank")
@@ -96,10 +84,6 @@ struct UserListeningRankView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List {
-                rankActions
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(rowInsets(top: 0, bottom: 14))
-
                 ForEach(Array(currentRecords.enumerated()), id: \.element.song.id) {
                     index,
                     record in
@@ -117,7 +101,7 @@ struct UserListeningRankView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .listRowInsets(rowInsets(top: 6, bottom: 6))
+                    .listRowInsets(rowInsets)
                 }
             }
             .listStyle(.plain)
@@ -127,44 +111,66 @@ struct UserListeningRankView: View {
         }
     }
 
-    private var rankActions: some View {
+    private var controls: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
+                periodPicker
+                Spacer(minLength: 0)
                 playAllButton
-                periodDescription.fixedSize(horizontal: true, vertical: false)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                periodPicker
                 playAllButton
-                periodDescription
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var playAllButton: some View {
-        Button {
-            Task { await player.playAll(currentSongs) }
-        } label: {
-            Label("ui.common.play_all", systemImage: "play.fill")
+        .padding(.vertical, 12)
+        .overlay(alignment: .bottom) {
+            Divider()
         }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.capsule)
-        .controlSize(.large)
+        .padding(.horizontal, contentInset)
     }
 
-    private var periodDescription: some View {
-        Text(selectedPeriod.description)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+    private var periodPicker: some View {
+        FilterPicker(
+            title: "ui.account.listening_rank.period",
+            selection: $selectedPeriod,
+            maximumWidth: 220
+        ) {
+            ForEach(UserPlayRecordPeriod.allCases) { period in
+                Text(period.title).tag(period)
+            }
+        }
+        .accessibilityHint(Text(selectedPeriod.description))
+    }
+
+    @ViewBuilder
+    private var playAllButton: some View {
+        if !currentRecords.isEmpty {
+            Button {
+                Task { await player.playAll(currentSongs) }
+            } label: {
+                Label("ui.common.play_all", systemImage: "play.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 8)
+                    .frame(minHeight: 44)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
+            .fixedSize(horizontal: true, vertical: false)
+        }
     }
 
     private var contentInset: CGFloat {
         horizontalSizeClass == .regular ? 32 : 20
     }
 
-    private func rowInsets(top: CGFloat, bottom: CGFloat) -> EdgeInsets {
-        EdgeInsets(top: top, leading: contentInset, bottom: bottom, trailing: contentInset)
+    private var rowInsets: EdgeInsets {
+        EdgeInsets(top: 6, leading: contentInset, bottom: 6, trailing: contentInset)
     }
 
     private var currentRecords: [UserPlayRecord] {

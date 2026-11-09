@@ -16,10 +16,12 @@ struct FilterPicker<Selection: Hashable, Options: View>: View {
             if usesMenu || dynamicTypeSize.isAccessibilitySize {
                 picker.pickerStyle(.menu)
             } else {
-                picker.pickerStyle(.segmented)
+                picker
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: maximumWidth)
             }
         }
-        .controlSize(.large)
-        .frame(maxWidth: maximumWidth, minHeight: 44, alignment: .leading)
+        .controlSize(.regular)
+        .frame(minHeight: 44, alignment: .leading)
     }
 }
