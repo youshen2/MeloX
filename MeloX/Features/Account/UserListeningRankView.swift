@@ -3,6 +3,7 @@ import SwiftUI
 struct UserListeningRankView: View {
     let userID: Int
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(NeteaseAPI.self) private var api
     @Environment(PlayerStore.self) private var player
 
@@ -15,17 +16,7 @@ struct UserListeningRankView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("ui.account.listening_rank.period", selection: $selectedPeriod) {
-                ForEach(UserPlayRecordPeriod.allCases) { period in
-                    Text(period.title).tag(period)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.vertical, 10)
-
-            Divider()
-
+            controls
             content
         }
         .navigationTitle("ui.library.my_listening_rank")
@@ -93,16 +84,6 @@ struct UserListeningRankView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List {
-                Section {
-                    Button {
-                        Task { await player.playAll(currentSongs) }
-                    } label: {
-                        Label("ui.common.play_all", systemImage: "play.fill")
-                    }
-                } footer: {
-                    Text(selectedPeriod.description)
-                }
-
                 ForEach(Array(currentRecords.enumerated()), id: \.element.song.id) {
                     index,
                     record in
@@ -114,11 +95,13 @@ struct UserListeningRankView: View {
                         TrackRowView(
                             song: record.song,
                             index: index,
+                            showsArtwork: true,
                             secondaryMetadata:
                                 L10n.format("ui.common.play_count", record.playCount)
                         )
                     }
                     .buttonStyle(.plain)
+                    .listRowInsets(rowInsets)
                 }
             }
             .listStyle(.plain)
@@ -126,6 +109,68 @@ struct UserListeningRankView: View {
                 await load(period: selectedPeriod, force: true)
             }
         }
+    }
+
+    private var controls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                periodPicker
+                Spacer(minLength: 0)
+                playAllButton
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                periodPicker
+                playAllButton
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 12)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+        .padding(.horizontal, contentInset)
+    }
+
+    private var periodPicker: some View {
+        FilterPicker(
+            title: "ui.account.listening_rank.period",
+            selection: $selectedPeriod,
+            maximumWidth: 220
+        ) {
+            ForEach(UserPlayRecordPeriod.allCases) { period in
+                Text(period.title).tag(period)
+            }
+        }
+        .accessibilityHint(Text(selectedPeriod.description))
+    }
+
+    @ViewBuilder
+    private var playAllButton: some View {
+        if !currentRecords.isEmpty {
+            Button {
+                Task { await player.playAll(currentSongs) }
+            } label: {
+                Label("ui.common.play_all", systemImage: "play.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 8)
+                    .frame(minHeight: 44)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private var contentInset: CGFloat {
+        horizontalSizeClass == .regular ? 32 : 20
+    }
+
+    private var rowInsets: EdgeInsets {
+        EdgeInsets(top: 6, leading: contentInset, bottom: 6, trailing: contentInset)
     }
 
     private var currentRecords: [UserPlayRecord] {

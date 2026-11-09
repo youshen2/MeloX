@@ -9,6 +9,7 @@ struct NowPlayingSongActions: View {
 
     let song: Song
     var showsFavoriteButton = true
+    var usesCompactMenu = false
 
     @State private var presentedSheet: NowPlayingSongSheet?
     var body: some View {
@@ -215,12 +216,12 @@ struct NowPlayingSongActions: View {
         } label: {
             Image(systemName: "ellipsis")
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(.white.opacity(0.15), in: .circle)
+                .foregroundStyle(usesCompactMenu ? Color.primary : .white)
+                .frame(width: usesCompactMenu ? 44 : 40, height: usesCompactMenu ? 44 : 40)
+                .background(usesCompactMenu ? Color.clear : .white.opacity(0.15), in: .circle)
                 .contentShape(.circle)
         }
-        .tint(.white)
+        .tint(usesCompactMenu ? Color.accentColor : .white)
         .menuOrder(.fixed)
         .accessibilityLabel("ui.common.more")
     }

@@ -1130,6 +1130,8 @@
 "ui.common.search_result_count" = "%ld 个搜索结果";
 "ui.common.unsubscribe" = "取消订阅";
 "ui.library.category_picker" = "音乐库分类";
+"ui.library.all_playlists" = "所有歌单";
+"ui.library.liked_playlist" = "我喜欢的音乐";
 "ui.library.pages_separated.title" = "音乐库页面均已拆分";
 "ui.library.pages_separated.message" = "可在“页面与标签栏”设置中调整页面归属。";
 "ui.library.error.title" = "音乐库操作失败";

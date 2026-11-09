@@ -11,10 +11,11 @@ struct PodcastHomeView: View {
     @State private var subscriptions: [Podcast] = []
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
+    @ScaledMetric(relativeTo: .headline) private var categoryMinimumWidth: CGFloat = 154
 
-    private let categoryColumns = [
-        GridItem(.adaptive(minimum: 154), spacing: 12),
-    ]
+    private var categoryColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: categoryMinimumWidth), spacing: 12)]
+    }
 
     init(showsNavigationTitle: Bool = true) {
         self.showsNavigationTitle = showsNavigationTitle

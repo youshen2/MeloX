@@ -78,13 +78,17 @@ struct SongRecognitionView: View {
         } description: {
             Text(readyDescription)
         } actions: {
-            Picker("ui.recognition.source", selection: audioSourceBinding) {
+            FilterPicker(
+                title: "ui.recognition.source",
+                selection: audioSourceBinding,
+                maximumWidth: 360
+            ) {
                 ForEach(SongRecognitionAudioSource.availableCases) { source in
                     Text(source.title).tag(source)
                 }
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 360)
+            .padding(.bottom, 8)
+
             Button(
                 "ui.recognition.start",
                 systemImage: settings.songRecognition.audioSource.systemImage,

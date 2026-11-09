@@ -7,6 +7,9 @@ struct PlaylistTrackList: View {
     var onRemoveSong: ((Song) -> Void)?
     var downloadSelection: MusicCollectionDownloadCoordinator?
     var highlightedSongID: Int?
+    var wideArtistColumnWidth: CGFloat?
+
+    private var usesWideRows: Bool { wideArtistColumnWidth != nil }
 
     var body: some View {
         if tracks.isEmpty {
@@ -24,7 +27,8 @@ struct PlaylistTrackList: View {
                         showsArtwork: showsArtwork,
                         downloadSelection: downloadSelection,
                         onRemoveSong: onRemoveSong,
-                        isHighlighted: highlightedSongID == song.id
+                        isHighlighted: highlightedSongID == song.id,
+                        wideArtistColumnWidth: wideArtistColumnWidth
                     )
                     .id(song.id)
 
@@ -33,10 +37,10 @@ struct PlaylistTrackList: View {
                             .overlay(Color.primary.opacity(0.12))
                             .padding(
                                 .leading,
-                                (showsArtwork ? 80 : 66)
+                                (usesWideRows ? (showsArtwork ? 96 : 86) : (showsArtwork ? 80 : 66))
                                     + (isSelectingDownloads ? 36 : 0)
                             )
-                            .padding(.trailing, 20)
+                            .padding(.trailing, usesWideRows ? musicCollectionWideInset : 20)
                     }
                 }
             }
@@ -57,6 +61,9 @@ private struct PlaylistTrackRow: View {
     let downloadSelection: MusicCollectionDownloadCoordinator?
     let onRemoveSong: ((Song) -> Void)?
     let isHighlighted: Bool
+    let wideArtistColumnWidth: CGFloat?
+
+    private var usesWideRows: Bool { wideArtistColumnWidth != nil }
 
     @Environment(\.openMusicRoute) private var openMusicRoute
     @Environment(PlayerStore.self) private var player
@@ -83,6 +90,8 @@ private struct PlaylistTrackRow: View {
             && !downloads.isDownloading(songID: song.id)
     }
 
+    private var downloadsEnabled: Bool { settings.isContentFeatureEnabled(.downloads) }
+
     var body: some View {
         HStack(spacing: 4) {
             Button(action: primaryAction) {
@@ -103,6 +112,16 @@ private struct PlaylistTrackRow: View {
                         .accessibilityHidden(true)
                     }
 
+                    if usesWideRows && showsArtwork && !isSelectingDownloads {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .opacity(library.contains(song: song) ? 1 : 0)
+                            .frame(width: 12)
+                            .padding(.trailing, -8)
+                            .accessibilityHidden(true)
+                    }
+
                     leadingContent
 
                     VStack(alignment: .leading, spacing: 3) {
@@ -110,7 +129,7 @@ private struct PlaylistTrackRow: View {
                             .font(.body)
                             .lineLimit(showsArtwork ? 1 : 2)
 
-                        if showsArtwork {
+                        if showsArtwork && !usesWideRows {
                             Text(song.artistText)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -118,6 +137,13 @@ private struct PlaylistTrackRow: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let wideArtistColumnWidth {
+                        Text(song.artistText)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
+                            .frame(width: wideArtistColumnWidth, alignment: .leading)
+                    }
                 }
                 .contentShape(.rect)
             }
@@ -126,17 +152,16 @@ private struct PlaylistTrackRow: View {
             .accessibilityLabel(primaryActionAccessibilityLabel)
             .accessibilityValue(primaryActionAccessibilityValue)
 
-            if settings.isContentFeatureEnabled(.downloads) {
-                if downloads.isDownloading(songID: song.id) {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .accessibilityLabel("ui.downloads.downloading")
-                } else if downloads.contains(songID: song.id) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("ui.downloads.downloaded")
-                }
+            if downloadsEnabled || usesWideRows {
+                downloadStatus
+                    .frame(width: usesWideRows ? 18 : nil)
+            }
+
+            if usesWideRows {
+                Text(song.durationText)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .frame(width: 54, alignment: .trailing)
             }
 
             if !isSelectingDownloads {
@@ -151,7 +176,7 @@ private struct PlaylistTrackRow: View {
                         )
                     }
 
-                    if settings.isContentFeatureEnabled(.downloads) {
+                    if downloadsEnabled {
                         if downloads.isDownloading(songID: song.id) {
                             Button {
                                 downloads.cancel(songID: song.id)
@@ -227,9 +252,9 @@ private struct PlaylistTrackRow: View {
                 .accessibilityLabel(L10n.format("ui.song.more_actions", song.name))
             }
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 8)
-        .padding(.vertical, showsArtwork ? 8 : 11)
+        .padding(.leading, usesWideRows ? (showsArtwork ? 18 : musicCollectionWideInset) : 20)
+        .padding(.trailing, usesWideRows ? 26 : 8)
+        .padding(.vertical, usesWideRows ? 4 : (showsArtwork ? 8 : 11))
         .background(
             isHighlighted ? Color.accentColor.opacity(0.16)
                 : isCurrentSong ? Color.primary.opacity(0.10) : .clear
@@ -249,10 +274,45 @@ private struct PlaylistTrackRow: View {
     }
 
     @ViewBuilder
+    private var downloadStatus: some View {
+        if downloadsEnabled, downloads.isDownloading(songID: song.id) {
+            ProgressView()
+                .controlSize(.mini)
+                .accessibilityLabel("ui.downloads.downloading")
+        } else if downloadsEnabled, downloads.contains(songID: song.id) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("ui.downloads.downloaded")
+        } else if usesWideRows {
+            Color.clear.frame(height: 1)
+                .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
     private var leadingContent: some View {
         if showsArtwork {
-            ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
-                .frame(width: 48, height: 48)
+            Group {
+                if let url = song.album?.artworkURL {
+                    ArtworkImage(url: url, cornerRadius: 6)
+                } else {
+                    Image(systemName: "music.note")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.quaternary, in: .rect(cornerRadius: 6))
+                }
+            }
+            .frame(width: 48, height: 48)
+            .overlay {
+                if usesWideRows && isCurrentSong && !isSelectingDownloads {
+                    Image(systemName: player.isPlaying ? "waveform" : "pause.fill")
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.black.opacity(0.35), in: .rect(cornerRadius: 6))
+                }
+            }
+            .accessibilityHidden(true)
         } else if isCurrentSong && !isSelectingDownloads {
             ZStack {
                 Circle()

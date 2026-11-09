@@ -1,4 +1,6 @@
+import Nuke
 import SwiftUI
+import UIKit
 
 private enum ContentSheet: String, Identifiable {
     case settings
@@ -11,6 +13,16 @@ private enum ContentRoute: Hashable {
     case songRecognition
 }
 
+private enum ContentTab: Hashable {
+    case page(AppTab)
+    case playlist(Int)
+}
+
+private struct SidebarArtworkRequest: Hashable {
+    let id: Int
+    let url: URL
+}
+
 private struct HeartModeLaunchReadiness: Equatable {
     let hasRestoredPlayback: Bool
     let isLoggedIn: Bool
@@ -18,7 +30,11 @@ private struct HeartModeLaunchReadiness: Equatable {
 }
 
 struct ContentView: View {
+    private static let sidebarArtworkSize = CGSize(width: 24, height: 24)
+
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryStore.self) private var library
@@ -26,14 +42,13 @@ struct ContentView: View {
     @Environment(LyricsStore.self) private var lyrics
     @Environment(FloatingLyricsController.self) private var floatingLyrics
 
-    @State private var selectedTab: AppTab
-    @State private var navigationPaths = Dictionary(
-        uniqueKeysWithValues: AppTab.allCases.map {
-            ($0, NavigationPath())
-        }
-    )
+    @State private var selectedTab: ContentTab
+    @State private var navigationPaths: [ContentTab: NavigationPath] = [:]
+    @State private var tabletCollectionChrome: [ContentTab: TabletCollectionChrome] = [:]
+    @State private var sidebarArtwork: [SidebarArtworkRequest: UIImage] = [:]
     @State private var presentedSheet: ContentSheet?
     @State private var playerPresentation: PlayerPresentation?
+    @State private var requestedPlayerPage: NowPlayingPage?
     @State private var neteaseSharePresentation: NeteaseSharePresentation?
     @State private var nowPlayingSharePresentation: NeteaseSharePresentation?
     @State private var pendingMusicRoute: MusicRoute?
@@ -47,7 +62,7 @@ struct ContentView: View {
     private let playerTransitionID = "now-playing"
 
     init(initialTab: AppTab = .home) {
-        _selectedTab = State(initialValue: initialTab)
+        _selectedTab = State(initialValue: .page(initialTab))
     }
 
     var body: some View {
@@ -82,7 +97,7 @@ struct ContentView: View {
             ) { destination in
                 switch destination {
                 case .nowPlaying:
-                    NowPlayingView(initialPage: initialNowPlayingPage)
+                    NowPlayingView(initialPage: requestedPlayerPage ?? initialNowPlayingPage)
                         .environment(
                             \.openMusicRoute,
                             OpenMusicRouteAction(action: openMusicRoute)
@@ -168,21 +183,8 @@ struct ContentView: View {
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             }
-            .onChange(of: selectedTab) { _, tab in
-                settings.lastSelectedTab = tab
-            }
-            .onChange(of: settings.visibleTabs) { _, tabs in
-                guard !tabs.contains(selectedTab) else { return }
-                if settings.homeTabs.contains(selectedTab),
-                   tabs.contains(.home) {
-                    selectedTab = .home
-                } else if selectedTab.libraryPage != nil,
-                   tabs.contains(.library) {
-                    selectedTab = .library
-                } else {
-                    selectedTab = settings.fallbackNavigationTab
-                }
-            }
+            .onChange(of: selectedTab) { _, tab in rememberTab(tab) }
+            .onChange(of: availableTabs) { _, tabs in updateTabSelection(available: tabs) }
             .onChange(of: scenePhase) { _, phase in
                 player.refreshLyricsNotification()
                 guard phase == .active else { return }
@@ -195,7 +197,7 @@ struct ContentView: View {
                     return
                 }
 
-                playerPresentation = .nowPlaying
+                openPlayer()
                 Task { @MainActor in
                     await Task.yield()
                     floatingLyrics.completeRestoration(success: true)
@@ -330,25 +332,26 @@ struct ContentView: View {
 
     @ViewBuilder
     private var playerAwareTabView: some View {
-        if player.currentSong != nil {
-            if #available(iOS 26.1, *) {
-                tabs
-                    .tabViewBottomAccessory(
-                        isEnabled: !isTabViewBottomAccessorySuppressed
-                    ) {
-                        miniPlayer
-                    }
-            } else {
-                tabs
-                    .tabViewBottomAccessory {
-                        if !isTabViewBottomAccessorySuppressed {
-                            miniPlayer
-                        }
-                    }
+        if #available(iOS 26.1, *) {
+            tabs.tabViewBottomAccessory(isEnabled: showsMiniPlayer && !usesFloatingMiniPlayer) {
+                miniPlayer
             }
         } else {
-            tabs
+            tabs.tabViewBottomAccessory {
+                if showsMiniPlayer && !usesFloatingMiniPlayer {
+                    miniPlayer
+                }
+            }
         }
+    }
+
+    private var showsMiniPlayer: Bool {
+        player.currentSong != nil && !isTabViewBottomAccessorySuppressed
+    }
+
+    private var usesFloatingMiniPlayer: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+            && horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
     }
 
     private var miniPlayer: some View {
@@ -357,40 +360,254 @@ struct ContentView: View {
             artworkTransitionNamespace:
                 playerTransitionNamespace
         ) {
-            playerPresentation = .nowPlaying
+            openPlayer()
         }
     }
 
+    private func openPlayer(_ page: NowPlayingPage? = nil) {
+        requestedPlayerPage = page
+        playerPresentation = .nowPlaying
+    }
+
     private var tabs: some View {
-        TabView(selection: $selectedTab) {
+        let libraryTabs = displayedSidebarLibraryTabs.filter { $0 != .libraryPlaylists }
+        let showsPlaylistDirectory = displayedSidebarLibraryTabs.contains(.libraryPlaylists)
+        let playlists = displayedSidebarPlaylists
+
+        return TabView(selection: $selectedTab) {
             ForEach(settings.visibleTabs) { tab in
-                Tab(
-                    tab.title,
-                    systemImage: tab.systemImage,
-                    value: tab,
-                    role: tab == .search ? .search : nil
-                ) {
-                    NavigationStack(
-                        path: navigationPathBinding(for: tab)
-                    ) {
-                        tabRoot(for: tab)
-                            .toolbar {
-                                primaryToolbar(for: tab)
-                            }
-                            .navigationDestination(
-                                for: ContentRoute.self
-                            ) { route in
-                                contentDestination(for: route)
-                            }
-                            .musicDestinations(
-                                in: musicNavigationNamespace
-                            )
+                navigationTab(for: tab)
+
+                if tab == .library, !libraryTabs.isEmpty {
+                    TabSection(L10n.string("ui.library.category_picker")) {
+                        ForEach(libraryTabs) { shortcut in
+                            navigationTab(for: shortcut).defaultVisibility(shortcutVisibility, for: .tabBar)
+                        }
+                    }
+                }
+            }
+
+            if showsPlaylistDirectory || !playlists.isEmpty {
+                TabSection(L10n.string("ui.common.playlists")) {
+                    if showsPlaylistDirectory {
+                        navigationTab(for: .libraryPlaylists, title: L10n.string("ui.library.all_playlists"))
+                            .defaultVisibility(shortcutVisibility, for: .tabBar)
+                    }
+                    ForEach(playlists) { playlist in
+                        playlistTab(for: playlist).defaultVisibility(shortcutVisibility, for: .tabBar)
                     }
                 }
             }
         }
+        .tabViewStyle(.sidebarAdaptable)
+        .defaultAdaptableTabBarPlacement(.sidebar)
+        .tabViewSidebarBottomBar {
+            Button {
+                presentedSheet = .settings
+            } label: {
+                HStack(spacing: 10) {
+                    accountToolbarIcon(avatarSize: 32)
+                    Text(library.profile?.nickname ?? L10n.string("ui.account.login_settings"))
+                        .font(.subheadline.weight(.regular))
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 24)
+                .frame(minHeight: 44)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(accountToolbarAccessibilityLabel)
+            .padding(.bottom, 6)
+        }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .background {
+            if horizontalSizeClass == .regular,
+               let palette = tabletCollectionChrome[selectedTab]?.palette {
+                palette.backgroundColor.ignoresSafeArea()
+            }
+        }
         .environment(\.musicNavigationNamespace, musicNavigationNamespace)
+        .task(id: sidebarArtworkRequests) {
+            await loadSidebarArtwork(sidebarArtworkRequests)
+        }
+    }
+
+    private var sidebarLibraryTabs: [AppTab] {
+        guard UIDevice.current.userInterfaceIdiom == .pad,
+              settings.visibleTabs.contains(.library) else { return [] }
+        return settings.embeddedLibraryPages.map(AppTab.init(libraryPage:))
+    }
+
+    private var displayedSidebarLibraryTabs: [AppTab] {
+        // Keep the active shortcut and its navigation stack when a window narrows.
+        if horizontalSizeClass == .compact {
+            return sidebarLibraryTabs.filter { .page($0) == selectedTab }
+        }
+        return sidebarLibraryTabs
+    }
+
+    private var sidebarPlaylists: [Playlist] {
+        guard UIDevice.current.userInterfaceIdiom == .pad, library.isLoggedIn else { return [] }
+        var playlists: [Playlist] = []
+        if let likedPlaylistID = library.likedPlaylistID {
+            playlists.append(Playlist(
+                id: likedPlaylistID,
+                name: L10n.string("ui.library.liked_playlist"),
+                trackCount: library.favoriteSongTotalCount
+            ))
+        }
+        // Keep the full collection in the directory instead of creating up to 2,000 tabs.
+        var seen = Set(playlists.map(\.id))
+        var remaining = 40
+        for playlist in library.favoritePlaylists where seen.insert(playlist.id).inserted {
+            playlists.append(playlist)
+            remaining -= 1
+            if remaining == 0 { break }
+        }
+        return playlists
+    }
+
+    private var displayedSidebarPlaylists: [Playlist] {
+        if horizontalSizeClass == .compact {
+            return sidebarPlaylists.filter { .playlist($0.id) == selectedTab }
+        }
+        return sidebarPlaylists
+    }
+
+    private var sidebarArtworkRequests: [SidebarArtworkRequest] {
+        guard horizontalSizeClass != .compact else { return [] }
+        return sidebarPlaylists.compactMap { playlist in
+            playlist.artworkURL.map { SidebarArtworkRequest(id: playlist.id, url: $0) }
+        }
+    }
+
+    private func loadSidebarArtwork(_ requests: [SidebarArtworkRequest]) async {
+        let activeRequests = Set(requests)
+        sidebarArtwork = sidebarArtwork.filter { activeRequests.contains($0.key) }
+        let renderer = UIGraphicsImageRenderer(size: Self.sidebarArtworkSize)
+        let bounds = CGRect(origin: .zero, size: Self.sidebarArtworkSize)
+        for request in requests where sidebarArtwork[request] == nil {
+            guard !Task.isCancelled else { return }
+            var imageRequest = ImageRequest(url: request.url)
+            imageRequest.thumbnail = ImageRequest.ThumbnailOptions(
+                size: Self.sidebarArtworkSize,
+                contentMode: .aspectFill
+            )
+            guard let image = try? await ImagePipeline.shared.image(for: imageRequest),
+                  !Task.isCancelled, image.size.width > 0, image.size.height > 0 else { continue }
+            let scale = max(bounds.width / image.size.width, bounds.height / image.size.height)
+            let width = image.size.width * scale
+            let height = image.size.height * scale
+            sidebarArtwork[request] = renderer.image { _ in
+                UIBezierPath(roundedRect: bounds, cornerRadius: 4).addClip()
+                image.draw(in: CGRect(x: bounds.midX - width / 2, y: bounds.midY - height / 2,
+                                      width: width, height: height))
+            }
+        }
+    }
+
+    private var shortcutVisibility: Visibility {
+        horizontalSizeClass == .compact ? .visible : .hidden
+    }
+
+    private var availableTabs: [ContentTab] {
+        (settings.visibleTabs + sidebarLibraryTabs).map(ContentTab.page)
+            + sidebarPlaylists.map { .playlist($0.id) }
+    }
+
+    private func rememberTab(_ tab: ContentTab) {
+        switch tab {
+        case .page(let page):
+            settings.lastSelectedTab = sidebarLibraryTabs.contains(page) ? .library : page
+        case .playlist:
+            settings.lastSelectedTab = settings.visibleTabs.contains(.libraryPlaylists) ? .libraryPlaylists
+                : settings.visibleTabs.contains(.library) ? .library : settings.fallbackNavigationTab
+        }
+    }
+
+    private func updateTabSelection(available tabs: [ContentTab]) {
+        let activeTabs = Set(tabs)
+        navigationPaths = navigationPaths.filter { tab, _ in
+            if case .playlist = tab { return activeTabs.contains(tab) }
+            return true
+        }
+        tabletCollectionChrome = tabletCollectionChrome.filter { activeTabs.contains($0.key) }
+        guard !activeTabs.contains(selectedTab) else { return }
+        switch selectedTab {
+        case .page(let page) where settings.homeTabs.contains(page) && activeTabs.contains(.page(.home)):
+            selectedTab = .page(.home)
+        case .page(let page) where page.libraryPage != nil && activeTabs.contains(.page(.library)):
+            selectedTab = .page(.library)
+        case .playlist where activeTabs.contains(.page(.libraryPlaylists)):
+            selectedTab = .page(.libraryPlaylists)
+        default:
+            selectedTab = .page(settings.fallbackNavigationTab)
+        }
+    }
+
+    private func navigationTab(for tab: AppTab, title: String? = nil) -> some TabContent<ContentTab> {
+        Tab(
+            title ?? tab.title,
+            systemImage: tab.systemImage,
+            value: ContentTab.page(tab),
+            role: tab == .search ? .search : nil
+        ) {
+            tabNavigation(.page(tab)) {
+                tabRoot(for: tab)
+                    .toolbar { primaryToolbar(for: .page(tab)) }
+            }
+        }
+    }
+
+    private func playlistTab(for playlist: Playlist) -> some TabContent<ContentTab> {
+        let tab = ContentTab.playlist(playlist.id)
+        let artwork = playlist.artworkURL.flatMap { sidebarArtwork[SidebarArtworkRequest(id: playlist.id, url: $0)] }
+        return Tab(value: tab) {
+            tabNavigation(tab) {
+                PlaylistDetailView(playlist: PlaylistRouteContext(playlist))
+            }
+        } label: {
+            Label {
+                Text(playlist.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? L10n.string("ui.common.playlist") : playlist.name)
+            } icon: {
+                if let artwork {
+                    Image(uiImage: artwork).renderingMode(.original)
+                } else {
+                    Image(systemName: playlist.id == library.likedPlaylistID ? "heart.fill" : "music.note.list")
+                }
+            }
+        }
+    }
+
+    private func tabNavigation<Root: View>(_ tab: ContentTab, @ViewBuilder root: () -> Root) -> some View {
+        NavigationStack(path: navigationPathBinding(for: tab)) {
+            root()
+                .navigationDestination(for: ContentRoute.self) { route in
+                    contentDestination(for: route)
+                }
+                .musicDestinations(in: musicNavigationNamespace)
+        }
+        .environment(
+            \.tabletCollectionChrome,
+            Binding(
+                get: { tabletCollectionChrome[tab] },
+                set: { tabletCollectionChrome[tab] = $0 }
+            )
+        )
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if selectedTab == tab && usesFloatingMiniPlayer && showsMiniPlayer {
+                TabletMiniPlayerView(
+                    artworkTransitionID: playerTransitionID,
+                    artworkTransitionNamespace: playerTransitionNamespace,
+                    collectionPalette: tabletCollectionChrome[tab]?.palette,
+                    onOpen: openPlayer
+                )
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity)
+            }
+        }
     }
 
     @ViewBuilder
@@ -428,7 +645,7 @@ struct ContentView: View {
 
     @ToolbarContentBuilder
     private func primaryToolbar(
-        for tab: AppTab
+        for tab: ContentTab
     ) -> some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             if library.isLoggedIn {
@@ -453,7 +670,7 @@ struct ContentView: View {
             Button {
                 presentedSheet = .settings
             } label: {
-                accountToolbarLabel
+                accountToolbarIcon(avatarSize: 28)
             }
             .accessibilityLabel(accountToolbarAccessibilityLabel)
         }
@@ -472,7 +689,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var accountToolbarLabel: some View {
+    private func accountToolbarIcon(avatarSize: CGFloat) -> some View {
         if let profile = library.profile {
             AsyncImage(url: profile.artworkURL) { phase in
                 if let image = phase.image {
@@ -484,7 +701,7 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 28, height: 28)
+            .frame(width: avatarSize, height: avatarSize)
             .background(.quaternary, in: .circle)
             .clipShape(.circle)
         } else {
@@ -506,7 +723,7 @@ struct ContentView: View {
     }
 
     private func navigationPathBinding(
-        for tab: AppTab
+        for tab: ContentTab
     ) -> Binding<NavigationPath> {
         Binding(
             get: {
@@ -562,7 +779,7 @@ struct ContentView: View {
 
     private func navigate(
         to route: ContentRoute,
-        in tab: AppTab
+        in tab: ContentTab
     ) {
         var path = navigationPaths[tab] ?? NavigationPath()
         path.append(route)

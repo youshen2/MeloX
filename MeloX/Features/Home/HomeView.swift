@@ -32,35 +32,30 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder
     private var sectionPicker: some View {
-        if availableSections.count <= 4 {
-            Picker("ui.home.section_picker", selection: $section) {
-                ForEach(availableSections) { section in
-                    Text(section.settingsTitle)
-                        .tag(section)
+        let usesMenu = availableSections.count > 4
+
+        return FilterPicker(
+            title: "ui.home.section_picker",
+            selection: $section,
+            maximumWidth: CGFloat(availableSections.count) * 112,
+            usesMenu: usesMenu
+        ) {
+            ForEach(availableSections) { section in
+                Group {
+                    if usesMenu {
+                        Label(section.settingsTitle, systemImage: section.systemImage)
+                    } else {
+                        Text(section.settingsTitle)
+                    }
                 }
+                .tag(section)
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(.background)
-        } else {
-            Picker("ui.home.section_picker", selection: $section) {
-                ForEach(availableSections) { section in
-                    Label(
-                        section.settingsTitle,
-                        systemImage: section.systemImage
-                    )
-                    .tag(section)
-                }
-            }
-            .pickerStyle(.menu)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.background)
     }
 
     @ViewBuilder

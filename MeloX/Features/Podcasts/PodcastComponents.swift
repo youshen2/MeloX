@@ -157,6 +157,8 @@ struct PodcastProgramListRow: View {
 }
 
 struct PodcastCategoryTile: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let category: PodcastCategory
 
     var body: some View {
@@ -170,7 +172,8 @@ struct PodcastCategoryTile: View {
             Text(category.localizedName)
                 .font(.headline)
                 .foregroundStyle(.primary)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }

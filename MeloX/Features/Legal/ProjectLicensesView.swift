@@ -58,6 +58,11 @@ struct ProjectLicensesView: View {
                     license: L10n.string("ui.legal.license.cc_by"),
                     document: .beatNet
                 )
+                licenseLink(
+                    title: "UIImageColors",
+                    license: L10n.string("ui.legal.license.mit"),
+                    document: .uiImageColors
+                )
             }
 
             Section {
@@ -157,6 +162,7 @@ enum LegalDocument: String, Identifiable {
     case pvTool
     case sourceHanSerif
     case beatNet
+    case uiImageColors
 
     var id: String { rawValue }
 
@@ -168,6 +174,7 @@ enum LegalDocument: String, Identifiable {
         case .pvTool: L10n.string("ui.legal.document.pv_tool.title")
         case .sourceHanSerif: L10n.string("ui.legal.document.source_han_serif.title")
         case .beatNet: L10n.string("ui.legal.document.beatnet.title")
+        case .uiImageColors: "UIImageColors"
         }
     }
 
@@ -190,6 +197,9 @@ enum LegalDocument: String, Identifiable {
                 extension: "md"
             )
                 ?? L10n.string("ui.legal.document.beatnet.fallback")
+        case .uiImageColors:
+            Self.bundledText(named: "UIImageColors-LICENSE", extension: "txt")
+                ?? "MIT License · Copyright (c) 2015 Jathu Satkunarajah"
         }
     }
 
@@ -207,6 +217,8 @@ enum LegalDocument: String, Identifiable {
             URL(string: "https://openfontlicense.org/open-font-license-official-text/")
         case .beatNet:
             URL(string: "https://github.com/mjhydri/BeatNet")
+        case .uiImageColors:
+            URL(string: "https://github.com/jathu/UIImageColors/blob/f064be8ee0b03158e61135e6c384aee18d7a5414/LICENSE")
         }
     }
 
