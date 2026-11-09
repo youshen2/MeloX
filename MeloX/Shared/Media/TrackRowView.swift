@@ -16,48 +16,44 @@ struct TrackRowView: View {
     @State private var presentedSheet: TrackRowSheet?
 
     var body: some View {
-        HStack(spacing: 12) {
-            if let indexText {
-                Text(indexText)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: indexWidth, alignment: .trailing)
-            }
-            if showsArtwork {
-                ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
-                    .frame(width: 44, height: 44)
+        let usesLargeText = dynamicTypeSize.isAccessibilitySize
+        let layout = usesLargeText
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 12))
+
+        layout {
+            if index != nil || showsArtwork {
+                HStack(spacing: 12) {
+                    if let indexText {
+                        Text(indexText)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: indexWidth, alignment: .trailing)
+                    }
+                    if showsArtwork {
+                        ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
+                            .frame(width: 44, height: 44)
+                    }
+                }
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(song.name)
                     .font(.body)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .lineLimit(usesLargeText ? nil : 1)
                 Text(subtitleText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(
-                        secondaryMetadata != nil || dynamicTypeSize.isAccessibilitySize ? 2 : 1
-                    )
+                    .lineLimit(usesLargeText ? nil : (secondaryMetadata != nil ? 2 : 1))
             }
-            Spacer(minLength: 8)
-            if AppFeatureAvailability.downloads {
-                if downloads.isDownloading(songID: song.id) {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .accessibilityLabel("ui.downloads.downloading")
-                } else if downloads.contains(songID: song.id) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("ui.downloads.downloaded")
-                }
+
+            if !usesLargeText {
+                Spacer(minLength: 8)
             }
-            if song.durationMS > 0 {
-                Text(song.durationText)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+
+            playbackMetadata
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
         .musicMatchedTransitionSource(for: .song(song))
         .contextMenu {
@@ -159,6 +155,32 @@ struct TrackRowView: View {
         )
         .accessibilityAction(named: L10n.string("ui.comments.view")) {
             presentedSheet = .comments(song)
+        }
+    }
+
+    @ViewBuilder
+    private var playbackMetadata: some View {
+        let isDownloading = AppFeatureAvailability.downloads && downloads.isDownloading(songID: song.id)
+        let isDownloaded = AppFeatureAvailability.downloads && downloads.contains(songID: song.id)
+
+        if isDownloading || isDownloaded || song.durationMS > 0 {
+            HStack(spacing: 12) {
+                if isDownloading {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .accessibilityLabel("ui.downloads.downloading")
+                } else if isDownloaded {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("ui.downloads.downloaded")
+                }
+                if song.durationMS > 0 {
+                    Text(song.durationText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
