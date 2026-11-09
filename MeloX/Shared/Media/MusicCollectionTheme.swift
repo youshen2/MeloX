@@ -14,11 +14,12 @@ extension ArtworkDetailPalette {
     }
 
     var edgeColor: Color {
-        Color(red: accentRGB.x, green: accentRGB.y, blue: accentRGB.z)
+        let rgb = tabletSourceRGB.map { $0 * 0.70 + SIMD3<Double>(repeating: 0.30) } ?? accentRGB
+        return Color(red: rgb.x, green: rgb.y, blue: rgb.z)
     }
 
     func tabletPalette(usesLightAppearance: Bool) -> Self {
-        let source = sourceRGB ?? SIMD3<Double>(repeating: 0.5)
+        let source = tabletSourceRGB ?? SIMD3<Double>(repeating: 0.5)
         let peak = max(source.x, source.y, source.z)
         let floor = min(source.x, source.y, source.z)
         let chroma = peak - floor
@@ -40,7 +41,7 @@ extension ArtworkDetailPalette {
         return Self(
             backgroundRGB: canvas,
             accentRGB: accentRGB,
-            sourceRGB: sourceRGB,
+            tabletSourceRGB: tabletSourceRGB,
             prefersDarkAppearance: !usesLightAppearance
         )
     }

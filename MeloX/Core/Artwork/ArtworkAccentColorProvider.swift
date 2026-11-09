@@ -5,7 +5,7 @@ import Foundation
 struct ArtworkDetailPalette: Equatable, Sendable {
     let backgroundRGB: SIMD3<Double>
     let accentRGB: SIMD3<Double>
-    let sourceRGB: SIMD3<Double>?
+    let tabletSourceRGB: SIMD3<Double>?
     let prefersDarkAppearance: Bool
 
     nonisolated static func fallback(prefersDarkAppearance: Bool) -> Self {
@@ -14,7 +14,7 @@ struct ArtworkDetailPalette: Equatable, Sendable {
                 repeating: prefersDarkAppearance ? 0.16 : 0.88
             ),
             accentRGB: ArtworkAccentColorProvider.fallback,
-            sourceRGB: nil,
+            tabletSourceRGB: nil,
             prefersDarkAppearance: prefersDarkAppearance
         )
     }
@@ -139,7 +139,8 @@ actor ArtworkAccentColorProvider {
             let preparedImage = downsampled(image)
             let assets = ArtworkDetailAssets(
                 palette: makeDetailPalette(
-                    from: averageColor(of: preparedImage)
+                    from: averageColor(of: preparedImage),
+                    tabletSource: dominantBackgroundColor(of: preparedImage)
                 ),
                 flowingLightPalette:
                     makeFlowingLightPalette(
@@ -203,6 +204,22 @@ actor ArtworkAccentColorProvider {
             format: .RGBA8,
             colorSpace: colorSpace
         )
+    }
+
+    private func dominantBackgroundColor(of image: CIImage) -> SIMD3<Double>? {
+        let bounds = image.extent.integral
+        guard !bounds.isEmpty, !bounds.isInfinite else { return nil }
+        let rowBytes = Int(bounds.width) * 4
+        var pixels = [UInt8](repeating: 0, count: rowBytes * Int(bounds.height))
+        context.render(
+            image,
+            toBitmap: &pixels,
+            rowBytes: rowBytes,
+            bounds: bounds,
+            format: .RGBA8,
+            colorSpace: colorSpace
+        )
+        return ArtworkBackgroundColor.dominant(inPremultipliedRGBA8: pixels)
     }
 
     private func averageColor(of image: CIImage) -> SIMD3<Double> {
@@ -273,7 +290,8 @@ actor ArtworkAccentColorProvider {
     }
 
     private func makeDetailPalette(
-        from source: SIMD3<Double>
+        from source: SIMD3<Double>,
+        tabletSource: SIMD3<Double>?
     ) -> ArtworkDetailPalette {
         let luminance = relativeLuminance(source)
         let prefersDarkAppearance = luminance < 0.52
@@ -288,7 +306,7 @@ actor ArtworkAccentColorProvider {
         return ArtworkDetailPalette(
             backgroundRGB: clamped(backgroundRGB),
             accentRGB: readableAccent(source),
-            sourceRGB: source,
+            tabletSourceRGB: tabletSource ?? source,
             prefersDarkAppearance: prefersDarkAppearance
         )
     }
