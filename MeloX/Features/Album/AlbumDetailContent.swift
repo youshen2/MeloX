@@ -23,7 +23,7 @@ struct AlbumDetailContent: View {
             )
 
             ScrollView {
-                LazyVStack(spacing: 0) {
+                MusicCollectionDetailLayout { artworkSize in
                     StandardMusicCollectionDetailHero(
                         artworkURL: album.artworkURL,
                         title: album.name,
@@ -32,9 +32,10 @@ struct AlbumDetailContent: View {
                         tracks: songs,
                         sourceID: album.id,
                         isSaved: isSubscribed,
-                        onToggleSaved: onToggleSubscription
+                        onToggleSaved: onToggleSubscription,
+                        wideArtworkSize: artworkSize
                     )
-
+                } tracks: { wideArtistColumnWidth in
                     MusicCollectionTrackContent(
                         tracks: filteredTracks,
                         sourceID: album.id,
@@ -44,10 +45,10 @@ struct AlbumDetailContent: View {
                         failureMessage: failureMessage,
                         downloadSelection: downloadCoordinator,
                         onRetry: onRetry,
-                        highlightedSongID: highlightedSongID
+                        highlightedSongID: highlightedSongID,
+                        wideArtistColumnWidth: wideArtistColumnWidth
                     )
                 }
-                .padding(.bottom, 32)
             }
             .scrollIndicators(.hidden)
             .refreshable {

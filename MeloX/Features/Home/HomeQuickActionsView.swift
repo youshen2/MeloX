@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum HomeQuickAction: String, CaseIterable, Identifiable {
     case dailySongs
@@ -98,45 +99,44 @@ enum HomeQuickAction: String, CaseIterable, Identifiable {
 
 struct HomeQuickActionsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var hasRoomForGrid = false
     @ScaledMetric(relativeTo: .body) private var compactCardWidth = 230.0
 
     let activeAction: HomeQuickAction?
     let perform: (HomeQuickAction) -> Void
 
     var body: some View {
+        Group {
+            if UIDevice.current.userInterfaceIdiom == .pad,
+               hasRoomForGrid, !dynamicTypeSize.isAccessibilitySize {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 195, maximum: 340), spacing: 16, alignment: .top)],
+                    spacing: 16
+                ) {
+                    ForEach(HomeQuickAction.allCases, content: actionButton)
+                }
+                .padding(.horizontal, 16)
+            } else {
+                carousel
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: Bool.self) { geometry in
+            geometry.size.width >= 650
+        } action: { hasRoomForGrid = $0 }
+    }
+
+    private var carousel: some View {
         ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 16) {
                 ForEach(HomeQuickAction.allCases) { action in
-                    Button {
-                        perform(action)
-                    } label: {
-                        HomeEditorialCard(
-                            eyebrow: action.eyebrow,
-                            title: action.title,
-                            subtitle: action.subtitle,
-                            systemImage: action.systemImage,
-                            colors: action.colors,
-                            isCompact: settings.compactHomeQuickActions
-                        )
-                        .overlay {
-                            if activeAction == action {
-                                ProgressView()
-                                    .controlSize(settings.compactHomeQuickActions ? .regular : .large)
-                                    .padding(settings.compactHomeQuickActions ? 14 : 22)
-                                    .background(.regularMaterial)
-                                    .clipShape(.circle)
-                            }
+                    actionButton(action)
+                        .containerRelativeFrame(.horizontal) { length, _ in
+                            settings.compactHomeQuickActions
+                                ? min(length, compactCardWidth)
+                                : min(length * 0.86, 340)
                         }
-                    }
-                    .containerRelativeFrame(.horizontal) {
-                        length, _ in
-                        settings.compactHomeQuickActions
-                            ? min(length, compactCardWidth)
-                            : min(length * 0.86, 340)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(activeAction != nil)
-                    .accessibilityHint(accessibilityHint(for: action))
                 }
             }
             .scrollTargetLayout()
@@ -144,6 +144,33 @@ struct HomeQuickActionsView: View {
         .contentMargins(.horizontal, 16, for: .scrollContent)
         .scrollIndicators(.hidden)
         .scrollTargetBehavior(.viewAligned)
+    }
+
+    private func actionButton(_ action: HomeQuickAction) -> some View {
+        Button {
+            perform(action)
+        } label: {
+            HomeEditorialCard(
+                eyebrow: action.eyebrow,
+                title: action.title,
+                subtitle: action.subtitle,
+                systemImage: action.systemImage,
+                colors: action.colors,
+                isCompact: settings.compactHomeQuickActions
+            )
+            .overlay {
+                if activeAction == action {
+                    ProgressView()
+                        .controlSize(settings.compactHomeQuickActions ? .regular : .large)
+                        .padding(settings.compactHomeQuickActions ? 14 : 22)
+                        .background(.regularMaterial)
+                        .clipShape(.circle)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(activeAction != nil)
+        .accessibilityHint(accessibilityHint(for: action))
     }
 
     private func accessibilityHint(

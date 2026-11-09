@@ -94,7 +94,9 @@ struct PlaylistDetailView: View {
                     && !isLoadingMoreTracks && songToLocate == nil
                     ? { pendingRemoval = $0 }
                     : nil,
-                highlightedSongID: trackLocator.highlightedSongID
+                highlightedSongID: trackLocator.highlightedSongID,
+                onDownloadAll: downloadsEnabled ? { startDownloadAll(quality: $0) } : nil,
+                canDownloadAll: !downloadableSongIDs.isEmpty && !downloadCoordinator.isPreparing
             )
             .task(id: songToLocate) {
                 if let songToLocate { await locateSong(songToLocate) }

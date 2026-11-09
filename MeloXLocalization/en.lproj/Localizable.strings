@@ -1130,6 +1130,8 @@
 "ui.common.search_result_count" = "%ld Search Results";
 "ui.common.unsubscribe" = "Unsubscribe";
 "ui.library.category_picker" = "Library Category";
+"ui.library.all_playlists" = "All Playlists";
+"ui.library.liked_playlist" = "Liked Music";
 "ui.library.pages_separated.title" = "All Library Pages Are Separate";
 "ui.library.pages_separated.message" = "Change where pages appear in Pages & Tab Bar settings.";
 "ui.library.error.title" = "Library Operation Failed";

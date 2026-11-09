@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SearchDiscoveryView: View {
     @Environment(NeteaseAPI.self) private var api
@@ -8,10 +9,12 @@ struct SearchDiscoveryView: View {
     @State private var phase: LoadingPhase = .loading
     @State private var reloadToken = 0
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-    ]
+    private var columns: [GridItem] {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return [GridItem(.adaptive(minimum: 138), spacing: 12)]
+        }
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
+    }
 
     var body: some View {
         ScrollView {
