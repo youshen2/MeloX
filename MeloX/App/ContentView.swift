@@ -44,6 +44,7 @@ struct ContentView: View {
 
     @State private var selectedTab: ContentTab
     @State private var navigationPaths: [ContentTab: NavigationPath] = [:]
+    @State private var tabletCollectionChrome: [ContentTab: TabletCollectionChrome] = [:]
     @State private var sidebarArtwork: [SidebarArtworkRequest: UIImage] = [:]
     @State private var presentedSheet: ContentSheet?
     @State private var playerPresentation: PlayerPresentation?
@@ -405,19 +406,27 @@ struct ContentView: View {
                 presentedSheet = .settings
             } label: {
                 HStack(spacing: 10) {
-                    accountToolbarLabel
+                    accountToolbarIcon(avatarSize: 32)
                     Text(library.profile?.nickname ?? L10n.string("ui.account.login_settings"))
+                        .font(.subheadline.weight(.regular))
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 24)
                 .frame(minHeight: 44)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(accountToolbarAccessibilityLabel)
+            .padding(.bottom, 6)
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .background {
+            if horizontalSizeClass == .regular,
+               let palette = tabletCollectionChrome[selectedTab]?.palette {
+                palette.backgroundColor.ignoresSafeArea()
+            }
+        }
         .environment(\.musicNavigationNamespace, musicNavigationNamespace)
         .task(id: sidebarArtworkRequests) {
             await loadSidebarArtwork(sidebarArtworkRequests)
@@ -523,6 +532,7 @@ struct ContentView: View {
             if case .playlist = tab { return activeTabs.contains(tab) }
             return true
         }
+        tabletCollectionChrome = tabletCollectionChrome.filter { activeTabs.contains($0.key) }
         guard !activeTabs.contains(selectedTab) else { return }
         switch selectedTab {
         case .page(let page) where settings.homeTabs.contains(page) && activeTabs.contains(.page(.home)):
@@ -579,11 +589,19 @@ struct ContentView: View {
                 }
                 .musicDestinations(in: musicNavigationNamespace)
         }
+        .environment(
+            \.tabletCollectionChrome,
+            Binding(
+                get: { tabletCollectionChrome[tab] },
+                set: { tabletCollectionChrome[tab] = $0 }
+            )
+        )
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if selectedTab == tab && usesFloatingMiniPlayer && showsMiniPlayer {
                 TabletMiniPlayerView(
                     artworkTransitionID: playerTransitionID,
                     artworkTransitionNamespace: playerTransitionNamespace,
+                    collectionPalette: tabletCollectionChrome[tab]?.palette,
                     onOpen: openPlayer
                 )
                 .padding(.horizontal, 14)
@@ -652,7 +670,7 @@ struct ContentView: View {
             Button {
                 presentedSheet = .settings
             } label: {
-                accountToolbarLabel
+                accountToolbarIcon(avatarSize: 28)
             }
             .accessibilityLabel(accountToolbarAccessibilityLabel)
         }
@@ -671,7 +689,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var accountToolbarLabel: some View {
+    private func accountToolbarIcon(avatarSize: CGFloat) -> some View {
         if let profile = library.profile {
             AsyncImage(url: profile.artworkURL) { phase in
                 if let image = phase.image {
@@ -683,7 +701,7 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 28, height: 28)
+            .frame(width: avatarSize, height: avatarSize)
             .background(.quaternary, in: .circle)
             .clipShape(.circle)
         } else {

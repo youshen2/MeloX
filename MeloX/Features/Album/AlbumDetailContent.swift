@@ -5,6 +5,7 @@ struct AlbumDetailContent: View {
     let songs: [Song]
     let palette: ArtworkDetailPalette
     let blurredBackdropImage: CGImage?
+    let usesTabletBackdrop: Bool
     let searchQuery: String
     let isLoading: Bool
     let failureMessage: String?
@@ -19,7 +20,8 @@ struct AlbumDetailContent: View {
         ZStack {
             MusicCollectionArtworkBackdrop(
                 blurredArtworkImage: blurredBackdropImage,
-                palette: palette
+                palette: palette,
+                usesTabletBackdrop: usesTabletBackdrop
             )
 
             ScrollView {

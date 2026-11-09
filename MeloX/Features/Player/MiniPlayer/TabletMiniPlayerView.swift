@@ -2,9 +2,11 @@ import SwiftUI
 
 struct TabletMiniPlayerView: View {
     @Environment(PlayerStore.self) private var player
+    @Environment(\.colorScheme) private var colorScheme
 
     let artworkTransitionID: String
     let artworkTransitionNamespace: Namespace.ID
+    let collectionPalette: ArtworkDetailPalette?
     let onOpen: (NowPlayingPage?) -> Void
 
     var body: some View {
@@ -26,8 +28,23 @@ struct TabletMiniPlayerView: View {
                 .padding(.vertical, 2)
             }
             .frame(maxWidth: 690)
-            .glassEffect(.regular.interactive(), in: .capsule)
+            .glassEffect(glass, in: .capsule)
+            .overlay {
+                if let collectionPalette {
+                    Capsule()
+                        .strokeBorder(collectionPalette.edgeColor.opacity(0.18), lineWidth: 0.5)
+                        .allowsHitTesting(false)
+                }
+            }
+            .environment(\.colorScheme, collectionPalette?.colorScheme ?? colorScheme)
         }
+    }
+
+    private var glass: Glass {
+        if let collectionPalette {
+            return .regular.tint(collectionPalette.backgroundColor.opacity(0.32))
+        }
+        return .regular.interactive()
     }
 
     private func controls(for song: Song) -> some View {

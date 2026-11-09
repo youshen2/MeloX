@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PlaylistDetailView: View {
     let id: Int
@@ -11,6 +12,7 @@ struct PlaylistDetailView: View {
     @Environment(DownloadStore.self) private var downloads
     @Environment(AppSettings.self) private var settings
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.setTabViewBottomAccessorySuppressed)
     private var setTabViewBottomAccessorySuppressed
@@ -72,6 +74,7 @@ struct PlaylistDetailView: View {
                 toplistSummary: prefersToplistLayout ? initialPlaylist : nil,
                 palette: resolvedPalette,
                 blurredBackdropImage: blurredBackdropImage,
+                usesTabletBackdrop: usesTabletBackdrop,
                 searchQuery: searchQuery,
                 isLoading: isInitialLoading,
                 failureMessage: initialFailureMessage,
@@ -167,6 +170,7 @@ struct PlaylistDetailView: View {
             for: .tabBar
         )
         .environment(\.colorScheme, interfaceColorScheme)
+        .tabletCollectionChrome(usesTabletBackdrop ? resolvedPalette : nil)
         .onAppear {
             updateTabViewBottomAccessoryVisibility()
         }
@@ -292,9 +296,16 @@ struct PlaylistDetailView: View {
             : L10n.string("ui.common.playlist")
     }
 
+    private var usesTabletBackdrop: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+    }
+
     private var resolvedPalette: ArtworkDetailPalette {
-        artworkPalette
+        let palette = artworkPalette
             ?? .fallback(prefersDarkAppearance: systemColorScheme == .dark)
+        return usesTabletBackdrop
+            ? palette.tabletPalette(usesLightAppearance: settings.appearance == .light)
+            : palette
     }
 
     private var interfaceColorScheme: ColorScheme {
@@ -367,6 +378,7 @@ struct PlaylistDetailView: View {
                 NeteaseShareMenuContent(resource: .playlist(playlist))
             } label: {
                 Image(systemName: "square.and.arrow.up")
+                    .foregroundStyle(usesTabletBackdrop ? Color.primary : Color.accentColor)
             }
             .accessibilityLabel(L10n.format("ui.common.share_named", collectionTitle))
 
@@ -408,6 +420,7 @@ struct PlaylistDetailView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
+                    .foregroundStyle(usesTabletBackdrop ? Color.primary : Color.accentColor)
             }
             .accessibilityLabel("ui.common.more")
         }

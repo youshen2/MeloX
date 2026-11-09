@@ -1,13 +1,14 @@
 import SwiftUI
 import UIKit
 
-let musicCollectionWideInset: CGFloat = 34
+let musicCollectionWideInset: CGFloat = 32
 
 struct PlaylistDetailContent: View {
     let playlist: Playlist
     let toplistSummary: Playlist?
     let palette: ArtworkDetailPalette
     let blurredBackdropImage: CGImage?
+    let usesTabletBackdrop: Bool
     let searchQuery: String
     let isLoading: Bool
     let failureMessage: String?
@@ -39,7 +40,8 @@ struct PlaylistDetailContent: View {
         ZStack {
             MusicCollectionArtworkBackdrop(
                 blurredArtworkImage: blurredBackdropImage,
-                palette: palette
+                palette: palette,
+                usesTabletBackdrop: usesTabletBackdrop
             )
 
             ScrollView {
@@ -231,6 +233,8 @@ struct StandardMusicCollectionDetailHero: View {
     var onDownloadAll: ((MusicQuality) -> Void)?
     var canDownloadAll = false
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var isWide: Bool { wideArtworkSize != nil }
 
     var body: some View {
@@ -270,20 +274,30 @@ struct StandardMusicCollectionDetailHero: View {
     }
 
     private var artwork: some View {
-        ArtworkImage(url: artworkURL, cornerRadius: 12)
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 10)
+        ArtworkImage(url: artworkURL, cornerRadius: isWide ? 11 : 12)
+            .overlay {
+                if isWide {
+                    RoundedRectangle(cornerRadius: 11)
+                        .strokeBorder(
+                            Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                            lineWidth: 0.5
+                        )
+                        .allowsHitTesting(false)
+                }
+            }
+            .shadow(color: .black.opacity(0.18), radius: isWide ? 14 : 18, y: isWide ? 6 : 10)
     }
 
     private var information: some View {
         VStack(alignment: isWide ? .leading : .center, spacing: 0) {
             Text(title)
-                .font((isWide ? Font.title : .title2).weight(.bold))
+                .font(.title2.weight(.bold))
                 .lineLimit(2)
 
             Text(subtitle)
                 .font(.title3)
                 .lineLimit(1)
-                .padding(.top, 8)
+                .padding(.top, isWide ? 5 : 8)
 
             Text(metadataText)
                 .font(.subheadline.weight(.medium))
@@ -567,6 +581,7 @@ private struct ExpandablePlaylistDescription: View {
 struct MusicCollectionArtworkBackdrop: View {
     let blurredArtworkImage: CGImage?
     let palette: ArtworkDetailPalette
+    var usesTabletBackdrop = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -578,7 +593,7 @@ struct MusicCollectionArtworkBackdrop: View {
                         .resizable()
                         .scaledToFill()
                         .frame(width: proxy.size.width, height: proxy.size.height)
-                        .opacity(0.22)
+                        .opacity(usesTabletBackdrop ? 0.035 : 0.22)
                         .transition(.opacity)
                 }
 
@@ -591,11 +606,15 @@ struct MusicCollectionArtworkBackdrop: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
         }
+        .backgroundExtensionEffect(isEnabled: usesTabletBackdrop)
         .ignoresSafeArea()
         .accessibilityHidden(true)
     }
 
     private var backdropOverlayColors: [Color] {
+        if usesTabletBackdrop {
+            return [.clear, .black.opacity(palette.prefersDarkAppearance ? 0.035 : 0.025)]
+        }
         if palette.prefersDarkAppearance {
             return [
                 .black.opacity(0.08),

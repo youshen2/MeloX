@@ -5,6 +5,7 @@ import Foundation
 struct ArtworkDetailPalette: Equatable, Sendable {
     let backgroundRGB: SIMD3<Double>
     let accentRGB: SIMD3<Double>
+    let sourceRGB: SIMD3<Double>?
     let prefersDarkAppearance: Bool
 
     nonisolated static func fallback(prefersDarkAppearance: Bool) -> Self {
@@ -13,6 +14,7 @@ struct ArtworkDetailPalette: Equatable, Sendable {
                 repeating: prefersDarkAppearance ? 0.16 : 0.88
             ),
             accentRGB: ArtworkAccentColorProvider.fallback,
+            sourceRGB: nil,
             prefersDarkAppearance: prefersDarkAppearance
         )
     }
@@ -286,6 +288,7 @@ actor ArtworkAccentColorProvider {
         return ArtworkDetailPalette(
             backgroundRGB: clamped(backgroundRGB),
             accentRGB: readableAccent(source),
+            sourceRGB: source,
             prefersDarkAppearance: prefersDarkAppearance
         )
     }
