@@ -12,8 +12,14 @@ final class AppSettings {
         PlayerBackgroundRenderQuality = .automatic
     static let defaultPlayerBackgroundMotionIntensity = 1.0
     static let playerBackgroundMotionIntensityRange = 0.4...1.4
+
+    static func playerBackgroundMotionRange(for style: PlayerBackgroundStyle) -> ClosedRange<Double> {
+        style == .blurredArtwork ? 0.0...1.4 : playerBackgroundMotionIntensityRange
+    }
     static let defaultPlayerBackgroundBeatEffectsEnabled = false
     static let defaultBeatNetDebugEnabled = false
+    static let defaultPlayerBackgroundBrightness = 0.0
+    static let playerBackgroundBrightnessRange = -0.5...0.5
     static let defaultPlayerBackgroundBlur = 90.0
     static let playerBackgroundBlurRange = 0.0...140.0
     static let defaultPlayerBackgroundSaturation = 0.82
@@ -179,6 +185,7 @@ final class AppSettings {
         static let playerBackgroundBeatEffectsEnabled =
             "playerBackgroundBeatEffectsEnabled"
         static let beatNetDebugEnabled = "beatNetDebugEnabled"
+        static let playerBackgroundBrightness = "playerBackgroundBrightness"
         static let playerBackgroundBlur = "playerBackgroundBlur"
         static let playerBackgroundSaturation = "playerBackgroundSaturation"
         static let shrinksPausedArtwork = "shrinksPausedArtwork"
@@ -709,6 +716,8 @@ final class AppSettings {
                 playerBackgroundStyle.rawValue,
                 forKey: Key.playerBackgroundStyle
             )
+            let range = Self.playerBackgroundMotionRange(for: playerBackgroundStyle)
+            playerBackgroundMotionIntensity = min(max(playerBackgroundMotionIntensity, range.lowerBound), range.upperBound)
         }
     }
 
@@ -747,6 +756,10 @@ final class AppSettings {
                 forKey: Key.beatNetDebugEnabled
             )
         }
+    }
+
+    var playerBackgroundBrightness: Double {
+        didSet { defaults.set(playerBackgroundBrightness, forKey: Key.playerBackgroundBrightness) }
     }
 
     var playerBackgroundBlur: Double {
@@ -1432,11 +1445,12 @@ final class AppSettings {
         musicArea = HomeMusicRegion(rawValue: storedMusicArea)?.rawValue
             ?? HomeMusicRegion.all.rawValue
         showPlayCount = defaults.object(forKey: Key.showPlayCount) as? Bool ?? true
-        playerBackgroundStyle = PlayerBackgroundStyle(
+        let storedPlayerBackgroundStyle = PlayerBackgroundStyle(
             rawValue: defaults.string(
                 forKey: Key.playerBackgroundStyle
             ) ?? ""
         ) ?? Self.defaultPlayerBackgroundStyle
+        playerBackgroundStyle = storedPlayerBackgroundStyle
         playerBackgroundRenderQuality = PlayerBackgroundRenderQuality(
             rawValue: defaults.string(
                 forKey: Key.playerBackgroundRenderQuality
@@ -1445,12 +1459,10 @@ final class AppSettings {
         let storedPlayerBackgroundMotionIntensity = defaults.object(
             forKey: Key.playerBackgroundMotionIntensity
         ) as? Double ?? Self.defaultPlayerBackgroundMotionIntensity
+        let motionRange = Self.playerBackgroundMotionRange(for: storedPlayerBackgroundStyle)
         playerBackgroundMotionIntensity = min(
-            max(
-                storedPlayerBackgroundMotionIntensity,
-                Self.playerBackgroundMotionIntensityRange.lowerBound
-            ),
-            Self.playerBackgroundMotionIntensityRange.upperBound
+            max(storedPlayerBackgroundMotionIntensity, motionRange.lowerBound),
+            motionRange.upperBound
         )
         playerBackgroundBeatEffectsEnabled = defaults.object(
             forKey: Key.playerBackgroundBeatEffectsEnabled
@@ -1458,6 +1470,13 @@ final class AppSettings {
         beatNetDebugEnabled = defaults.object(
             forKey: Key.beatNetDebugEnabled
         ) as? Bool ?? Self.defaultBeatNetDebugEnabled
+        let storedPlayerBackgroundBrightness = defaults.object(
+            forKey: Key.playerBackgroundBrightness
+        ) as? Double ?? Self.defaultPlayerBackgroundBrightness
+        playerBackgroundBrightness = min(
+            max(storedPlayerBackgroundBrightness, Self.playerBackgroundBrightnessRange.lowerBound),
+            Self.playerBackgroundBrightnessRange.upperBound
+        )
         let storedPlayerBackgroundBlur = defaults.object(
             forKey: Key.playerBackgroundBlur
         ) as? Double ?? Self.defaultPlayerBackgroundBlur
@@ -2069,6 +2088,7 @@ final class AppSettings {
             Self.defaultPlayerBackgroundBeatEffectsEnabled
         beatNetDebugEnabled =
             Self.defaultBeatNetDebugEnabled
+        playerBackgroundBrightness = Self.defaultPlayerBackgroundBrightness
         playerBackgroundBlur = Self.defaultPlayerBackgroundBlur
         playerBackgroundSaturation = Self.defaultPlayerBackgroundSaturation
         shrinksPausedArtwork = true

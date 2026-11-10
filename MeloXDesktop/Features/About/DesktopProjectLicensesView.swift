@@ -62,6 +62,11 @@ struct DesktopProjectLicensesView: View {
 
             Section {
                 projectLink(
+                    name: "lladlam/MeloX-Android",
+                    contribution: L10n.string("ui.legal.reference.android_flow"),
+                    url: URL(string: "https://github.com/lladlam/MeloX-Android/tree/9f496319068dc03eee92b638b739437d1f7177c2")!
+                )
+                projectLink(
                     name: "jayfunc/BetterLyrics",
                     contribution: L10n.string("ui.legal.reference.better_lyrics"),
                     url: URL(string: "https://github.com/jayfunc/BetterLyrics")!

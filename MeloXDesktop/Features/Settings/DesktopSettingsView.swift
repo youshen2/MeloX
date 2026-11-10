@@ -312,13 +312,36 @@ private struct DesktopPlaybackSettingsView: View {
                     }
                 }
                 Slider(
-                    value: $settings.playerBackgroundMotionIntensity,
-                    in: AppSettings.playerBackgroundMotionIntensityRange,
-                    step: 0.1,
-                    label: { Text("ui.desktop.settings.background_motion") },
-                    minimumValueLabel: { Text("ui.desktop.settings.motion.still") },
-                    maximumValueLabel: { Text("ui.desktop.settings.motion.strong") }
+                    value: $settings.playerBackgroundBrightness,
+                    in: AppSettings.playerBackgroundBrightnessRange,
+                    step: 0.01,
+                    label: { Text("ui.desktop.settings.background_brightness") },
+                    minimumValueLabel: { Text("ui.desktop.settings.brightness.dark") },
+                    maximumValueLabel: { Text("ui.desktop.settings.brightness.light") }
                 )
+                Slider(
+                    value: $settings.playerBackgroundMotionIntensity,
+                    in: AppSettings.playerBackgroundMotionRange(for: settings.playerBackgroundStyle),
+                    step: 0.1,
+                    label: {
+                        Text(L10n.string(settings.playerBackgroundStyle == .blurredArtwork
+                            ? "ui.desktop.settings.background_flow_speed"
+                            : "ui.desktop.settings.background_motion"))
+                    },
+                    minimumValueLabel: { Text("ui.desktop.settings.motion.still") },
+                    maximumValueLabel: {
+                        Text(L10n.string(settings.playerBackgroundStyle == .blurredArtwork
+                            ? "ui.desktop.settings.motion.fast"
+                            : "ui.desktop.settings.motion.strong"))
+                    }
+                )
+                if settings.playerBackgroundStyle == .blurredArtwork {
+                    Text("ui.desktop.settings.blurred_artwork_motion.footer")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
                 if settings.playerBackgroundStyle == .flowingLight {
                     Toggle(
                         "ui.settings.player_appearance.beat_vignette",
