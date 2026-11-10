@@ -37,6 +37,10 @@ final class FloatingLyricsPreferences {
         static let cornerRadius = "floatingLyrics.cornerRadius"
     }
 
+    var isPositionLocked: Bool {
+        didSet { defaults.set(isPositionLocked, forKey: "floatingLyrics.isPositionLocked") }
+    }
+
     var showsTranslation: Bool {
         didSet {
             defaults.set(showsTranslation, forKey: Key.showsTranslation)
@@ -114,6 +118,7 @@ final class FloatingLyricsPreferences {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        isPositionLocked = defaults.bool(forKey: "floatingLyrics.isPositionLocked")
         showsTranslation = defaults.object(
             forKey: Key.showsTranslation
         ) as? Bool ?? true
@@ -168,6 +173,7 @@ final class FloatingLyricsPreferences {
     }
 
     func reset() {
+        isPositionLocked = false
         showsTranslation = true
         showsNextLine = true
         fontScale = Self.defaultFontScale

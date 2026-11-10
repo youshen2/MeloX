@@ -137,7 +137,10 @@ struct DesktopNowPlayingPlayerColumn: View {
                 }
                 DesktopPlaybackQualityMenu(model: model)
                 Button("ui.floating_lyrics.title", systemImage: "text.quote") {
-                    openWindow(id: "floating-lyrics")
+                    DesktopFloatingLyricsPanelController.shared.show(model: model) {
+                        NSApp.activate(ignoringOtherApps: true)
+                        openWindow(id: "main")
+                    }
                 }
                 Button("ui.listen_together.title", systemImage: "person.2.wave.2") {
                     model.ui.sheet = .listenTogether

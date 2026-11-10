@@ -71,7 +71,12 @@ private struct DesktopPlaybackCommands: Commands {
             Button("ui.player.now_playing") { model.ui.isNowPlayingPresented = true }
             Button("ui.desktop.mini_player") { openWindow(id: "mini-player") }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
-            Button("ui.floating_lyrics.title") { openWindow(id: "floating-lyrics") }
+            Button("ui.floating_lyrics.title") {
+                DesktopFloatingLyricsPanelController.shared.show(model: model) {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "main")
+                }
+            }
         }
     }
 }

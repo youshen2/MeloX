@@ -1293,6 +1293,9 @@
 "ui.floating_lyrics.title" = "Floating Lyrics";
 "ui.floating_lyrics.open" = "Open Floating Lyrics";
 "ui.floating_lyrics.close" = "Close Floating Lyrics";
+"ui.floating_lyrics.lock_position" = "Lock lyrics position";
+"ui.floating_lyrics.unlock_position" = "Unlock lyrics position";
+"ui.floating_lyrics.open_main" = "Open main window";
 "ui.floating_lyrics.picture_in_picture_hint" = "Show synchronized lyrics using system Picture in Picture";
 "ui.floating_lyrics.error.unsupported" = "This device does not support system Picture in Picture.";
 "ui.floating_lyrics.error.song_required" = "Play a song first.";

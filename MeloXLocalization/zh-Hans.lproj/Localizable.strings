@@ -1293,6 +1293,9 @@
 "ui.floating_lyrics.title" = "悬浮歌词";
 "ui.floating_lyrics.open" = "打开悬浮歌词";
 "ui.floating_lyrics.close" = "关闭悬浮歌词";
+"ui.floating_lyrics.lock_position" = "锁定歌词位置";
+"ui.floating_lyrics.unlock_position" = "解锁歌词位置";
+"ui.floating_lyrics.open_main" = "打开主界面";
 "ui.floating_lyrics.picture_in_picture_hint" = "使用系统画中画显示同步歌词";
 "ui.floating_lyrics.error.unsupported" = "当前设备不支持系统画中画。";
 "ui.floating_lyrics.error.song_required" = "请先播放一首歌曲。";
