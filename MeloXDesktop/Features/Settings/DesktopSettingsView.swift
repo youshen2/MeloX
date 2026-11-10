@@ -275,6 +275,7 @@ private struct DesktopPlaybackSettingsView: View {
         @Bindable var equalizer = model.settings.equalizer
         @Bindable var autoMix = model.settings.autoMix
 
+        GeometryReader { geometry in
         ScrollView {
             Form {
             Section("ui.desktop.settings.quality_controls") {
@@ -300,9 +301,13 @@ private struct DesktopPlaybackSettingsView: View {
                 Text(settings.spatialAudioMode.description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("ui.desktop.settings.spatial_audio.footer")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section("ui.player.now_playing") {
@@ -337,11 +342,15 @@ private struct DesktopPlaybackSettingsView: View {
                     Text(settings.playerBackgroundRenderQuality.detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     Text(
                         "ui.desktop.settings.apple_music_backdrop.footer"
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 Toggle("ui.settings.player_appearance.shrink_paused_artwork", isOn: $settings.shrinksPausedArtwork)
                 Toggle("ui.settings.playback.remember_page", isOn: $settings.rememberNowPlayingPage)
@@ -352,6 +361,8 @@ private struct DesktopPlaybackSettingsView: View {
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 Picker("ui.settings.player_appearance.screen_awake", selection: $settings.playerScreenAwakeMode) {
                     ForEach(
                         PlayerScreenAwakeMode.allCases.filter {
@@ -445,9 +456,11 @@ private struct DesktopPlaybackSettingsView: View {
             }
             }
             .formStyle(.columns)
-            .padding()
+            .frame(width: max(geometry.size.width - 32, 1), alignment: .leading)
+            .padding(16)
         }
         .scrollIndicators(.automatic)
+        }
         .onChange(of: settings.playerVolumeControlMode) { _, _ in
             model.playbackVolume.applyControlMode()
         }
