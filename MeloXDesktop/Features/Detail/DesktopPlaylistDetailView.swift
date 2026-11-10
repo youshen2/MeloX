@@ -59,6 +59,7 @@ struct DesktopPlaylistDetailView: View {
                             DesktopCollectionTrackList(
                                 songs: songs,
                                 sourceID: playlist.id,
+                                showsArtwork: true,
                                 footer: hasMoreTracks ? {
                                     AnyView(
                                         DesktopCollectionPaginationFooter(
@@ -76,6 +77,9 @@ struct DesktopPlaylistDetailView: View {
                                     && !isLoadingMoreTracks && songToLocate == nil
                                     ? { pendingRemoval = $0 }
                                     : nil,
+                                onPlaySong: { song in
+                                    await playAll(shuffled: false, startingAt: song)
+                                },
                                 highlightedSongID: trackLocator.highlightedSongID
                             )
                         }
@@ -331,7 +335,7 @@ struct DesktopPlaylistDetailView: View {
         }
     }
 
-    private func playAll(shuffled: Bool) async {
+    private func playAll(shuffled: Bool, startingAt song: Song? = nil) async {
         guard let currentPlaylist = playlist,
               !isPreparingPlayback else {
             return
@@ -353,10 +357,20 @@ struct DesktopPlaylistDetailView: View {
             }
             try Task.checkCancellation()
             guard playlist?.id == currentPlaylist.id else { return }
-            await model.player.playAll(
-                shuffled ? completeSongs.shuffled() : completeSongs,
-                sourceID: currentPlaylist.id
-            )
+            // Row playback must use the same complete collection as Play All.
+            // `songs` contains only the pages loaded for display (initially 100).
+            if let song {
+                await model.player.play(
+                    song,
+                    in: completeSongs,
+                    sourceID: currentPlaylist.id
+                )
+            } else {
+                await model.player.playAll(
+                    shuffled ? completeSongs.shuffled() : completeSongs,
+                    sourceID: currentPlaylist.id
+                )
+            }
         } catch is CancellationError {
             return
         } catch {

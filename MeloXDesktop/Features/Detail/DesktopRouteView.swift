@@ -255,11 +255,13 @@ struct DesktopCollectionHeader: View {
 struct DesktopCollectionTrackList: View {
     let songs: [Song]
     let sourceID: Int?
+    var showsArtwork = false
     var showsAlbumColumn = true
     var usesTrackNumbers = false
     var groupsByDisc = false
     var footer: (() -> AnyView)? = nil
     var onRemoveSong: ((Song) -> Void)?
+    var onPlaySong: ((Song) async -> Void)?
     var highlightedSongID: Int?
 
     var body: some View {
@@ -305,11 +307,13 @@ struct DesktopCollectionTrackList: View {
             index: entry.index,
             songs: songs,
             sourceID: sourceID,
+            showsArtwork: showsArtwork,
             showsAlbumColumn: showsAlbumColumn,
             displayNumber: usesTrackNumbers
                 ? String(entry.song.trackNumber ?? entry.index + 1)
                 : nil,
             onRemoveSong: onRemoveSong,
+            onPlaySong: onPlaySong,
             isHighlighted: entry.id == highlightedSongID
         )
         .id(entry.id)

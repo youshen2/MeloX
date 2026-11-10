@@ -9,9 +9,11 @@ struct DesktopTrackRow: View {
     let songs: [Song]
     var sourceID: Int?
     var showsArtwork = false
-    var showsAlbumColumn = true
+    // Default to compact metadata with artwork; collections can opt in.
+    var showsAlbumColumn: Bool? = nil
     var displayNumber: String?
     var onRemoveSong: ((Song) -> Void)?
+    var onPlaySong: ((Song) async -> Void)?
     var isHighlighted = false
 
     @State private var isHovered = false
@@ -26,11 +28,7 @@ struct DesktopTrackRow: View {
         HStack(spacing: 12) {
             Button {
                 Task {
-                    await model.player.play(
-                        song,
-                        in: songs,
-                        sourceID: sourceID
-                    )
+                    await playSong()
                 }
             } label: {
                 ZStack {
@@ -75,7 +73,7 @@ struct DesktopTrackRow: View {
 
             Spacer(minLength: 12)
 
-            if !showsArtwork, showsAlbumColumn {
+            if showsAlbumColumn ?? !showsArtwork {
                 Text(song.album?.name ?? "")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
@@ -107,7 +105,7 @@ struct DesktopTrackRow: View {
         )
         .onTapGesture(count: 2) {
             Task {
-                await model.player.play(song, in: songs, sourceID: sourceID)
+                await playSong()
             }
         }
         .contextMenu { songMenuContent }
@@ -123,6 +121,14 @@ struct DesktopTrackRow: View {
             Button("ui.common.ok", role: .cancel) { playlistError = nil }
         } message: {
             Text(playlistError ?? "")
+        }
+    }
+
+    private func playSong() async {
+        if let onPlaySong {
+            await onPlaySong(song)
+        } else {
+            await model.player.play(song, in: songs, sourceID: sourceID)
         }
     }
 

@@ -84,6 +84,8 @@ struct DesktopQueueView: View {
                             queueRows(upcomingEntries)
                         }
                     }
+                    // Let the last row scroll completely above the fade mask.
+                    .padding(.bottom, metrics.bottomFadeHeight)
                 }
                 .scrollContentBackground(.hidden)
                 .mask(alignment: .top) {
