@@ -2153,3 +2153,14 @@
 "ui.settings.general.cache_page_content" = "Cache Home and Library";
 "ui.settings.general.compact_home_actions" = "Compact Home Shortcuts";
 "ui.settings.general.cache_page_content.footer" = "Save successfully loaded recommendations, library lists, and playlist details. Show cached content first, then refresh online. Clear it in Storage.";
+
+"ui.desktop.settings.background_brightness" = "Background Brightness";
+"ui.desktop.settings.brightness.dark" = "Darker";
+"ui.desktop.settings.brightness.light" = "Brighter";
+
+"ui.desktop.settings.blurred_artwork_motion.footer" = "Nine colors sampled from the cover flow through a softly warped light field. The slider controls speed; Still disables animation.";
+
+"ui.desktop.settings.background_flow_speed" = "Background Flow Speed";
+"ui.desktop.settings.motion.fast" = "Fast";
+
+"ui.legal.reference.android_flow" = "Nine-color flowing light algorithm (GPL-3.0), ported for the blurred artwork background.";

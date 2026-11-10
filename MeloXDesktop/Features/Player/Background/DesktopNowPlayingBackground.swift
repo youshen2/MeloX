@@ -44,7 +44,13 @@ struct DesktopNowPlayingBackdrop: View {
                 Color.black.opacity(backgroundVeilOpacity)
 
                 LinearGradient(
-                    colors: legibilityGradientColors,
+                    stops: settings.playerBackgroundStyle == .blurredArtwork
+                        ? [.init(color: .black.opacity(0.04), location: 0),
+                           .init(color: .black.opacity(0.10), location: 0.52),
+                           .init(color: .black.opacity(0.48), location: 1)]
+                        : legibilityGradientColors.enumerated().map { index, color in
+                            .init(color: color, location: Double(index) / Double(legibilityGradientColors.count - 1))
+                        },
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -53,6 +59,7 @@ struct DesktopNowPlayingBackdrop: View {
                 width: proxy.size.width,
                 height: proxy.size.height
             )
+            .brightness(settings.playerBackgroundBrightness)
             .clipped()
         }
         .ignoresSafeArea()
@@ -108,36 +115,15 @@ struct DesktopNowPlayingBackdrop: View {
             )
 
         case .blurredArtwork:
-            blurredArtworkBackground(in: size)
-        }
-    }
-
-    @ViewBuilder
-    private func blurredArtworkBackground(
-        in size: CGSize
-    ) -> some View {
-        AsyncImage(url: artworkURL) { phase in
-            if case .success(let image) = phase {
-                image
-                    .resizable()
-                    .scaledToFill()
-                    .frame(
-                        width: size.width,
-                        height: size.height
-                    )
-                    .clipped()
-                    .scaleEffect(1.35)
-                    .blur(
-                        radius:
-                            CGFloat(
-                                settings
-                                    .playerBackgroundBlur
-                            )
-                    )
-                    .saturation(
-                        settings.playerBackgroundSaturation
-                    )
-            }
+            DesktopBlurredArtworkBackground(
+                artworkURL: artworkURL,
+                size: size,
+                blurRadius: settings.playerBackgroundBlur,
+                saturation: settings.playerBackgroundSaturation,
+                motionIntensity: settings.playerBackgroundMotionIntensity,
+                isActive: isActive,
+                isPlaying: player.isPlaying
+            )
         }
     }
 
@@ -148,7 +134,7 @@ struct DesktopNowPlayingBackdrop: View {
         case .flowingLight:
             0.02
         case .blurredArtwork:
-            0.10
+            0
         }
     }
 
@@ -244,4 +230,65 @@ private struct DesktopNowPlayingBeatAnalysisTaskID: Equatable {
     let songID: Int?
     let isPlaybackReady: Bool
     let isEnabled: Bool
+}
+
+/// Android original nine-color flowing field, evaluated directly on the GPU.
+private struct DesktopBlurredArtworkBackground: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var clock = DesktopBlurredArtworkClock()
+    @State private var previousPalette = DesktopAndroidFlowPalette.fallback
+    @State private var targetPalette = DesktopAndroidFlowPalette.fallback
+    @State private var paletteChangedAt = Date.distantPast
+    @State private var isPaletteSettling = false
+    private let motion = DesktopBlurredArtworkMotion()
+
+    let artworkURL: URL?
+    let size: CGSize
+    let blurRadius: Double
+    let saturation: Double
+    let motionIntensity: Double
+    let isActive: Bool
+    let isPlaying: Bool
+
+    private var strength: Double { reduceMotion ? 0 : min(max(motionIntensity, 0), 1.4) }
+    private var isClockRunning: Bool {
+        isActive && isPlaying && scenePhase == .active && strength > 0
+    }
+    private func palette(at date: Date) -> DesktopAndroidFlowPalette {
+        previousPalette.blended(to: targetPalette,
+            amount: 1 - exp(-max(date.timeIntervalSince(paletteChangedAt), 0) / 0.28))
+    }
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0,
+                                paused: !isClockRunning && !isPaletteSettling)) { context in
+            let phase = clock.elapsed(at: context.date).truncatingRemainder(dividingBy: 8 * .pi)
+            let uniforms = palette(at: context.date).values + motion.centers(at: phase)
+            Color.white.colorEffect(ShaderLibrary.desktopBlurredArtworkFlow(
+                .float2(size), .float(Float(phase)), .floatArray(uniforms),
+                .float(Float(saturation / AppSettings.defaultPlayerBackgroundSaturation)),
+                .float(Float(max(blurRadius / 90 * 0.45, 0.01)))
+            ))
+        }
+        .frame(width: size.width, height: size.height)
+        .task(id: artworkURL) {
+            let loaded = await DesktopAndroidFlowPaletteStore.shared.palette(for: artworkURL)
+            guard !Task.isCancelled else { return }
+            let now = Date()
+            previousPalette = palette(at: now)
+            targetPalette = loaded
+            paletteChangedAt = now
+            isPaletteSettling = true
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            isPaletteSettling = false
+        }
+        .onChange(of: isClockRunning, initial: true) { _, running in
+            clock.setRate(running ? motion.speed(for: strength) : 0, at: Date())
+        }
+        .onChange(of: strength) { _, value in
+            clock.setRate(isClockRunning ? motion.speed(for: value) : 0, at: Date())
+        }
+    }
 }

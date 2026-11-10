@@ -2153,3 +2153,14 @@
 "ui.settings.general.cache_page_content" = "自动缓存首页与音乐库";
 "ui.settings.general.compact_home_actions" = "紧凑首页快捷入口";
 "ui.settings.general.cache_page_content.footer" = "保存最近加载成功的推荐、音乐库和歌单信息。再次打开时先显示缓存，再联网更新；可在储存空间中清理。";
+
+"ui.desktop.settings.background_brightness" = "背景明暗";
+"ui.desktop.settings.brightness.dark" = "暗";
+"ui.desktop.settings.brightness.light" = "亮";
+
+"ui.desktop.settings.blurred_artwork_motion.footer" = "从封面提取九色，以光场扭曲和柔和混色持续流动。滑块控制速度，设为“静止”可关闭。";
+
+"ui.desktop.settings.background_flow_speed" = "背景流动速度";
+"ui.desktop.settings.motion.fast" = "快";
+
+"ui.legal.reference.android_flow" = "九色取色流动光影算法（GPL-3.0），移植用于模糊封面背景。";
