@@ -12,6 +12,7 @@ final class AutoMixPlaybackCoordinator {
     var onTransitionBegan:
         ((PreparedAutoMixContext, AutoMixTransitionPlan) -> Void)?
     var onTransitionProgress: ((Double) -> Void)?
+    var onPlaybackHandoff: ((PreparedAutoMixContext) -> Void)?
     var onTransitionCompleted:
         ((PreparedAutoMixContext) -> Void)?
 
@@ -344,6 +345,14 @@ final class AutoMixPlaybackCoordinator {
             self.onTransitionProgress?(
                 min(max(progress, 0), 1)
             )
+        }
+        engine.onAutoMixPlaybackHandoff = { [weak self] identifier in
+            guard let self,
+                  let context = self.preparedContext,
+                  self.transitionHasBegun,
+                  context.incomingSong.id == identifier else { return }
+            // Keep preparation blocked until the outgoing fade has finished.
+            self.onPlaybackHandoff?(context)
         }
         engine.onAutoMixTransitionCompleted = {
             [weak self] identifier in

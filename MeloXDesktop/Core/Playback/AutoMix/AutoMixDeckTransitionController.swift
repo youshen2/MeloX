@@ -18,6 +18,7 @@ final class AutoMixDeckTransitionController {
     var onTransitionBegan:
         ((Int, AutoMixTransitionPlan) -> Void)?
     var onTransitionProgress: ((Double) -> Void)?
+    var onPlaybackHandoff: ((Int) -> Void)?
     var onTransitionCompleted: ((Int) -> Void)?
     var onPreparationFailed:
         ((Int, Error) -> Void)?
@@ -42,6 +43,7 @@ final class AutoMixDeckTransitionController {
             TimeInterval
         let incomingStartPosition:
             TimeInterval
+        var hasHandedOff = false
         var lastProgress = 0.0
         var lastPublishedProgress = 0.0
 
@@ -139,13 +141,16 @@ final class AutoMixDeckTransitionController {
         envelopeTask = nil
 
         if let activeTransition {
-            decks[
-                activeTransition
-                    .incomingDeckIndex
-            ].clear()
-            activeDeckIndex =
-                activeTransition
-                    .outgoingDeckIndex
+            // Once the incoming deck owns playback, cancelling a fade must
+            // retain it rather than returning to the previous song.
+            let retainedIndex = activeTransition.hasHandedOff
+                ? activeTransition.incomingDeckIndex
+                : activeTransition.outgoingDeckIndex
+            let discardedIndex = activeTransition.hasHandedOff
+                ? activeTransition.outgoingDeckIndex
+                : activeTransition.incomingDeckIndex
+            activeDeckIndex = retainedIndex
+            decks[discardedIndex].clear()
         } else if let preparedTransition {
             decks[
                 preparedTransition.deckIndex
@@ -355,6 +360,8 @@ final class AutoMixDeckTransitionController {
                     progress,
                     transition: current
                 )
+                self.handoffIfNeeded(current, progress: progress)
+                guard self.activeTransition === current else { return }
                 if progress >= 1 {
                     self.finish(
                         current,
@@ -456,6 +463,19 @@ final class AutoMixDeckTransitionController {
         )
     }
 
+    private func handoffIfNeeded(
+        _ transition: ActiveTransition,
+        progress: Double
+    ) {
+        guard activeTransition === transition,
+              !transition.hasHandedOff,
+              progress >= 0.5 else { return }
+        transition.hasHandedOff = true
+        activeDeckIndex = transition.incomingDeckIndex
+        // Publish the new primary deck and its metadata in the same actor turn.
+        onPlaybackHandoff?(transition.identifier)
+    }
+
     private func finish(
         _ transition: ActiveTransition,
         wantsPlayback: Bool
@@ -464,6 +484,8 @@ final class AutoMixDeckTransitionController {
                 == transition.identifier else {
             return
         }
+        handoffIfNeeded(transition, progress: 1)
+        guard activeTransition === transition else { return }
         envelopeTask?.cancel()
         envelopeTask = nil
         decks[
