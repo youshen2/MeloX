@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Renders the single player bar in the selected tab's content coordinate
-/// space. The tab page owns selection gating so hidden tabs do not keep extra
-/// player trees alive.
-struct DesktopTabBottomPlayer: View {
+/// Renders one persistent player above the sidebar's native tab host.
+/// The shell aligns it with the content column, independent of navigation.
+struct DesktopGlobalBottomPlayer: View {
     @Environment(DesktopAppModel.self) private var model
 
     var body: some View {
