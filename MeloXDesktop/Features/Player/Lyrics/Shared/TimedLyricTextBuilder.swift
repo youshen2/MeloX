@@ -178,7 +178,7 @@ enum TimedLyricTextBuilder {
                 continue
             }
             let characterPositions = Dictionary(
-                uniqueKeysWithValues: timedIndices.enumerated().map {
+                keepingFirst: timedIndices.enumerated().map {
                     ($0.element, $0.offset)
                 }
             )

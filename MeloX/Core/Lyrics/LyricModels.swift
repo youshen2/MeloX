@@ -282,3 +282,32 @@ struct LyricLine: Identifiable, Hashable, Sendable {
         return components.joined(separator: L10n.string("ui.common.spoken_separator"))
     }
 }
+
+extension Array where Element == LyricLine {
+    /// Keeps the first line's id and gives any later line that repeats it a
+    /// `#n` suffix, so lyrics with the same text at the same time (repeated
+    /// LRC tags, merged sources, duplicated TTML spans) stay distinct.
+    func withUniqueIDs() -> [LyricLine] {
+        var seen = Set<LyricLine.ID>()
+        seen.reserveCapacity(count)
+        return map { line in
+            guard !seen.insert(line.id).inserted else { return line }
+            var suffix = 1
+            var candidate = "\(line.id)#\(suffix)"
+            while !seen.insert(candidate).inserted {
+                suffix += 1
+                candidate = "\(line.id)#\(suffix)"
+            }
+            return LyricLine(id: candidate, copying: line)
+        }
+    }
+}
+
+extension Dictionary {
+    /// Like `init(uniqueKeysWithValues:)`, but keeps the first value when a
+    /// key repeats instead of trapping. Lyrics data comes from outside the
+    /// app, so a repeated id must never crash the player.
+    init<S: Sequence>(keepingFirst pairs: S) where S.Element == (Key, Value) {
+        self.init(pairs, uniquingKeysWith: { first, _ in first })
+    }
+}
