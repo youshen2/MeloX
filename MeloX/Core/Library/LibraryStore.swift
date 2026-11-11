@@ -719,34 +719,6 @@ final class LibraryStore {
         await persistContent()
     }
 
-    // A successful write must not leave an old offline detail snapshot behind.
-    // Summary refresh failure is not reported as a failed write (avoid duplicate retries).
-    private func refreshPlaylistAfterMutation(id: Int, cookie: String) async {
-        // Invalidate the account that performed the write, even after a switch.
-        // Advance revision before suspension so in-flight detail reads are obsolete.
-        if cookie == settings.cookie {
-            playlistContentRevisions[id, default: 0] += 1
-        }
-        await api.pageContentCache.remove(for: PlaylistContentSnapshot.cacheKey(id: id), cookie: cookie)
-        guard cookie == settings.cookie else { return }
-        // Liked songs have no image summary in the sidebar; avoid an unused
-        // potentially huge trackIds response for every heart toggle.
-        if id != likedPlaylistID {
-            do {
-                let summary = try await api.playlist(id: id, trackLimit: 0)
-                guard cookie == settings.cookie else { return }
-                if let index = favoritePlaylists.firstIndex(where: { $0.id == id }) {
-                    favoritePlaylists[index] = summary
-                }
-            } catch {
-                // The write succeeded; do not invite a duplicate write by
-                // reporting a summary fetch failure as a mutation failure.
-            }
-        }
-        guard cookie == settings.cookie else { return }
-        await persistContent()
-    }
-
     func clearAccountData() {
         if let cookie = loadedCookie {
             let cache = api.pageContentCache
