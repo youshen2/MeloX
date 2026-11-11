@@ -29,6 +29,10 @@ final class PageContentCache {
         await storage.store(data, scope: Self.scope(for: settings.cookie), key: key)
     }
 
+    func remove(for key: String, cookie: String? = nil) async {
+        await storage.remove(scope: Self.scope(for: cookie ?? settings.cookie), key: key)
+    }
+
     func removeAccount(cookie: String) async {
         await storage.remove(scope: Self.scope(for: cookie))
     }
@@ -100,6 +104,15 @@ private actor PageContentCacheStorage {
                     SELECT rowid FROM pageContent ORDER BY updatedAt DESC LIMIT 256
                 )
                 """)
+        }
+    }
+
+    func remove(scope: String, key: String) {
+        try? database?.write { db in
+            try db.execute(
+                sql: "DELETE FROM pageContent WHERE scope = ? AND cacheKey = ?",
+                arguments: [scope, key]
+            )
         }
     }
 
