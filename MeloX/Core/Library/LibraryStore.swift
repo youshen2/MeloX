@@ -7,6 +7,7 @@ final class LibraryStore {
     private(set) var profile: AccountProfile?
     private(set) var accountDetail: AccountDetail?
     private(set) var favoriteSongs: [Song] = []
+    private(set) var playlistContentRevisions: [Int: Int] = [:]
     private(set) var favoritePlaylists: [Playlist] = []
     private(set) var favoriteAlbums: [Album] = []
     private(set) var favoriteArtists: [Artist] = []
@@ -534,14 +535,20 @@ final class LibraryStore {
             return
         }
 
+        let cookie = settings.cookie
+        let likedPlaylist = likedPlaylistID
         let wasLiked = contains(song: song)
         setLocalSong(song, isLiked: !wasLiked)
 
         Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self, cookie == self.settings.cookie else { return }
             do {
                 try await self.api.setSongLiked(id: song.id, isLiked: !wasLiked)
+                if let id = likedPlaylist {
+                    await self.refreshPlaylistAfterMutation(id: id, cookie: cookie)
+                }
             } catch {
+                guard cookie == self.settings.cookie else { return }
                 self.setLocalSong(song, isLiked: wasLiked)
                 self.errorMessage = error.localizedDescription
             }
@@ -640,14 +647,19 @@ final class LibraryStore {
     func deletePlaylist(_ playlist: Playlist) async throws {
         guard isLoggedIn else { throw APIError.notLoggedIn }
         guard canDelete(playlist) else { throw LibraryOperationError.playlistIsNotOwned }
+        let cookie = settings.cookie
         try await api.deletePlaylist(id: playlist.id)
+        await api.pageContentCache.remove(for: PlaylistContentSnapshot.cacheKey(id: playlist.id), cookie: cookie)
+        guard cookie == settings.cookie else { return }
         favoritePlaylists.removeAll { $0.id == playlist.id }
         await persistContent()
     }
 
     func createPlaylist(name: String, isPrivate: Bool) async throws {
         guard isLoggedIn, let profile else { throw APIError.notLoggedIn }
+        let cookie = settings.cookie
         let created = try await api.createPlaylist(name: name, isPrivate: isPrivate)
+        guard cookie == settings.cookie else { return }
         let summary = Playlist(
             id: created.id,
             name: created.name,
@@ -661,11 +673,12 @@ final class LibraryStore {
     func remove(song: Song, from playlist: Playlist) async throws {
         guard isLoggedIn else { throw APIError.notLoggedIn }
         guard canDelete(playlist) else { throw LibraryOperationError.playlistIsNotOwned }
+        let cookie = settings.cookie
         try await api.removeSong(id: song.id, fromPlaylistID: playlist.id)
-        if let index = favoritePlaylists.firstIndex(where: { $0.id == playlist.id }) {
+        if cookie == settings.cookie, let index = favoritePlaylists.firstIndex(where: { $0.id == playlist.id }) {
             favoritePlaylists[index].removeSong(id: song.id)
         }
-        await persistContent()
+        await refreshPlaylistAfterMutation(id: playlist.id, cookie: cookie)
     }
 
     func add(song: Song, to playlist: Playlist) async throws {
@@ -673,7 +686,65 @@ final class LibraryStore {
         guard playlist.creator?.userID == profile?.id else {
             throw LibraryOperationError.playlistIsNotOwned
         }
+        let cookie = settings.cookie
         try await api.addSong(id: song.id, toPlaylistID: playlist.id)
+        await refreshPlaylistAfterMutation(id: playlist.id, cookie: cookie)
+    }
+
+    // A successful write must not leave an old offline detail snapshot behind.
+    // Summary refresh failure is not reported as a failed write (avoid duplicate retries).
+    private func refreshPlaylistAfterMutation(id: Int, cookie: String) async {
+        // Invalidate the account that performed the write, even after a switch.
+        // Advance revision before suspension so in-flight detail reads are obsolete.
+        if cookie == settings.cookie {
+            playlistContentRevisions[id, default: 0] += 1
+        }
+        await api.pageContentCache.remove(for: PlaylistContentSnapshot.cacheKey(id: id), cookie: cookie)
+        guard cookie == settings.cookie else { return }
+        // Liked songs have no image summary in the sidebar; avoid an unused
+        // potentially huge trackIds response for every heart toggle.
+        if id != likedPlaylistID {
+            do {
+                let summary = try await api.playlist(id: id, trackLimit: 0)
+                guard cookie == settings.cookie else { return }
+                if let index = favoritePlaylists.firstIndex(where: { $0.id == id }) {
+                    favoritePlaylists[index] = summary
+                }
+            } catch {
+                // The write succeeded; do not invite a duplicate write by
+                // reporting a summary fetch failure as a mutation failure.
+            }
+        }
+        guard cookie == settings.cookie else { return }
+        await persistContent()
+    }
+
+    // A successful write must not leave an old offline detail snapshot behind.
+    // Summary refresh failure is not reported as a failed write (avoid duplicate retries).
+    private func refreshPlaylistAfterMutation(id: Int, cookie: String) async {
+        // Invalidate the account that performed the write, even after a switch.
+        // Advance revision before suspension so in-flight detail reads are obsolete.
+        if cookie == settings.cookie {
+            playlistContentRevisions[id, default: 0] += 1
+        }
+        await api.pageContentCache.remove(for: PlaylistContentSnapshot.cacheKey(id: id), cookie: cookie)
+        guard cookie == settings.cookie else { return }
+        // Liked songs have no image summary in the sidebar; avoid an unused
+        // potentially huge trackIds response for every heart toggle.
+        if id != likedPlaylistID {
+            do {
+                let summary = try await api.playlist(id: id, trackLimit: 0)
+                guard cookie == settings.cookie else { return }
+                if let index = favoritePlaylists.firstIndex(where: { $0.id == id }) {
+                    favoritePlaylists[index] = summary
+                }
+            } catch {
+                // The write succeeded; do not invite a duplicate write by
+                // reporting a summary fetch failure as a mutation failure.
+            }
+        }
+        guard cookie == settings.cookie else { return }
+        await persistContent()
     }
 
     func clearAccountData() {
@@ -703,6 +774,7 @@ final class LibraryStore {
         accountDetail = nil
         favoriteSongs = []
         favoritePlaylists = []
+        playlistContentRevisions = [:]
         favoriteAlbums = []
         favoriteArtists = []
         subscribedPodcasts = []

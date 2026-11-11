@@ -96,6 +96,7 @@ enum FixtureError: Error { case offline }
     var accountDetail: AccountDetail?
     var favoriteSongs: [Song] = []
     var favoritePlaylists: [Playlist] = []
+    var playlistContentRevisions: [Int: Int] = [:]
     var favoriteAlbums: [Album] = []
     var favoriteArtists: [Artist] = []
     var subscribedPodcasts: [Podcast] = []
@@ -198,6 +199,19 @@ enum FixtureError: Error { case offline }
         let ignoredWrite: [Int]? = await cache.value(for: "disabled-write")
         precondition(ignoredWrite == nil)
 
+        await cache.store([1], for: "playlist-to-invalidate")
+        await cache.store([2], for: "playlist-to-preserve")
+        settings.cookie = "account-b"
+        await cache.store([3], for: "playlist-to-invalidate")
+        settings.cookie = "account-a"
+        await cache.remove(for: "playlist-to-invalidate")
+        let invalidated: [Int]? = await cache.value(for: "playlist-to-invalidate")
+        let untouchedKey: [Int]? = await cache.value(for: "playlist-to-preserve")
+        precondition(invalidated == nil && untouchedKey == [2])
+        settings.cookie = "account-b"
+        let untouchedAccount: [Int]? = await cache.value(for: "playlist-to-invalidate")
+        precondition(untouchedAccount == [3])
+        settings.cookie = "account-a"
         await cache.removeAccount(cookie: "account-a")
         let removed: LibraryContentSnapshot? = await cache.value(for: LibraryContentSnapshot.cacheKey)
         precondition(removed == nil)

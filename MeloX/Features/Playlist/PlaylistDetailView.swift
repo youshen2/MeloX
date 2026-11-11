@@ -16,7 +16,9 @@ struct PlaylistDetailView: View {
     private var setTabViewBottomAccessorySuppressed
 
     @State private var playlist: Playlist?
-    @State private var contentAccountToken: Int?
+    @State private var contentAccountToken: String?
+    @State private var contentRevision: Int?
+    @State private var contentLoadID = UUID()
     @State private var pendingRemoval: Song?
     @State private var isRemovingTrack = false
     @State private var removalError: String?
@@ -188,6 +190,10 @@ struct PlaylistDetailView: View {
             guard playlist == nil else { return }
             await load(waitingForNavigationTransition: true)
         }
+        .onChange(of: library.playlistContentRevisions[id, default: 0]) { _, _ in
+            guard !isRemovingTrack else { return }
+            Task { await load() }
+        }
         .task(id: artworkURL) {
             let transitionDelay = navigationTransitionDelay()
             defer { transitionDelay.cancel() }
@@ -281,7 +287,8 @@ struct PlaylistDetailView: View {
     }
 
     private var artworkURL: URL? {
-        displayedPlaylist.artworkURL ?? initialPlaylist.artworkURL
+        // A refreshed empty cover must not fall back to the route's stale image.
+        playlist.map { $0.artworkURL } ?? initialPlaylist.artworkURL
     }
 
     private var collectionTitle: String {
@@ -497,7 +504,10 @@ struct PlaylistDetailView: View {
     private func load(
         waitingForNavigationTransition: Bool = false
     ) async {
-        let accountToken = settings.cookie.hashValue
+        let accountToken = settings.cookie
+        let revision = library.playlistContentRevisions[id, default: 0]
+        let loadID = UUID()
+        contentLoadID = loadID
         songToLocate = nil
         trackLocator.reset()
         locateErrorMessage = nil
@@ -510,7 +520,10 @@ struct PlaylistDetailView: View {
            let snapshot: PlaylistContentSnapshot = await api.pageContentCache.value(
                for: PlaylistContentSnapshot.cacheKey(id: id)
            ) {
+            guard contentLoadID == loadID, accountToken == settings.cookie,
+                  revision == library.playlistContentRevisions[id, default: 0] else { return }
             playlist = snapshot.playlist
+            contentRevision = revision
             contentAccountToken = accountToken
             loadedTrackOffset = snapshot.loadedTrackOffset
             phase = .loaded
@@ -529,8 +542,10 @@ struct PlaylistDetailView: View {
                 throw APIError.invalidResponse
             }
             try await transitionDelay.value
-            guard accountToken == settings.cookie.hashValue else { return }
+            guard contentLoadID == loadID, accountToken == settings.cookie,
+                  revision == library.playlistContentRevisions[id, default: 0] else { return }
             playlist = loadedPlaylist
+            contentRevision = revision
             contentAccountToken = accountToken
             loadedTrackOffset = min(
                 requestedTrackLimit,
@@ -541,6 +556,8 @@ struct PlaylistDetailView: View {
         } catch is CancellationError {
             return
         } catch {
+            guard contentLoadID == loadID, accountToken == settings.cookie,
+                  revision == library.playlistContentRevisions[id, default: 0] else { return }
             if playlist == nil {
                 phase = .failed(error.localizedDescription)
             } else {
@@ -552,17 +569,28 @@ struct PlaylistDetailView: View {
 
     private func removeSong(_ song: Song) async {
         guard let playlist, !isLoadingMoreTracks, songToLocate == nil else { return }
+        let accountToken = settings.cookie
         isRemovingTrack = true
         defer { isRemovingTrack = false }
         do {
             try await library.remove(song: song, from: playlist)
-            guard var updated = self.playlist else { return }
-            if let index = updated.removeSong(id: song.id), index < loadedTrackOffset {
-                loadedTrackOffset -= 1
+            guard accountToken == settings.cookie else { return }
+            // This detail is a value copy, independent of the sidebar summary.
+            // Remove once locally even if the following detail request fails.
+            if var updated = self.playlist,
+               updated.tracks.contains(where: { $0.id == song.id }) || updated.trackIDs.contains(where: { $0.id == song.id }) {
+                if let index = updated.removeSong(id: song.id), index < loadedTrackOffset {
+                    loadedTrackOffset = max(0, loadedTrackOffset - 1)
+                }
+                self.playlist = updated
+                contentRevision = nil // never persist old artwork after a write
             }
-            self.playlist = updated
-            await persistContent()
+            await load()
+            if loadMoreTracksError != nil {
+                removalError = loadMoreTracksError
+            }
         } catch {
+            guard accountToken == settings.cookie else { return }
             removalError = error.localizedDescription
         }
     }
@@ -614,7 +642,8 @@ struct PlaylistDetailView: View {
     }
 
     private func persistContent() async {
-        guard let playlist, contentAccountToken == settings.cookie.hashValue else { return }
+        guard let playlist, contentAccountToken == settings.cookie,
+              contentRevision == library.playlistContentRevisions[id, default: 0] else { return }
         await api.pageContentCache.store(
             PlaylistContentSnapshot(playlist: playlist, loadedTrackOffset: loadedTrackOffset),
             for: PlaylistContentSnapshot.cacheKey(id: id)
