@@ -209,7 +209,10 @@ struct DesktopBottomMetadataSlot: View {
                 model.ui.isNowPlayingPresented = true
             }
             Button("ui.floating_lyrics.title", systemImage: "text.quote") {
-                openWindow(id: "floating-lyrics")
+                DesktopFloatingLyricsPanelController.shared.show(model: model) {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "main")
+                }
             }
             if let url = URL(
                 string: "https://music.163.com/#/song?id=\(song.id)"

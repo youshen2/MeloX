@@ -2,7 +2,8 @@ import SwiftUI
 
 struct DesktopFloatingLyricsWindow: View {
     @Environment(DesktopAppModel.self) private var model
-    @Environment(\.dismissWindow) private var dismissWindow
+    let showMainWindow: () -> Void
+    let closeWindow: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @State private var isHovered = false
@@ -102,11 +103,14 @@ struct DesktopFloatingLyricsWindow: View {
 
             lyricsContent
 
+            DesktopFloatingLyricsDragSurface(isPositionLocked: preferences.isPositionLocked)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityHidden(true)
+
             chrome
         }
         .frame(minWidth: 300, minHeight: 72)
         .contentShape(.rect)
-        .onHover { isHovered = $0 }
         // `estimatedProgress()` only reads the playback timeline clock, so
         // SwiftUI observation never sees `PlayerStore.progress` mutate when
         // this window is the only observer. Mirror the published sample into
@@ -122,7 +126,10 @@ struct DesktopFloatingLyricsWindow: View {
             value: showsChrome
         )
         .background {
-            DesktopFloatingLyricsWindowConfiguration()
+            DesktopFloatingLyricsWindowConfiguration(
+                isPositionLocked: preferences.isPositionLocked,
+                onHoverChanged: { isHovered = $0 }
+            )
                 .allowsHitTesting(false)
         }
         .containerBackground(for: .window) {
@@ -210,24 +217,60 @@ struct DesktopFloatingLyricsWindow: View {
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                 Spacer()
-                Image(
-                    systemName: model.player.isPlaying
-                        ? "waveform"
-                        : "pause.fill"
-                )
-                .foregroundStyle(.red)
+                HStack(spacing: 8) {
+                    Button {
+                        showMainWindow()
+                    } label: {
+                        Image(systemName: "macwindow")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 24, height: 24)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L10n.string("ui.floating_lyrics.open_main"))
+                    .accessibilityLabel("ui.floating_lyrics.open_main")
 
-                Button {
-                    dismissWindow(id: "floating-lyrics")
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .frame(width: 24, height: 24)
-                        .contentShape(.rect)
+                    Button {
+                        model.player.togglePlayback()
+                    } label: {
+                        Image(systemName: model.player.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 24, height: 24)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.red)
+                    .help(L10n.string(model.player.isPlaying ? "ui.player.pause" : "ui.common.play"))
+                    .accessibilityLabel(Text(model.player.isPlaying ? "ui.player.pause" : "ui.common.play"))
+
+                    Button {
+                        preferences.isPositionLocked.toggle()
+                    } label: {
+                        Image(systemName: preferences.isPositionLocked ? "lock.fill" : "lock.open")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 24, height: 24)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L10n.string(preferences.isPositionLocked
+                        ? "ui.floating_lyrics.unlock_position" : "ui.floating_lyrics.lock_position"))
+                    .accessibilityLabel(Text(preferences.isPositionLocked
+                        ? "ui.floating_lyrics.unlock_position" : "ui.floating_lyrics.lock_position"))
+
+                    Button {
+                        closeWindow()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 24, height: 24)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L10n.string("ui.floating_lyrics.close"))
+                    .accessibilityLabel("ui.floating_lyrics.close")
                 }
-                .buttonStyle(.borderless)
-                .help(L10n.string("ui.floating_lyrics.close"))
-                .accessibilityLabel("ui.floating_lyrics.close")
+                .background { DesktopFloatingLyricsControlRegion().allowsHitTesting(false) }
+
             }
             Spacer()
         }

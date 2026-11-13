@@ -643,7 +643,10 @@ struct DesktopMiniPlayerWindow: View {
             }
         }
         Button("ui.floating_lyrics.title", systemImage: "text.quote") {
-            openWindow(id: "floating-lyrics")
+            DesktopFloatingLyricsPanelController.shared.show(model: model) {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "main")
+            }
         }
     }
 

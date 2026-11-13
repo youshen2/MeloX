@@ -89,6 +89,12 @@ struct DesktopRootView: View {
         }
         .tint(.red)
         .desktopLaunchExperience()
+        .onAppear {
+            DesktopFloatingLyricsPanelController.shared.restoreIfNeeded(model: model) {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "main")
+            }
+        }
         .task { await model.bootstrap() }
         .task(id: ui.isNowPlayingPresented) {
             await updateNowPlayingLifecycle(

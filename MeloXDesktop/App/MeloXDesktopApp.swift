@@ -16,7 +16,7 @@ struct MeloXDesktopApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("MeloX") {
+        Window("MeloX", id: "main") {
             DesktopRootView()
                 .environment(model)
                 .environment(model.screenAwakeCoordinator)
@@ -47,21 +47,6 @@ struct MeloXDesktopApp: App {
         .windowResizability(.contentSize)
         .windowBackgroundDragBehavior(.disabled)
         .defaultSize(width: 320, height: 145)
-
-        Window("ui.floating_lyrics.title", id: "floating-lyrics") {
-            DesktopFloatingLyricsWindow()
-                .environment(model)
-                .environment(\.locale, model.settings.appLanguage.locale)
-                .preferredColorScheme(model.settings.appearance.preferredColorScheme)
-        }
-        .windowStyle(.plain)
-        .windowLevel(.floating)
-        .windowResizability(.contentMinSize)
-        .windowBackgroundDragBehavior(.enabled)
-        .defaultSize(
-            width: DesktopFloatingLyricsWindowMetrics.defaultWidth,
-            height: DesktopFloatingLyricsWindowMetrics.defaultHeight
-        )
 
         Window("ui.desktop.commands.about_melox", id: "about") {
             DesktopAboutView()
