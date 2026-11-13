@@ -330,6 +330,10 @@
 "ui.settings.catalog.floating.subtitle" = "Picture-in-Picture lyrics, translation, and next line";
 "ui.settings.catalog.floating.keywords" = "Picture in Picture|floating lyrics|other apps|lyrics size";
 "ui.settings.catalog.content_storage.section" = "Content & Storage";
+"ui.settings.background_mix.title" = "Background Playback";
+"ui.settings.background_mix.keywords" = "mix|background|simultaneous|Control Center|Lock Screen|game";
+"ui.settings.background_mix.always.title" = "Mix playback";
+"ui.settings.background_mix.always.subtitle" = "Play alongside other apps";
 "ui.settings.catalog.features.title" = "Feature Modules";
 "ui.settings.catalog.features.subtitle" = "Enable or disable podcasts, downloads, Cloud Music, and Recently Played";
 "ui.settings.catalog.features.keywords" = "toggle|hide|podcasts|radio|downloads|cloud|recently played|playback history";
@@ -1396,7 +1400,7 @@
 "ui.heart_mode.manage_hint" = "Tap to manage Heart Mode";
 "ui.heart_mode.turn_off" = "Turn Off Heart Mode";
 "ui.heart_mode.turn_off_message" = "The current playback queue is preserved when Heart Mode is turned off.";
-"ui.listen_together.playback_mode_managed" = "Playback modes are managed by the room during Listen Together";
+"ui.listen_together.playback_mode_managed" = "Autoplay and AutoMix are unavailable during Listen Together";
 "ui.listen_together.room" = "Listen Together Room";
 "ui.listen_together.start" = "Start Listen Together";
 "ui.podcasts.go_to" = "Go to Podcast: %@";

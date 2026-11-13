@@ -105,6 +105,12 @@ final class AudioPlaybackDeck: NSObject, @preconcurrency AudioPlayerDelegate {
         if isReady { transition(to: .playing) }
     }
 
+    func resumeInPlace() {
+        wantsPlayback = true
+        player?.resume()
+        if isReady { transition(to: .playing) }
+    }
+
     func play(atRate rate: Float) { self.rate = rate }
 
     func pause() {

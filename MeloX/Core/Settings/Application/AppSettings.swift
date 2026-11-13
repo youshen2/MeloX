@@ -12,6 +12,7 @@ final class AppSettings {
     static let defaultPlayerBackgroundAudioResponseEnabled = false
     static let defaultPlayerBackgroundBeatEffectsEnabled = false
     static let defaultBeatNetDebugEnabled = false
+    static let defaultAlwaysMixesWithOtherApps = false
     static let defaultStartsHeartModeOnLaunch = false
     static let defaultRecognizesClipboardLinksOnLaunch = false
     static let defaultSystemNowPlayingLyricsEnabled = true
@@ -167,6 +168,10 @@ final class AppSettings {
         static let playerBackgroundAudioResponseEnabled =
             "playerBackgroundAudioResponseEnabled"
         static let beatNetDebugEnabled = "beatNetDebugEnabled"
+        static let alwaysMixesWithOtherApps =
+            "alwaysMixesWithOtherApps"
+        static let removedResumesPlaybackInMixWhenInterrupted =
+            "resumesPlaybackInMixWhenInterrupted"
         static let playerBackgroundBlur = "playerBackgroundBlur"
         static let playerBackgroundSaturation = "playerBackgroundSaturation"
         static let shrinksPausedArtwork = "shrinksPausedArtwork"
@@ -744,6 +749,16 @@ final class AppSettings {
             defaults.set(
                 beatNetDebugEnabled,
                 forKey: Key.beatNetDebugEnabled
+            )
+        }
+    }
+
+    /// Keep the playback session mixable so other apps cannot interrupt it.
+    var alwaysMixesWithOtherApps: Bool {
+        didSet {
+            defaults.set(
+                alwaysMixesWithOtherApps,
+                forKey: Key.alwaysMixesWithOtherApps
             )
         }
     }
@@ -1446,6 +1461,12 @@ final class AppSettings {
         beatNetDebugEnabled = defaults.object(
             forKey: Key.beatNetDebugEnabled
         ) as? Bool ?? Self.defaultBeatNetDebugEnabled
+        alwaysMixesWithOtherApps = defaults.object(
+            forKey: Key.alwaysMixesWithOtherApps
+        ) as? Bool ?? Self.defaultAlwaysMixesWithOtherApps
+        defaults.removeObject(
+            forKey: Key.removedResumesPlaybackInMixWhenInterrupted
+        )
         playerBackgroundBlur = defaults.object(forKey: Key.playerBackgroundBlur) as? Double ?? 90
         playerBackgroundSaturation = defaults.object(
             forKey: Key.playerBackgroundSaturation
@@ -2004,6 +2025,8 @@ final class AppSettings {
             Self.defaultPlayerBackgroundAudioResponseEnabled
         beatNetDebugEnabled =
             Self.defaultBeatNetDebugEnabled
+        alwaysMixesWithOtherApps =
+            Self.defaultAlwaysMixesWithOtherApps
         playerBackgroundBlur = 90
         playerBackgroundSaturation =
             Self.defaultPlayerBackgroundSaturation

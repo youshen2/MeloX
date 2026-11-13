@@ -330,6 +330,10 @@
 "ui.settings.catalog.floating.subtitle" = "画中画歌词、翻译与下一句";
 "ui.settings.catalog.floating.keywords" = "画中画|悬浮歌词|其他应用|歌词大小";
 "ui.settings.catalog.content_storage.section" = "内容与存储";
+"ui.settings.background_mix.title" = "后台播放";
+"ui.settings.background_mix.keywords" = "混音|后台|同时播放|控制中心|锁屏|游戏";
+"ui.settings.background_mix.always.title" = "混合播放";
+"ui.settings.background_mix.always.subtitle" = "与其他应用的声音同时播放";
 "ui.settings.catalog.features.title" = "功能模块";
 "ui.settings.catalog.features.subtitle" = "启用或停用播客、下载、云盘与最近播放";
 "ui.settings.catalog.features.keywords" = "开关|隐藏|播客|广播|下载|云盘|最近播放|播放记录";
@@ -1396,7 +1400,7 @@
 "ui.heart_mode.manage_hint" = "轻点管理心动模式";
 "ui.heart_mode.turn_off" = "关闭心动模式";
 "ui.heart_mode.turn_off_message" = "关闭后会保留当前播放队列。";
-"ui.listen_together.playback_mode_managed" = "一起听期间由房间统一管理播放模式";
+"ui.listen_together.playback_mode_managed" = "一起听期间不能使用自动播放和自动混音";
 "ui.listen_together.room" = "一起听房间";
 "ui.listen_together.start" = "发起一起听";
 "ui.podcasts.go_to" = "前往播客：%@";

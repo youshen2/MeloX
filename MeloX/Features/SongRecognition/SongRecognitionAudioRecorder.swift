@@ -227,8 +227,7 @@ final class SongRecognitionAudioRecorder {
         guard isSessionActive else { return }
         let session = AVAudioSession.sharedInstance()
         if shouldPreservePlaybackSession {
-            try? session.setCategory(.playback, mode: .default)
-            try? session.setActive(true)
+            try? AudioPlaybackSessionConfigurator.activate()
         } else {
             try? session.setActive(
                 false,

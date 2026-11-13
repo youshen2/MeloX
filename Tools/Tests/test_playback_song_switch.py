@@ -58,6 +58,10 @@ struct Downloads {
 @MainActor final class Store {
     var playbackQueue = Queue()
     var loadGeneration = 0
+    var playbackRecoveryAttempts = 0
+    enum TransportCommand { case goTo }
+    var onListenTogetherTransport: ((TransportCommand, Int?) -> Void)?
+    var onListenTogetherQueueEdit: (() -> Void)?
     var currentSong: Song?
     var detailedPlaybackSongs: [Int: Song] = [:]
     var duration: Double = 300
@@ -90,9 +94,28 @@ struct Downloads {
         func setSong(_ song: Song, duration: Double, queueIndex: Int,
                      queueCount: Int, lyricsDisplaySettings: Int) {}
     }
+    func playbackSourceRetryingTransientFailure(
+        for song: Song, cachedDetailedSong: Song?, generation: Int
+    ) async throws -> PlaybackSource {
+        try await api.playbackSource(id: song.id)
+    }
     func run(startAt: Double, autoplay: Bool) async {
         await loadCurrentSong(autoplay: autoplay, startAt: startAt)
     }
+#if IOS_LISTEN_TOGETHER
+    func runTransportCheck() async -> Bool {
+        var trackReports = 0
+        var queueReports = 0
+        onListenTogetherTransport = { _, _ in trackReports += 1 }
+        onListenTogetherQueueEdit = { queueReports += 1 }
+
+        await loadCurrentSong(autoplay: true)
+        guard trackReports == 0, queueReports == 0 else { return false }
+
+        await loadCurrentSong(autoplay: true, reportsToRoom: true, queueChanged: true)
+        return trackReports == 1 && queueReports == 1
+    }
+#endif
     func seekWhileResolving(to position: Double) {
         progress = position
         reanchorPlaybackTimeline(to: position, rate: 0)
@@ -129,6 +152,10 @@ struct Downloads {
                 }
             }
         }
+#if IOS_LISTEN_TOGETHER
+        let reportsCorrectly = await Store().runTransportCheck()
+        if !reportsCorrectly { failures += 1 }
+#endif
         if failures > 0 { exit(1) }
         print("PASS: 16 song replacement / resume / pending seek scenarios")
     }
@@ -156,8 +183,9 @@ class SongSwitchTests(unittest.TestCase):
                     + STUBS.replace("// SOURCE_METHODS", methods)
                 )
                 executable = Path(directory) / "regression"
+                flags = ["-D", "IOS_LISTEN_TOGETHER"] if app == "MeloX" else []
                 compile_result = subprocess.run(
-                    ["swiftc", "-parse-as-library", str(swift), "-o", str(executable)],
+                    ["swiftc", "-parse-as-library", *flags, str(swift), "-o", str(executable)],
                     capture_output=True, text=True,
                 )
                 self.assertEqual(compile_result.returncode, 0, compile_result.stderr)

@@ -123,6 +123,11 @@ final class ListenTogetherStore {
     @ObservationIgnored
     var clientSequence = 0
 
+    /// Play-command sequences this device just submitted. Echoes of those
+    /// commands must not seek backward over playback that has already moved on.
+    @ObservationIgnored
+    var locallyReportedCommandSequences: [Int] = []
+
     @ObservationIgnored
     var monitorTask: Task<Void, Never>?
 
@@ -130,10 +135,22 @@ final class ListenTogetherStore {
     var queueReportTask: Task<Void, Never>?
 
     @ObservationIgnored
-    var isApplyingRemoteState = false
+    var queueReportRevision = 0
 
     @ObservationIgnored
-    var suppressReportsUntil = Date.distantPast
+    var transportReportTask: Task<Void, Never>?
+
+    @ObservationIgnored
+    var pendingTransportReport: PendingListenTogetherTransportReport?
+
+    @ObservationIgnored
+    var sessionRevision = 0
+
+    @ObservationIgnored
+    var localChangeRevision = 0
+
+    @ObservationIgnored
+    var synchronizingSession: Int?
 
     @ObservationIgnored
     var lastPlaylistSignature: String?
@@ -147,6 +164,12 @@ final class ListenTogetherStore {
     init(api: NeteaseAPI, player: PlayerStore) {
         self.api = api
         self.player = player
+        player.onListenTogetherTransport = { [weak self] type, formerSongID in
+            self?.playerTransportDidChange(type: type, formerSongID: formerSongID)
+        }
+        player.onListenTogetherQueueEdit = { [weak self] in
+            self?.playerQueueDidChange()
+        }
     }
 
     func accountDidChange(hasCredentials: Bool) async {
@@ -322,37 +345,45 @@ final class ListenTogetherStore {
         room: ListenTogetherRoom,
         localUserID: Int
     ) {
+        sessionRevision += 1
         monitorTask?.cancel()
         queueReportTask?.cancel()
+        queueReportTask = nil
+        transportReportTask?.cancel()
+        transportReportTask = nil
+        pendingTransportReport = nil
         self.room = room
         self.localUserID = localUserID
         isHost = room.creatorID == String(localUserID)
         clientSequence = 0
+        locallyReportedCommandSequences = []
         lastPlaylistSignature = nil
         lastCommandSignature = nil
         consecutiveSyncFailures = 0
         connectionState = .connected
         lastSyncDate = nil
-        suppressReportsUntil = .distantFuture
         player.beginListenTogetherSession()
     }
 
     func clearSession(notice: String? = nil) {
+        sessionRevision += 1
         monitorTask?.cancel()
         monitorTask = nil
         queueReportTask?.cancel()
         queueReportTask = nil
+        transportReportTask?.cancel()
+        transportReportTask = nil
+        pendingTransportReport = nil
         room = nil
         localUserID = nil
         isHost = false
         clientSequence = 0
+        locallyReportedCommandSequences = []
         lastPlaylistSignature = nil
         lastCommandSignature = nil
         consecutiveSyncFailures = 0
         connectionState = .idle
         lastSyncDate = nil
-        isApplyingRemoteState = false
-        suppressReportsUntil = .distantPast
         player.endListenTogetherSession()
         if let notice {
             noticeMessage = notice
