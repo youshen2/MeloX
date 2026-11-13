@@ -1266,11 +1266,15 @@ final class PlayerStore {
             }
             self.autoMixTransitionProgress = progress
         }
-        autoMixCoordinator.onTransitionCompleted = {
-            [weak self] context in
-            self?.completeAutoMixTransition(
-                context: context
-            )
+        autoMixCoordinator.onPlaybackHandoff = { [weak self] context in
+            self?.completeAutoMixTransition(context: context)
+        }
+        autoMixCoordinator.onTransitionCompleted = { [weak self] _ in
+            guard let self else { return }
+            self.autoMixTransitionProgress = nil
+            self.autoMixTransitionKind = nil
+            self.autoMixIncomingSongName = nil
+            self.prepareAutoMixIfNeeded()
         }
     }
 
@@ -1753,6 +1757,14 @@ final class PlayerStore {
             generation: generation
         )
         resetBeatAnalysis()
+        duration = engine.currentPlaybackDuration
+            ?? TimeInterval(context.incomingSong.durationMS) / 1_000
+        progress = clampedPlaybackPosition(engine.currentPlaybackTime ?? 0)
+        reanchorPlaybackTimeline(
+            to: progress,
+            rate: engine.state == .playing ? 1 : 0
+        )
+        seekRevision += 1
         currentPlaybackSource = context.source
         effectivePlaybackQuality = context.source.quality
         isUsingDownloadedSource =
@@ -1768,10 +1780,6 @@ final class PlayerStore {
         nowPlayingLyrics = []
         publishedNowPlayingLyricID = nil
         publishedLyricsLiveActivity = nil
-
-        autoMixTransitionProgress = nil
-        autoMixTransitionKind = nil
-        autoMixIncomingSongName = nil
 
         nowPlayingSession.setSong(
             context.incomingSong,

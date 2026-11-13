@@ -35,6 +35,7 @@ final class AudioPlaybackEngine {
     var onFailure: ((Error) -> Void)?
     var onAutoMixTransitionBegan: ((Int, AutoMixTransitionPlan) -> Void)?
     var onAutoMixTransitionProgress: ((Double) -> Void)?
+    var onAutoMixPlaybackHandoff: ((Int) -> Void)?
     var onAutoMixTransitionCompleted: ((Int) -> Void)?
     var onAutoMixPreparationFailed: ((Int, Error) -> Void)?
     var onInterruptionBegan: ((_ routeDisconnected: Bool) -> Void)?
@@ -58,6 +59,7 @@ final class AudioPlaybackEngine {
     private var activeDeck: AudioPlaybackDeck { autoMixController.activeDeck }
     var hasCurrentItem: Bool { activeDeck.hasCurrentItem }
     var currentPlaybackTime: TimeInterval? { activeDeck.currentPlaybackTime }
+    var currentPlaybackDuration: TimeInterval? { activeDeck.playbackDuration }
     var expectsPlaybackToContinue: Bool { wantsPlayback }
     var hasPreparedAutoMix: Bool { autoMixController.hasPreparedTransition }
     #if os(iOS)
@@ -190,6 +192,12 @@ final class AudioPlaybackEngine {
             self?.onAutoMixTransitionBegan?(identifier, plan)
         }
         autoMixController.onTransitionProgress = { [weak self] in self?.onAutoMixTransitionProgress?($0) }
+        autoMixController.onPlaybackHandoff = { [weak self] identifier in
+            guard let self else { return }
+            self.onAutoMixPlaybackHandoff?(identifier)
+            self.publishDurationIfAvailable()
+            self.updateStateFromPlayer(clockOrigin: .activeItemChanged)
+        }
         autoMixController.onTransitionCompleted = { [weak self] identifier in
             guard let self else { return }
             self.onAutoMixTransitionCompleted?(identifier)
