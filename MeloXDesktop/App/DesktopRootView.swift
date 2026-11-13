@@ -242,17 +242,21 @@ struct DesktopRootView: View {
 
 struct DesktopTabPage: View {
     @Environment(DesktopAppModel.self) private var model
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let section: DesktopSection
 
     var body: some View {
         @Bindable var ui = model.ui
-        let isInspectorPresented = ui.inspector != nil
 
-        let pageContent = NavigationStack(path: $ui.path) {
+        NavigationStack(path: $ui.path) {
             DesktopSectionContentView(section: section)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    DesktopTabBottomPlayerInset()
+                }
                 .navigationDestination(for: DesktopRoute.self) { route in
                     DesktopRouteView(route: route)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            DesktopTabBottomPlayerInset()
+                        }
                 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -261,46 +265,6 @@ struct DesktopTabPage: View {
             DesktopLoadingStatusPreferenceKey.self
         ) { message in
             model.ui.setContextualLoadingMessage(message, for: section)
-        }
-
-        ZStack(alignment: .trailing) {
-            pageContent
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    DesktopTabBottomPlayerInset()
-                }
-
-            DesktopPlayerSidePanel(
-                selection: ui.retainedInspector,
-                isPresented: isInspectorPresented
-            )
-            .frame(
-                width: DesktopMainWindowMetrics.playerSidePanelWidth
-            )
-            .offset(
-                x: isInspectorPresented
-                    ? 0
-                    : DesktopMainWindowMetrics.playerSidePanelWidth
-            )
-            .opacity(isInspectorPresented ? 1 : 0)
-            .allowsHitTesting(isInspectorPresented)
-            .accessibilityHidden(!isInspectorPresented)
-            .zIndex(2)
-            .animation(
-                reduceMotion
-                    ? nil
-                    : DesktopMainWindowMetrics.presentationAnimation,
-                value: isInspectorPresented
-            )
-
-            if section == ui.selection {
-                DesktopTabBottomPlayer()
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .bottom
-                    )
-                    .zIndex(3)
-            }
         }
     }
 }

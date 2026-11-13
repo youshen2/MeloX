@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DesktopSidebar: View {
     @Environment(DesktopAppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sidebarFrame = CGRect(
         x: 8,
         y: 8,
@@ -41,6 +42,33 @@ struct DesktopSidebar: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        // Keep the player above the native tab/navigation hosts. A pushed
+        // destination can cover overlays owned by an individual tab page.
+        .overlay(alignment: .trailing) {
+            DesktopPlayerSidePanel(
+                selection: ui.retainedInspector,
+                isPresented: ui.inspector != nil
+            )
+            .frame(width: DesktopMainWindowMetrics.playerSidePanelWidth)
+            .offset(
+                x: ui.inspector != nil
+                    ? 0
+                    : DesktopMainWindowMetrics.playerSidePanelWidth
+            )
+            .opacity(ui.inspector != nil ? 1 : 0)
+            .allowsHitTesting(ui.inspector != nil)
+            .accessibilityHidden(ui.inspector == nil)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : DesktopMainWindowMetrics.presentationAnimation,
+                value: ui.inspector != nil
+            )
+        }
+        .overlay(alignment: .bottom) {
+            DesktopGlobalBottomPlayer()
+                .padding(.leading, max(sidebarFrame.maxX, 0))
+        }
         .overlay(alignment: .bottomLeading) {
             pinnedFooter
                 .frame(width: max(sidebarFrame.width, 1))
