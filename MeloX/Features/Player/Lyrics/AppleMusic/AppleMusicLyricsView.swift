@@ -142,7 +142,7 @@ struct AppleMusicLyricsView: View {
         self.onInterfaceVisibilityChange = onInterfaceVisibilityChange
         self.onInitialFocusPrepared = onInitialFocusPrepared
         lyricIndexByID = Dictionary(
-            uniqueKeysWithValues: lyrics.enumerated().map { index, line in
+            keepingFirst: lyrics.enumerated().map { index, line in
                 (line.id, index)
             }
         )
@@ -1415,7 +1415,7 @@ struct AppleMusicLyricsView: View {
     }
 
     private var interludeByID: [LyricInterlude.ID: LyricInterlude] {
-        Dictionary(uniqueKeysWithValues: interludes.map { ($0.id, $0) })
+        Dictionary(keepingFirst: interludes.map { ($0.id, $0) })
     }
 
     private var displayItems: [AppleMusicLyricsDisplayItem] {
@@ -1828,7 +1828,7 @@ struct AppleMusicLyricsView: View {
         let followingOffset = scaleOverflow
         guard followingOffset > 0.5 else { return [:] }
         return Dictionary(
-            uniqueKeysWithValues:
+            keepingFirst:
                 lyrics[(focusedIndex + 1)...].map { line in
                     (line.id, followingOffset)
                 }
@@ -2223,7 +2223,7 @@ struct AppleMusicLyricsView: View {
                 viewportHeight: cascadeViewportHeight
             )
         let preparedMovementOffsets = Dictionary(
-            uniqueKeysWithValues: lyrics.map { line in
+            keepingFirst: lyrics.map { line in
                 (
                     line.id,
                     movementDistance
@@ -2379,7 +2379,7 @@ struct AppleMusicLyricsView: View {
             return
         }
         let movementOrderByID = Dictionary(
-            uniqueKeysWithValues: orderedMovingIDs.map { id in
+            keepingFirst: orderedMovingIDs.map { id in
                 let lineIndex = lyricIndexByID[id] ?? highlightedIndex
                 let lineOrder = max(
                     lineIndex - highlightedIndex,
@@ -2395,7 +2395,7 @@ struct AppleMusicLyricsView: View {
             lyrics.startIndex
         )
         let chaseOrderByID: [LyricLine.ID: Int] = Dictionary(
-            uniqueKeysWithValues: orderedMovingIDs.compactMap { id in
+            keepingFirst: orderedMovingIDs.compactMap { id in
                 guard let lineIndex = lyricIndexByID[id],
                       lineIndex >= firstChasingIndex else {
                     return nil
@@ -2585,7 +2585,7 @@ struct AppleMusicLyricsView: View {
             for: 0
         ).duration
         let movementAnimations = Dictionary(
-            uniqueKeysWithValues: orderedMovingIDs.map { id in
+            keepingFirst: orderedMovingIDs.map { id in
                 let movementOrder = movementOrderByID[id, default: 0]
                 let chaseOrder = chaseOrderByID[id]
                 let movementTiming = cascadeTiming.lineTiming(

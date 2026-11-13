@@ -109,7 +109,7 @@ enum TimedLyricTextBuilder {
         )
 
         let horizontalOffsetByCharacterOffset = Dictionary(
-            uniqueKeysWithValues: forcedHorizontalOffsets.map {
+            keepingFirst: forcedHorizontalOffsets.map {
                 ($0.characterOffset, $0.horizontalOffset)
             }
         )
@@ -182,7 +182,7 @@ enum TimedLyricTextBuilder {
 
         let characters = Array(source)
         let horizontalOffsetByCharacterOffset = Dictionary(
-            uniqueKeysWithValues: forcedHorizontalOffsets.map {
+            keepingFirst: forcedHorizontalOffsets.map {
                 ($0.characterOffset, $0.horizontalOffset)
             }
         )
@@ -285,7 +285,7 @@ enum TimedLyricTextBuilder {
                 continue
             }
             let characterPositions = Dictionary(
-                uniqueKeysWithValues: timedIndices.enumerated().map {
+                keepingFirst: timedIndices.enumerated().map {
                     ($0.element, $0.offset)
                 }
             )

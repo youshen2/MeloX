@@ -46,6 +46,20 @@ struct ResolvedLyrics: Hashable, Sendable {
     let quality: LyricQuality
     let lines: [LyricLine]
     let isPureMusic: Bool
+
+    init(
+        source: LyricSource,
+        quality: LyricQuality,
+        lines: [LyricLine],
+        isPureMusic: Bool
+    ) {
+        self.source = source
+        self.quality = quality
+        // Every lyrics view keys its rows by line id, so two identical
+        // lines at the same timestamp must never share one.
+        self.lines = lines.withUniqueIDs()
+        self.isPureMusic = isPureMusic
+    }
 }
 
 enum LyricQuality: Int, Hashable, Sendable {

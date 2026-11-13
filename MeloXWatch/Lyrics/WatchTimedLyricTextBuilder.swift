@@ -138,7 +138,7 @@ enum WatchTimedLyricTextBuilder {
                 continue
             }
             let positions = Dictionary(
-                uniqueKeysWithValues: timedIndices.enumerated().map {
+                keepingFirst: timedIndices.enumerated().map {
                     ($0.element, $0.offset)
                 }
             )

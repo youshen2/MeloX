@@ -171,7 +171,7 @@ struct DesktopLyricsScrollView: View {
 
     private var interludeByID: [LyricInterlude.ID: LyricInterlude] {
         Dictionary(
-            uniqueKeysWithValues: interludes.map { interlude in
+            keepingFirst: interludes.map { interlude in
                 (interlude.id, interlude)
             }
         )
@@ -179,7 +179,7 @@ struct DesktopLyricsScrollView: View {
 
     private var interludeByDisplayLyricID: [LyricLine.ID: LyricInterlude] {
         Dictionary(
-            uniqueKeysWithValues: interludes.map { interlude in
+            keepingFirst: interludes.map { interlude in
                 (interlude.displayBeforeLyricID, interlude)
             }
         )
@@ -1108,7 +1108,7 @@ struct DesktopLyricsScrollView: View {
             for: highlightedID
         )
         let preparedOffsets = Dictionary(
-            uniqueKeysWithValues: model.lyrics.lyrics.map { line in
+            keepingFirst: model.lyrics.lyrics.map { line in
                 (
                     line.id,
                     movementDistance
@@ -1158,7 +1158,7 @@ struct DesktopLyricsScrollView: View {
         )
         let slowestDuration = cascadeTiming.lineTiming(for: 0).duration
         let movementAnimations = Dictionary(
-            uniqueKeysWithValues:
+            keepingFirst:
                 model.lyrics.lyrics.enumerated().map { index, line in
                     let movementOrder = min(
                         max(index - highlightedIndex, 0),
@@ -1310,7 +1310,7 @@ struct DesktopLyricsScrollView: View {
             for: highlightedID
         )
         let preparedOffsets = Dictionary(
-            uniqueKeysWithValues: model.lyrics.lyrics.map { line in
+            keepingFirst: model.lyrics.lyrics.map { line in
                 (
                     line.id,
                     movementDistance
@@ -1421,7 +1421,7 @@ struct DesktopLyricsScrollView: View {
         let movementAnimations: [
             LyricLine.ID: LyricMovementAnimationConfiguration
         ] = Dictionary(
-            uniqueKeysWithValues: plan.compactMap { plannedLine -> (
+            keepingFirst: plan.compactMap { plannedLine -> (
                 LyricLine.ID,
                 LyricMovementAnimationConfiguration
             )? in
@@ -2678,7 +2678,7 @@ struct DesktopLyricsScrollView: View {
             )
             guard followingOffset > 0.5 else { return [:] }
             return Dictionary(
-                uniqueKeysWithValues:
+                keepingFirst:
                     model.lyrics.lyrics[(focusedIndex + 1)...].map {
                         ($0.id, followingOffset)
                     }
@@ -2716,7 +2716,7 @@ struct DesktopLyricsScrollView: View {
         )
         guard followingOffset > 0.5 else { return [:] }
         return Dictionary(
-            uniqueKeysWithValues:
+            keepingFirst:
                 model.lyrics.lyrics[(focusedIndex + 1)...].map {
                     ($0.id, followingOffset)
                 }

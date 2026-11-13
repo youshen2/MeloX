@@ -59,7 +59,7 @@ enum LyricRubyTextBuilder {
             .map { characters[$0].endTime }
             .max() ?? wordStartTime
         let wordPositions = Dictionary(
-            uniqueKeysWithValues: timedIndices.enumerated().map {
+            keepingFirst: timedIndices.enumerated().map {
                 ($0.element, $0.offset)
             }
         )
