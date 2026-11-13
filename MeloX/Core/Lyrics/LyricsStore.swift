@@ -32,6 +32,14 @@ final class LyricsStore {
 
         guard let song else { return }
 
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled {
+            lyrics = MeloXDesignPreview.lyricLines
+            isLoading = false
+            return
+        }
+        #endif
+
         do {
             let loaded = try await service.load(
                 for: LyricsSongMetadata(song: song)

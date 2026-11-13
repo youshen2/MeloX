@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(\.musicUsesSidebar) private var usesSidebar
 
     @State private var section = AppTab.recommended
 
@@ -17,11 +18,11 @@ struct HomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if availableSections.count > 1 {
+            if availableSections.count > 1, !usesSidebar {
                 sectionPicker
             }
 
-            sectionContent(for: activeSection)
+            sectionContent(for: usesSidebar && availableSections.contains(.recommended) ? .recommended : activeSection)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle("ui.navigation.home")

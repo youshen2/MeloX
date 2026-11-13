@@ -233,10 +233,14 @@ extension EnvironmentValues {
     }
 }
 
-enum PlayerPresentation: String, Identifiable {
-    case nowPlaying
+enum PlayerPresentation: Hashable, Identifiable {
+    case nowPlaying(initialPage: NowPlayingPage)
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .nowPlaying(let page): "now-playing-\(page.rawValue)"
+        }
+    }
 }
 
 extension View {

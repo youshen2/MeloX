@@ -97,6 +97,7 @@ struct HomeEditorialCard: View {
 }
 
 struct HomePlaylistCard: View {
+    @Environment(\.musicShelfLayout) private var layout
     let playlist: Playlist
 
     var body: some View {
@@ -107,8 +108,8 @@ struct HomePlaylistCard: View {
                 ?? playlist.updateFrequency
                 ?? playlist.creator?.nickname,
             artworkURL: playlist.artworkURL,
-            artworkSize: 166
+            artworkSize: layout.artworkSize(compact: 166)
         )
-        .frame(width: 166)
+        .frame(width: layout.artworkSize(compact: 166))
     }
 }

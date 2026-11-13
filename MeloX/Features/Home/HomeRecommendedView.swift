@@ -22,9 +22,15 @@ struct HomeRecommendedView: View {
     @State private var payloadVersion = 0
     @State private var activeAction: HomeQuickAction?
     @State private var actionErrorMessage: String?
+    @State private var contentWidth: CGFloat = 390
 
     private var feed: HomeRecommendationFeed {
-        HomeRecommendationFeed(
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled {
+            return HomeRecommendationFeed(blocks: [], fallbacks: MeloXDesignPreview.homeFallbacks, includesPodcasts: false)
+        }
+        #endif
+        return HomeRecommendationFeed(
             blocks: payload?.blocks ?? [],
             fallbacks: fallbacks,
             includesPodcasts:
@@ -32,8 +38,21 @@ struct HomeRecommendedView: View {
         )
     }
 
+    private var hasRecommendationPayload: Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled { return true }
+        #endif
+        return payload != nil
+    }
+
     var body: some View {
         content
+        .environment(\.musicShelfLayout, MusicShelfLayout(containerWidth: contentWidth))
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            contentWidth = width
+        }
         .task(
             id: HomeRecommendedLoadRequest(
                 reloadToken: reloadToken,
@@ -104,7 +123,7 @@ struct HomeRecommendedView: View {
                     perform: perform
                 )
 
-                if payload == nil {
+                if !hasRecommendationPayload {
                     initialState
                         .frame(
                             maxWidth: .infinity,
@@ -236,6 +255,12 @@ struct HomeRecommendedView: View {
     }
 
     private func load(refresh: Bool = false) async {
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled {
+            hotSongsChart = MeloXDesignPreview.toplist
+            return
+        }
+        #endif
         if payload == nil {
             phase = .loading
         }
@@ -317,6 +342,9 @@ struct HomeRecommendedView: View {
     }
 
     private func loadFallbacks() async {
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled { return }
+        #endif
         guard let payload else { return }
 
         do {

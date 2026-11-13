@@ -16,43 +16,35 @@ struct AlbumDetailContent: View {
     var highlightedSongID: Int?
 
     var body: some View {
-        ZStack {
-            MusicCollectionArtworkBackdrop(
-                blurredArtworkImage: blurredBackdropImage,
-                palette: palette
+        MusicCollectionDetailLayoutView(
+            palette: palette,
+            blurredBackdropImage: blurredBackdropImage,
+            onRefresh: onRefresh
+        ) {
+            StandardMusicCollectionDetailHero(
+                artworkURL: album.artworkURL,
+                title: album.name,
+                subtitle: album.artistText,
+                metadataText: metadataText,
+                descriptionText: album.albumDescription?.nonemptyAlbumMetadata,
+                tracks: songs,
+                sourceID: album.id,
+                isSaved: isSubscribed,
+                onToggleSaved: onToggleSubscription
             )
 
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    StandardMusicCollectionDetailHero(
-                        artworkURL: album.artworkURL,
-                        title: album.name,
-                        subtitle: album.artistText,
-                        metadataText: metadataText,
-                        tracks: songs,
-                        sourceID: album.id,
-                        isSaved: isSubscribed,
-                        onToggleSaved: onToggleSubscription
-                    )
-
-                    MusicCollectionTrackContent(
-                        tracks: filteredTracks,
-                        sourceID: album.id,
-                        showsArtwork: false,
-                        loadingTitle: L10n.string("ui.album.loading"),
-                        isLoading: isLoading,
-                        failureMessage: failureMessage,
-                        downloadSelection: downloadCoordinator,
-                        onRetry: onRetry,
-                        highlightedSongID: highlightedSongID
-                    )
-                }
-                .padding(.bottom, 32)
-            }
-            .scrollIndicators(.hidden)
-            .refreshable {
-                await onRefresh()
-            }
+        } tracks: {
+            MusicCollectionTrackContent(
+                tracks: filteredTracks,
+                sourceID: album.id,
+                showsArtwork: false,
+                loadingTitle: L10n.string("ui.album.loading"),
+                isLoading: isLoading,
+                failureMessage: failureMessage,
+                downloadSelection: downloadCoordinator,
+                onRetry: onRetry,
+                highlightedSongID: highlightedSongID
+            )
         }
         .foregroundStyle(.primary)
     }

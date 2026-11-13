@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AlbumDetailView: View {
     let id: Int
@@ -68,7 +69,7 @@ struct AlbumDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $searchQuery,
-            placement: .navigationBarDrawer(displayMode: .always),
+            placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: Text("ui.album.search_prompt")
         )
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -245,9 +246,10 @@ struct AlbumDetailView: View {
             Menu {
                 NeteaseShareMenuContent(resource: .album(displayedAlbum))
             } label: {
-                Image(systemName: "square.and.arrow.up")
+                MusicToolbarSymbol(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel("ui.album.share")
+            .accessibilityIdentifier("collection-toolbar-share")
 
             Menu {
                 Button("ui.collection.locate_playing", systemImage: "scope") {
@@ -283,9 +285,10 @@ struct AlbumDetailView: View {
                     Label("ui.common.refresh", systemImage: "arrow.clockwise")
                 }
             } label: {
-                Image(systemName: "ellipsis")
+                MusicToolbarSymbol(systemName: "ellipsis")
             }
             .accessibilityLabel("ui.common.more")
+            .accessibilityIdentifier("collection-toolbar-more")
         }
         .sharedBackgroundVisibility(.visible)
     }

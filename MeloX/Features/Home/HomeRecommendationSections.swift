@@ -77,6 +77,7 @@ struct HomeRecommendationSectionView: View {
 }
 
 private struct HomeMediaStrip<Content: View>: View {
+    @Environment(\.musicShelfLayout) private var layout
     let title: String
     var playAll: (() -> Void)?
     @ViewBuilder let content: () -> Content
@@ -99,20 +100,21 @@ private struct HomeMediaStrip<Content: View>: View {
                     .accessibilityLabel(L10n.format("ui.common.play_named", title))
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, layout.horizontalPadding)
 
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: 14) {
+                LazyHStack(alignment: .top, spacing: layout.spacing) {
                     content()
                 }
             }
-            .contentMargins(.horizontal, 16, for: .scrollContent)
+            .contentMargins(.horizontal, layout.horizontalPadding, for: .scrollContent)
             .scrollIndicators(.hidden)
         }
     }
 }
 
 private struct HomeSongCard: View {
+    @Environment(\.musicShelfLayout) private var layout
     let song: Song
 
     var body: some View {
@@ -120,15 +122,16 @@ private struct HomeSongCard: View {
             title: song.name,
             subtitle: song.artistText,
             artworkURL: song.album?.artworkURL,
-            artworkSize: 154
+            artworkSize: layout.artworkSize(compact: 154)
         )
-        .frame(width: 154)
+        .frame(width: layout.artworkSize(compact: 154))
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }
 }
 
 private struct HomePodcastProgramCard: View {
+    @Environment(\.musicShelfLayout) private var layout
     let program: PodcastProgram
 
     var body: some View {
@@ -136,9 +139,9 @@ private struct HomePodcastProgramCard: View {
             title: program.name,
             subtitle: program.radio.name,
             artworkURL: program.artworkURL,
-            artworkSize: 154
+            artworkSize: layout.artworkSize(compact: 154)
         )
-        .frame(width: 154)
+        .frame(width: layout.artworkSize(compact: 154))
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }

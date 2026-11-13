@@ -6,7 +6,6 @@ struct NowPlayingView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.accessibilityVoiceOverEnabled)
     private var accessibilityVoiceOverEnabled
@@ -24,6 +23,7 @@ struct NowPlayingView: View {
     @State private var artworkPageFrame = CGRect.zero
     @State private var preparedLyricsSongID: Song.ID?
     @State private var hasDisplayDivision = false
+    @State private var viewportSize = CGSize.zero
     @State private var showsFullScreenLyrics = false
     @Namespace private var pageArtworkNamespace
 
@@ -66,6 +66,7 @@ struct NowPlayingView: View {
                             page: pageSelection,
                             pageTransition: pageTransition,
                             song: song,
+                            hasDisplayDivision: hasDisplayDivision,
                             lyrics: lyrics,
                             lyricError: lyricError,
                             highlightedLyricID: highlightedLyricID,
@@ -136,6 +137,11 @@ struct NowPlayingView: View {
                         .accessibilityLabel("ui.text_pv.landscape_recommended")
                 }
             }
+        }
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { size in
+            viewportSize = size
         }
         .onGeometryChange(for: Bool.self) { proxy in
             if #available(iOS 27.1, *) {
@@ -455,7 +461,9 @@ struct NowPlayingView: View {
 
     private var usesExpandedLayout: Bool {
         hasDisplayDivision
-            || (horizontalSizeClass == .regular && verticalSizeClass != .compact)
+            || (viewportSize.width >= 700
+                && viewportSize.height >= 500
+                && (UIDevice.current.userInterfaceIdiom == .pad || horizontalSizeClass == .regular))
     }
 
     private var usesMonochromeLyricsBackground: Bool {

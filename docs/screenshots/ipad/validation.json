@@ -1,0 +1,13 @@
+{
+  "result": "Passed",
+  "passedTests": 6,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "totalTestCount": 6,
+  "runtimeWarnings": [],
+  "device": "iPad Pro 13-inch (M4)",
+  "runtime": "27.0",
+  "tested_source_commit": "620d10ab0be00399d014c1b45aab0a11dc540288",
+  "native_device_build": "passed",
+  "layout_bounds": "passed"
+}

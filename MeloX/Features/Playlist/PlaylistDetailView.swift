@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PlaylistDetailView: View {
     let id: Int
@@ -140,7 +141,7 @@ struct PlaylistDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $searchQuery,
-            placement: .navigationBarDrawer(displayMode: .always),
+            placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: Text(
                 prefersToplistLayout
                     ? L10n.string("ui.toplists.search_prompt")
@@ -364,9 +365,10 @@ struct PlaylistDetailView: View {
             Menu {
                 NeteaseShareMenuContent(resource: .playlist(playlist))
             } label: {
-                Image(systemName: "square.and.arrow.up")
+                MusicToolbarSymbol(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel(L10n.format("ui.common.share_named", collectionTitle))
+            .accessibilityIdentifier("collection-toolbar-share")
 
             Menu {
                 Button("ui.collection.locate_playing", systemImage: "scope") {
@@ -405,9 +407,10 @@ struct PlaylistDetailView: View {
                     Label("ui.common.refresh", systemImage: "arrow.clockwise")
                 }
             } label: {
-                Image(systemName: "ellipsis")
+                MusicToolbarSymbol(systemName: "ellipsis")
             }
             .accessibilityLabel("ui.common.more")
+            .accessibilityIdentifier("collection-toolbar-more")
         }
         .sharedBackgroundVisibility(.visible)
     }
@@ -497,6 +500,14 @@ struct PlaylistDetailView: View {
     private func load(
         waitingForNavigationTransition: Bool = false
     ) async {
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled, id == MeloXDesignPreview.toplist.id {
+            playlist = MeloXDesignPreview.toplist
+            loadedTrackOffset = MeloXDesignPreview.toplist.tracks.count
+            phase = .loaded
+            return
+        }
+        #endif
         let accountToken = settings.cookie.hashValue
         songToLocate = nil
         trackLocator.reset()

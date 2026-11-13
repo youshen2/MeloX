@@ -98,6 +98,7 @@ enum HomeQuickAction: String, CaseIterable, Identifiable {
 
 struct HomeQuickActionsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(\.musicShelfLayout) private var layout
     @ScaledMetric(relativeTo: .body) private var compactCardWidth = 230.0
 
     let activeAction: HomeQuickAction?
@@ -137,11 +138,12 @@ struct HomeQuickActionsView: View {
                     .buttonStyle(.plain)
                     .disabled(activeAction != nil)
                     .accessibilityHint(accessibilityHint(for: action))
+                    .accessibilityIdentifier("home-action-\(action.id)")
                 }
             }
             .scrollTargetLayout()
         }
-        .contentMargins(.horizontal, 16, for: .scrollContent)
+        .contentMargins(.horizontal, layout.horizontalPadding, for: .scrollContent)
         .scrollIndicators(.hidden)
         .scrollTargetBehavior(.viewAligned)
     }

@@ -276,6 +276,16 @@ final class PlayerStore {
     func restore() async {
         guard !hasRestoredPlayback else { return }
         hasRestoredPlayback = true
+        #if DEBUG && targetEnvironment(simulator)
+        if MeloXDesignPreview.isEnabled {
+            playbackQueue.replace(with: MeloXDesignPreview.songs, startingAt: 0)
+            currentSong = playbackQueue.currentSong
+            duration = 214
+            progress = 36
+            reanchorPlaybackTimeline(to: progress, rate: 0)
+            return
+        }
+        #endif
         guard let snapshot = persistence.load(), !snapshot.queue.isEmpty else {
             lyricsLiveActivityController.synchronize(with: nil)
             lyricsNotificationController.clear()
