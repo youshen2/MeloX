@@ -2154,3 +2154,10 @@
 "ui.settings.general.cache_page_content" = "自动缓存首页与音乐库";
 "ui.settings.general.compact_home_actions" = "紧凑首页快捷入口";
 "ui.settings.general.cache_page_content.footer" = "保存最近加载成功的推荐、音乐库和歌单信息。再次打开时先显示缓存，再联网更新；可在储存空间中清理。";
+
+"ui.library.search.prompt" = "搜索收藏歌曲、歌手或专辑";
+"ui.library.search.clear" = "清除搜索";
+"ui.library.search.results" = "%@ 首匹配歌曲";
+"ui.library.search.loading" = "正在搜索全部收藏…";
+"ui.library.search.empty.title" = "没有找到收藏歌曲";
+"ui.library.search.empty.description" = "试试其他歌名、歌手或专辑名。";
